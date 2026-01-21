@@ -1,4 +1,5 @@
 import { getStroke } from "perfect-freehand";
+import rough from "roughjs";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 interface Point {
@@ -6,12 +7,15 @@ interface Point {
 	y: number;
 }
 
-interface Path {
+type ElementType = "marker" | "eraser" | "rectangle" | "ellipse" | "arrow";
+
+interface Element {
 	id: string;
+	type: ElementType;
 	points: Point[];
 	color: string;
 	width: number;
-	isEraser: boolean;
+	seed: number;
 }
 
 export default function PresentationMarker() {
@@ -21,17 +25,15 @@ export default function PresentationMarker() {
 	let markerCursorRef: HTMLDivElement | undefined;
 
 	const [isDrawingMode, setIsDrawingMode] = createSignal(false);
-	const [currentTool, setCurrentTool] = createSignal<"marker" | "eraser">(
-		"marker",
-	);
+	const [currentTool, setCurrentTool] = createSignal<ElementType>("marker");
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
-	const [paths, setPaths] = createSignal<Path[]>([]);
+	const [elements, setElements] = createSignal<Element[]>([]);
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
 	const [pendingDeletionIds, setPendingDeletionIds] = createSignal<Set<string>>(
 		new Set(),
 	);
 
-	let activePath: Path | null = null;
+	let activeElement: Element | null = null;
 	const ERASER_SIZE = 50;
 	const MARKER_WIDTH = 4;
 
@@ -77,7 +79,6 @@ export default function PresentationMarker() {
 		};
 	};
 
-	// Distance from point P to segment AB
 	const distToSegment = (p: Point, a: Point, b: Point) => {
 		const v = { x: b.x - a.x, y: b.y - a.y };
 		const w = { x: p.x - a.x, y: p.y - a.y };
@@ -98,16 +99,51 @@ export default function PresentationMarker() {
 		const hitIds = new Set(pendingDeletionIds());
 		let changed = false;
 
-		paths().forEach((path) => {
-			if (hitIds.has(path.id)) return;
-			// Check distance to all segments of the path
-			for (let i = 0; i < path.points.length - 1; i++) {
-				const dist = distToSegment(pos, path.points[i], path.points[i + 1]);
-				if (dist < ERASER_SIZE / 2 + path.width / 2) {
-					hitIds.add(path.id);
-					changed = true;
-					break;
+		elements().forEach((el) => {
+			if (hitIds.has(el.id)) return;
+			let isHit = false;
+
+			if (el.type === "marker") {
+				for (let i = 0; i < el.points.length - 1; i++) {
+					const dist = distToSegment(pos, el.points[i], el.points[i + 1]);
+					if (dist < ERASER_SIZE / 2 + el.width) {
+						isHit = true;
+						break;
+					}
 				}
+			} else if (el.type === "rectangle") {
+				const [a, b] = el.points;
+				const minX = Math.min(a.x, b.x);
+				const maxX = Math.max(a.x, b.x);
+				const minY = Math.min(a.y, b.y);
+				const maxY = Math.max(a.y, b.y);
+				// Check 4 edges
+				const dists = [
+					distToSegment(pos, { x: minX, y: minY }, { x: maxX, y: minY }),
+					distToSegment(pos, { x: maxX, y: minY }, { x: maxX, y: maxY }),
+					distToSegment(pos, { x: maxX, y: maxY }, { x: minX, y: maxY }),
+					distToSegment(pos, { x: minX, y: maxY }, { x: minX, y: minY }),
+				];
+				if (dists.some((d) => d < ERASER_SIZE / 2 + 5)) isHit = true;
+			} else if (el.type === "ellipse") {
+				const [a, b] = el.points;
+				const cx = (a.x + b.x) / 2;
+				const cy = (a.y + b.y) / 2;
+				const rx = Math.abs(a.x - b.x) / 2;
+				const ry = Math.abs(a.y - b.y) / 2;
+				// Simple ellipse hit check
+				const dx = pos.x - cx;
+				const dy = pos.y - cy;
+				const val = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+				if (val >= 0.8 && val <= 1.2) isHit = true;
+			} else if (el.type === "arrow") {
+				const [a, b] = el.points;
+				if (distToSegment(pos, a, b) < ERASER_SIZE / 2 + 5) isHit = true;
+			}
+
+			if (isHit) {
+				hitIds.add(el.id);
+				changed = true;
 			}
 		});
 
@@ -121,18 +157,18 @@ export default function PresentationMarker() {
 		if (!isDrawingMode()) return;
 		const pos = getPos(e);
 
+		setIsCurrentlyDrawing(true);
 		if (currentTool() === "eraser") {
-			setIsCurrentlyDrawing(true);
-			setPendingDeletionIds(new Set());
+			setPendingDeletionIds(new Set<string>());
 			checkHit(pos);
 		} else {
-			setIsCurrentlyDrawing(true);
-			activePath = {
+			activeElement = {
 				id: Math.random().toString(36).substr(2, 9),
-				points: [pos],
+				type: currentTool(),
+				points: [pos, pos],
 				color: currentColor(),
 				width: MARKER_WIDTH,
-				isEraser: false,
+				seed: Math.floor(Math.random() * 2 ** 31),
 			};
 		}
 	};
@@ -160,8 +196,12 @@ export default function PresentationMarker() {
 
 		if (currentTool() === "eraser") {
 			checkHit(pos);
-		} else if (activePath) {
-			activePath.points.push(pos);
+		} else if (activeElement) {
+			if (activeElement.type === "marker") {
+				activeElement.points.push(pos);
+			} else {
+				activeElement.points[1] = pos;
+			}
 			updateTempCanvas();
 		}
 	};
@@ -171,13 +211,13 @@ export default function PresentationMarker() {
 			if (currentTool() === "eraser") {
 				const idsToDelete = pendingDeletionIds();
 				if (idsToDelete.size > 0) {
-					setPaths(paths().filter((p) => !idsToDelete.has(p.id)));
-					setPendingDeletionIds(new Set());
+					setElements(elements().filter((el) => !idsToDelete.has(el.id)));
+					setPendingDeletionIds(new Set<string>());
 					redraw();
 				}
-			} else if (activePath) {
-				setPaths([...paths(), activePath]);
-				activePath = null;
+			} else if (activeElement) {
+				setElements([...elements(), activeElement]);
+				activeElement = null;
 				if (tempCanvasRef) {
 					const ctx = tempCanvasRef.getContext("2d");
 					if (ctx) {
@@ -193,61 +233,98 @@ export default function PresentationMarker() {
 		setIsCurrentlyDrawing(false);
 	};
 
-	const drawPath = (
+	const renderElement = (
 		ctx: CanvasRenderingContext2D,
-		path: Path,
-		isPendingDeletion: boolean,
+		rc: any,
+		el: Element,
+		isPending: boolean,
 	) => {
-		if (path.points.length < 2) return;
-
+		if (el.points.length < 2) return;
 		const scrollY = window.scrollY;
-		const viewportPoints = path.points.map((p) => [p.x, p.y - scrollY]);
+		ctx.save();
+		ctx.globalAlpha = isPending ? 0.2 : 1.0;
 
-		const stroke = getStroke(viewportPoints, {
-			size: path.width,
-			thinning: 0.5,
-			smoothing: 0.5,
-			streamline: 0.5,
-		});
-
-		if (stroke.length === 0) return;
-
-		ctx.beginPath();
-		ctx.globalCompositeOperation = "source-over";
-		ctx.fillStyle = path.color;
-
-		if (isPendingDeletion) {
-			ctx.globalAlpha = 0.2;
+		if (el.type === "marker") {
+			const viewportPoints = el.points.map((p) => [p.x, p.y - scrollY]);
+			const stroke = getStroke(viewportPoints, {
+				size: el.width,
+				thinning: 0.5,
+				smoothing: 0.5,
+				streamline: 0.5,
+			});
+			if (stroke.length > 0) {
+				ctx.beginPath();
+				ctx.fillStyle = el.color;
+				ctx.moveTo(stroke[0][0], stroke[0][1]);
+				for (let i = 1; i < stroke.length; i++) {
+					ctx.lineTo(stroke[i][0], stroke[i][1]);
+				}
+				ctx.closePath();
+				ctx.fill();
+			}
 		} else {
-			ctx.globalAlpha = 1.0;
-		}
+			const [p1, p2] = el.points;
+			const options = {
+				stroke: el.color,
+				strokeWidth: el.width,
+				roughness: 1.5,
+				seed: el.seed,
+			};
+			const y1 = p1.y - scrollY;
+			const y2 = p2.y - scrollY;
 
-		ctx.moveTo(stroke[0][0], stroke[0][1]);
-		for (let i = 1; i < stroke.length; i++) {
-			ctx.lineTo(stroke[i][0], stroke[i][1]);
+			if (el.type === "rectangle") {
+				rc.rectangle(p1.x, y1, p2.x - p1.x, y2 - y1, options);
+			} else if (el.type === "ellipse") {
+				const cx = (p1.x + p2.x) / 2;
+				const cy = (y1 + y2) / 2;
+				const w = Math.abs(p2.x - p1.x);
+				const h = Math.abs(y2 - y1);
+				rc.ellipse(cx, cy, w, h, options);
+			} else if (el.type === "arrow") {
+				// Arrow shaft
+				rc.line(p1.x, y1, p2.x, y2, options);
+				// Arrow head
+				const angle = Math.atan2(y2 - y1, p2.x - p1.x);
+				const headLen = 15;
+				rc.line(
+					p2.x,
+					y2,
+					p2.x - headLen * Math.cos(angle - Math.PI / 6),
+					y2 - headLen * Math.sin(angle - Math.PI / 6),
+					options,
+				);
+				rc.line(
+					p2.x,
+					y2,
+					p2.x - headLen * Math.cos(angle + Math.PI / 6),
+					y2 - headLen * Math.sin(angle + Math.PI / 6),
+					options,
+				);
+			}
 		}
-		ctx.closePath();
-		ctx.fill();
-		ctx.globalAlpha = 1.0; // Reset
+		ctx.restore();
 	};
 
 	const updateTempCanvas = () => {
-		if (!tempCanvasRef || !activePath) return;
+		if (!tempCanvasRef || !activeElement) return;
 		const ctx = tempCanvasRef.getContext("2d");
 		if (!ctx) return;
+		const rc = rough.canvas(tempCanvasRef);
 
 		ctx.save();
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
 		ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
 		ctx.restore();
 
-		drawPath(ctx, activePath, false);
+		renderElement(ctx, rc, activeElement, false);
 	};
 
 	const redraw = () => {
 		if (!mainCanvasRef) return;
 		const ctx = mainCanvasRef.getContext("2d");
 		if (!ctx) return;
+		const rc = rough.canvas(mainCanvasRef);
 
 		ctx.save();
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -255,20 +332,20 @@ export default function PresentationMarker() {
 		ctx.restore();
 
 		const pendingIds = pendingDeletionIds();
-		paths().forEach((path) => {
-			drawPath(ctx, path, pendingIds.has(path.id));
+		elements().forEach((el) => {
+			renderElement(ctx, rc, el, pendingIds.has(el.id));
 		});
 	};
 
 	const clearCanvas = () => {
-		setPaths([]);
+		setElements([]);
 		redraw();
 	};
 
 	const undo = () => {
-		const currentPaths = paths();
-		if (currentPaths.length === 0) return;
-		setPaths(currentPaths.slice(0, -1));
+		const currentEls = elements();
+		if (currentEls.length === 0) return;
+		setElements(currentEls.slice(0, -1));
 		redraw();
 	};
 
@@ -306,7 +383,6 @@ export default function PresentationMarker() {
 				ref={mainCanvasRef}
 				class="fixed top-0 left-0 z-8000 pointer-events-none"
 			/>
-
 			<canvas
 				ref={tempCanvasRef}
 				class={`fixed top-0 left-0 z-8001 ${isDrawingMode() ? "cursor-none pointer-events-auto" : "pointer-events-none"}`}
@@ -334,7 +410,7 @@ export default function PresentationMarker() {
 				/>
 			</Show>
 
-			<Show when={isDrawingMode() && currentTool() === "marker"}>
+			<Show when={isDrawingMode() && currentTool() !== "eraser"}>
 				<div
 					ref={markerCursorRef}
 					class="fixed pointer-events-none z-8002 border border-white/50 rounded-full"
@@ -355,8 +431,8 @@ export default function PresentationMarker() {
 					onClick={() => setIsDrawingMode(!isDrawingMode())}
 					class={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
 						isDrawingMode()
-							? "bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.5)]"
-							: "text-zinc-400 hover:text-white hover:bg-white/5"
+							? "bg-cyan-500 text-black"
+							: "text-zinc-400 hover:text-white"
 					}`}
 				>
 					{isDrawingMode() ? "Mode: Drawing" : "Mode: Viewing"}
@@ -366,28 +442,31 @@ export default function PresentationMarker() {
 
 				<Show when={isDrawingMode()}>
 					<div class="flex gap-1 bg-black/40 p-1 rounded-xl">
-						<button
-							type="button"
-							onClick={() => setCurrentTool("marker")}
-							class={`px-3 py-1.5 rounded-lg text-xs transition-all ${
-								currentTool() === "marker"
-									? "bg-white/10 text-white"
-									: "text-zinc-500 hover:text-zinc-300"
-							}`}
+						<For
+							each={
+								[
+									"marker",
+									"rectangle",
+									"ellipse",
+									"arrow",
+									"eraser",
+								] as ElementType[]
+							}
 						>
-							Marker
-						</button>
-						<button
-							type="button"
-							onClick={() => setCurrentTool("eraser")}
-							class={`px-3 py-1.5 rounded-lg text-xs transition-all ${
-								currentTool() === "eraser"
-									? "bg-white/10 text-white"
-									: "text-zinc-500 hover:text-zinc-300"
-							}`}
-						>
-							Eraser
-						</button>
+							{(tool) => (
+								<button
+									type="button"
+									onClick={() => setCurrentTool(tool)}
+									class={`px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold transition-all ${
+										currentTool() === tool
+											? "bg-white/10 text-white"
+											: "text-zinc-500 hover:text-zinc-300"
+									}`}
+								>
+									{tool}
+								</button>
+							)}
+						</For>
 					</div>
 
 					<div class="w-px h-6 bg-white/10" />
@@ -399,13 +478,9 @@ export default function PresentationMarker() {
 									type="button"
 									onClick={() => {
 										setCurrentColor(color);
-										setCurrentTool("marker");
+										if (currentTool() === "eraser") setCurrentTool("marker");
 									}}
-									class={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-125 ${
-										currentColor() === color && currentTool() === "marker"
-											? "border-white scale-110"
-											: "border-transparent"
-									}`}
+									class={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
 									style={{ "background-color": color }}
 								/>
 							)}
@@ -419,7 +494,6 @@ export default function PresentationMarker() {
 							type="button"
 							onClick={undo}
 							class="px-3 py-2 text-xs text-zinc-400 hover:text-white transition-colors"
-							title="Undo (Ctrl+Z)"
 						>
 							Undo
 						</button>
@@ -428,7 +502,7 @@ export default function PresentationMarker() {
 							onClick={clearCanvas}
 							class="px-3 py-2 text-xs text-zinc-400 hover:text-red-400 transition-colors"
 						>
-							Clear All
+							Clear
 						</button>
 					</div>
 				</Show>
