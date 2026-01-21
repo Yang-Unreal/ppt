@@ -1,14 +1,24 @@
+import { getStroke } from "perfect-freehand";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
+interface Point {
+	x: number;
+	y: number;
+}
+
 interface Path {
-	points: { x: number; y: number }[];
+	points: Point[];
 	color: string;
 	width: number;
 	isEraser: boolean;
 }
 
 export default function PresentationMarker() {
-	let canvasRef: HTMLCanvasElement | undefined;
+	let mainCanvasRef: HTMLCanvasElement | undefined;
+	let tempCanvasRef: HTMLCanvasElement | undefined;
+	let eraserCursorRef: HTMLDivElement | undefined;
+	let markerCursorRef: HTMLDivElement | undefined;
+
 	const [isDrawingMode, setIsDrawingMode] = createSignal(false);
 	const [currentTool, setCurrentTool] = createSignal<"marker" | "eraser">(
 		"marker",
@@ -16,35 +26,38 @@ export default function PresentationMarker() {
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
 	const [paths, setPaths] = createSignal<Path[]>([]);
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
-	const [mousePos, setMousePos] = createSignal({ x: 0, y: 0 });
-	const ERASER_SIZE = 50;
 
-	const colors = [
-		"#ff4444",
-		"#44ff44",
-		"#4444ff",
-		"#00f2ff",
-		"#ffff44",
-		"#ffffff",
-	];
+	let activePath: Path | null = null;
+	const ERASER_SIZE = 50;
+	const MARKER_WIDTH = 4;
+
+	// High-DPI Scaling Utility
+	const setupCanvas = (canvas: HTMLCanvasElement) => {
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return;
+
+		const dpr = window.devicePixelRatio || 1;
+		const width = window.innerWidth;
+		const height = window.innerHeight; // Viewport size only!
+
+		canvas.width = width * dpr;
+		canvas.height = height * dpr;
+		canvas.style.width = `${width}px`;
+		canvas.style.height = `${height}px`;
+
+		ctx.scale(dpr, dpr);
+		return ctx;
+	};
 
 	const handleResize = () => {
-		if (canvasRef) {
-			canvasRef.width = window.innerWidth;
-			// Set height to full document scroll height to allow drawing across all content
-			canvasRef.height = Math.max(
-				document.documentElement.scrollHeight,
-				document.body.scrollHeight,
-				window.innerHeight,
-			);
-			redraw();
-		}
+		if (mainCanvasRef) setupCanvas(mainCanvasRef);
+		if (tempCanvasRef) setupCanvas(tempCanvasRef);
+		redraw();
 	};
 
 	const getPos = (e: MouseEvent | TouchEvent) => {
-		if (!canvasRef) return { x: 0, y: 0 };
-		const rect = canvasRef.getBoundingClientRect();
-		// Get coordinates relative to the viewport
+		if (!tempCanvasRef) return { x: 0, y: 0 };
+		const rect = tempCanvasRef.getBoundingClientRect();
 		let clientX: number, clientY: number;
 		if ("touches" in e) {
 			clientX = e.touches[0].clientX;
@@ -54,12 +67,11 @@ export default function PresentationMarker() {
 			clientY = e.clientY;
 		}
 
-		// Convert viewport coordinates to canvas/document coordinates
-		// Since the canvas is absolute at top-0 left-0, its rect.left/top
-		// will be -window.scrollX/Y.
+		// Return coordinates relative to the viewport
+		// We will store them in "Document Space" (viewport + scroll) for persistence
 		return {
 			x: clientX - rect.left,
-			y: clientY - rect.top,
+			y: clientY - rect.top + window.scrollY,
 		};
 	};
 
@@ -67,105 +79,125 @@ export default function PresentationMarker() {
 		if (!isDrawingMode()) return;
 		setIsCurrentlyDrawing(true);
 		const pos = getPos(e);
-		const newPath: Path = {
+		activePath = {
 			points: [pos],
 			color: currentColor(),
-			width: currentTool() === "eraser" ? ERASER_SIZE : 4,
+			width: currentTool() === "eraser" ? ERASER_SIZE : MARKER_WIDTH,
 			isEraser: currentTool() === "eraser",
 		};
-		setPaths([...paths(), newPath]);
 	};
 
 	const draw = (e: MouseEvent | TouchEvent) => {
 		const pos = getPos(e);
-		// Update mouse position for eraser preview
+
+		let clientX: number, clientY: number;
 		if ("touches" in e) {
-			setMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+			clientX = e.touches[0].clientX;
+			clientY = e.touches[0].clientY;
 		} else {
-			setMousePos({ x: e.clientX, y: e.clientY });
+			clientX = e.clientX;
+			clientY = e.clientY;
 		}
 
-		if (!isCurrentlyDrawing() || !isDrawingMode()) return;
-		const currentPaths = paths();
-		const lastPath = currentPaths[currentPaths.length - 1];
-		if (lastPath) {
-			lastPath.points.push(pos);
-			setPaths([...currentPaths]);
-			updateCanvas();
+		if (eraserCursorRef) {
+			eraserCursorRef.style.transform = `translate(${clientX - ERASER_SIZE / 2}px, ${clientY - ERASER_SIZE / 2}px)`;
 		}
+		if (markerCursorRef) {
+			markerCursorRef.style.transform = `translate(${clientX - 4}px, ${clientY - 4}px)`;
+		}
+
+		if (!isCurrentlyDrawing() || !isDrawingMode() || !activePath) return;
+
+		activePath.points.push(pos);
+		updateTempCanvas();
 	};
 
 	const stopDrawing = () => {
+		if (isCurrentlyDrawing() && activePath) {
+			const newPaths = [...paths(), activePath];
+			setPaths(newPaths);
+			activePath = null;
+
+			if (tempCanvasRef) {
+				const ctx = tempCanvasRef.getContext("2d");
+				if (ctx) {
+					ctx.save();
+					ctx.setTransform(1, 0, 0, 1, 0, 0);
+					ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
+					ctx.restore();
+				}
+			}
+			redraw();
+		}
 		setIsCurrentlyDrawing(false);
 	};
 
-	const updateCanvas = () => {
-		if (!canvasRef) return;
-		const ctx = canvasRef.getContext("2d");
-		if (!ctx) return;
+	// Draw smooth lines using perfect-freehand
+	const drawPath = (ctx: CanvasRenderingContext2D, path: Path) => {
+		if (path.points.length < 2) return;
 
-		const currentPaths = paths();
-		const lastPath = currentPaths[currentPaths.length - 1];
-		if (!lastPath || lastPath.points.length < 2) return;
+		// Convert Document points to Viewport points for rendering
+		// This makes persistence work with the fixed canvas
+		const scrollY = window.scrollY;
+		const viewportPoints = path.points.map((p) => [p.x, p.y - scrollY]);
 
-		const p1 = lastPath.points[lastPath.points.length - 2];
-		const p2 = lastPath.points[lastPath.points.length - 1];
+		const stroke = getStroke(viewportPoints, {
+			size: path.width,
+			thinning: 0.5,
+			smoothing: 0.5,
+			streamline: 0.5,
+		});
+
+		if (stroke.length === 0) return;
 
 		ctx.beginPath();
-		ctx.lineCap = "round";
-		ctx.lineJoin = "round";
 
-		if (lastPath.isEraser) {
+		if (path.isEraser) {
 			ctx.globalCompositeOperation = "destination-out";
-			ctx.lineWidth = lastPath.width;
 		} else {
 			ctx.globalCompositeOperation = "source-over";
-			ctx.strokeStyle = lastPath.color;
-			ctx.lineWidth = lastPath.width;
-			ctx.shadowBlur = 2;
-			ctx.shadowColor = lastPath.color;
+			ctx.fillStyle = path.color;
 		}
 
-		ctx.moveTo(p1.x, p1.y);
-		ctx.lineTo(p2.x, p2.y);
-		ctx.stroke();
+		ctx.moveTo(stroke[0][0], stroke[0][1]);
+		for (let i = 1; i < stroke.length; i++) {
+			ctx.lineTo(stroke[i][0], stroke[i][1]);
+		}
+		ctx.closePath();
+		ctx.fill();
+	};
+
+	const updateTempCanvas = () => {
+		if (!tempCanvasRef || !activePath) return;
+		const ctx = tempCanvasRef.getContext("2d");
+		if (!ctx) return;
+
+		ctx.save();
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
+		ctx.restore();
+
+		drawPath(ctx, activePath);
 	};
 
 	const redraw = () => {
-		if (!canvasRef) return;
-		const ctx = canvasRef.getContext("2d");
+		if (!mainCanvasRef) return;
+		const ctx = mainCanvasRef.getContext("2d");
 		if (!ctx) return;
 
-		ctx.clearRect(0, 0, canvasRef.width, canvasRef.height);
+		ctx.save();
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		ctx.clearRect(0, 0, mainCanvasRef.width, mainCanvasRef.height);
+		ctx.restore();
 
 		paths().forEach((path) => {
-			if (path.points.length < 2) return;
-			ctx.beginPath();
-			ctx.lineCap = "round";
-			ctx.lineJoin = "round";
-
-			if (path.isEraser) {
-				ctx.globalCompositeOperation = "destination-out";
-				ctx.lineWidth = path.width;
-			} else {
-				ctx.globalCompositeOperation = "source-over";
-				ctx.strokeStyle = path.color;
-				ctx.lineWidth = path.width;
-			}
-
-			ctx.moveTo(path.points[0].x, path.points[0].y);
-			for (let i = 1; i < path.points.length; i++) {
-				ctx.lineTo(path.points[i].x, path.points[i].y);
-			}
-			ctx.stroke();
+			drawPath(ctx, path);
 		});
 	};
 
 	const clearCanvas = () => {
 		setPaths([]);
-		if (!canvasRef) return;
-		const ctx = canvasRef.getContext("2d");
-		ctx?.clearRect(0, 0, canvasRef.width, canvasRef.height);
+		redraw();
 	};
 
 	const undo = () => {
@@ -184,19 +216,37 @@ export default function PresentationMarker() {
 
 	onMount(() => {
 		window.addEventListener("resize", handleResize);
+		window.addEventListener("scroll", redraw); // Redraw on scroll to update positions!
 		window.addEventListener("keydown", handleKeyDown);
 		handleResize();
 		onCleanup(() => {
 			window.removeEventListener("resize", handleResize);
+			window.removeEventListener("scroll", redraw);
 			window.removeEventListener("keydown", handleKeyDown);
 		});
 	});
 
+	const colors = [
+		"#ff4444",
+		"#44ff44",
+		"#4444ff",
+		"#00f2ff",
+		"#ffff44",
+		"#ffffff",
+	];
+
 	return (
 		<>
+			{/* Main Canvas: Holds all finished paths, fixed to viewport */}
 			<canvas
-				ref={canvasRef}
-				class={`absolute top-0 left-0 z-8000 ${isDrawingMode() ? "cursor-none pointer-events-auto" : "pointer-events-none"}`}
+				ref={mainCanvasRef}
+				class="fixed top-0 left-0 z-8000 pointer-events-none"
+			/>
+
+			{/* Temp Canvas: Holds the path currently being drawn, fixed to viewport */}
+			<canvas
+				ref={tempCanvasRef}
+				class={`fixed top-0 left-0 z-8001 ${isDrawingMode() ? "cursor-none pointer-events-auto" : "pointer-events-none"}`}
 				onMouseDown={startDrawing}
 				onMouseMove={draw}
 				onMouseUp={stopDrawing}
@@ -209,31 +259,34 @@ export default function PresentationMarker() {
 
 			<Show when={isDrawingMode() && currentTool() === "eraser"}>
 				<div
-					class="fixed pointer-events-none z-8001 border border-white/50 rounded-full bg-white/10"
+					ref={eraserCursorRef}
+					class="fixed pointer-events-none z-8002 border border-white/50 rounded-full bg-white/10"
 					style={{
 						width: `${ERASER_SIZE}px`,
 						height: `${ERASER_SIZE}px`,
-						left: `${mousePos().x - ERASER_SIZE / 2}px`,
-						top: `${mousePos().y - ERASER_SIZE / 2}px`,
+						top: "0",
+						left: "0",
+						"will-change": "transform",
 					}}
 				/>
 			</Show>
 
 			<Show when={isDrawingMode() && currentTool() === "marker"}>
 				<div
-					class="fixed pointer-events-none z-8001 border border-white/50 rounded-full"
+					ref={markerCursorRef}
+					class="fixed pointer-events-none z-8002 border border-white/50 rounded-full"
 					style={{
 						width: "8px",
 						height: "8px",
 						"background-color": currentColor(),
-						left: `${mousePos().x - 4}px`,
-						top: `${mousePos().y - 4}px`,
+						top: "0",
+						left: "0",
+						"will-change": "transform",
 					}}
 				/>
 			</Show>
 
 			<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-9000 flex items-center gap-4 bg-zinc-900/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-2xl">
-				{/* Mode Toggle */}
 				<button
 					type="button"
 					onClick={() => setIsDrawingMode(!isDrawingMode())}
@@ -249,7 +302,6 @@ export default function PresentationMarker() {
 				<div class="w-px h-6 bg-white/10" />
 
 				<Show when={isDrawingMode()}>
-					{/* Tools */}
 					<div class="flex gap-1 bg-black/40 p-1 rounded-xl">
 						<button
 							type="button"
@@ -277,7 +329,6 @@ export default function PresentationMarker() {
 
 					<div class="w-px h-6 bg-white/10" />
 
-					{/* Colors */}
 					<div class="flex gap-2 px-2">
 						<For each={colors}>
 							{(color) => (
@@ -300,7 +351,6 @@ export default function PresentationMarker() {
 
 					<div class="w-px h-6 bg-white/10" />
 
-					{/* Actions */}
 					<div class="flex gap-1">
 						<button
 							type="button"
