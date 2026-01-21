@@ -7,6 +7,7 @@ interface Point {
 }
 
 interface Path {
+	id: string;
 	points: Point[];
 	color: string;
 	width: number;
@@ -26,6 +27,9 @@ export default function PresentationMarker() {
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
 	const [paths, setPaths] = createSignal<Path[]>([]);
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
+	const [pendingDeletionIds, setPendingDeletionIds] = createSignal<Set<string>>(
+		new Set(),
+	);
 
 	let activePath: Path | null = null;
 	const ERASER_SIZE = 50;
@@ -38,7 +42,7 @@ export default function PresentationMarker() {
 
 		const dpr = window.devicePixelRatio || 1;
 		const width = window.innerWidth;
-		const height = window.innerHeight; // Viewport size only!
+		const height = window.innerHeight;
 
 		canvas.width = width * dpr;
 		canvas.height = height * dpr;
@@ -67,24 +71,70 @@ export default function PresentationMarker() {
 			clientY = e.clientY;
 		}
 
-		// Return coordinates relative to the viewport
-		// We will store them in "Document Space" (viewport + scroll) for persistence
 		return {
 			x: clientX - rect.left,
 			y: clientY - rect.top + window.scrollY,
 		};
 	};
 
+	// Distance from point P to segment AB
+	const distToSegment = (p: Point, a: Point, b: Point) => {
+		const v = { x: b.x - a.x, y: b.y - a.y };
+		const w = { x: p.x - a.x, y: p.y - a.y };
+		const c1 = w.x * v.x + w.y * v.y;
+		if (c1 <= 0) return Math.sqrt(w.x * w.x + w.y * w.y);
+		const c2 = v.x * v.x + v.y * v.y;
+		if (c2 <= c1) {
+			const d = { x: p.x - b.x, y: p.y - b.y };
+			return Math.sqrt(d.x * d.x + d.y * d.y);
+		}
+		const b2 = c1 / c2;
+		const pb = { x: a.x + b2 * v.x, y: a.y + b2 * v.y };
+		const dpb = { x: p.x - pb.x, y: p.y - pb.y };
+		return Math.sqrt(dpb.x * dpb.x + dpb.y * dpb.y);
+	};
+
+	const checkHit = (pos: Point) => {
+		const hitIds = new Set(pendingDeletionIds());
+		let changed = false;
+
+		paths().forEach((path) => {
+			if (hitIds.has(path.id)) return;
+			// Check distance to all segments of the path
+			for (let i = 0; i < path.points.length - 1; i++) {
+				const dist = distToSegment(pos, path.points[i], path.points[i + 1]);
+				if (dist < ERASER_SIZE / 2 + path.width / 2) {
+					hitIds.add(path.id);
+					changed = true;
+					break;
+				}
+			}
+		});
+
+		if (changed) {
+			setPendingDeletionIds(hitIds);
+			redraw();
+		}
+	};
+
 	const startDrawing = (e: MouseEvent | TouchEvent) => {
 		if (!isDrawingMode()) return;
-		setIsCurrentlyDrawing(true);
 		const pos = getPos(e);
-		activePath = {
-			points: [pos],
-			color: currentColor(),
-			width: currentTool() === "eraser" ? ERASER_SIZE : MARKER_WIDTH,
-			isEraser: currentTool() === "eraser",
-		};
+
+		if (currentTool() === "eraser") {
+			setIsCurrentlyDrawing(true);
+			setPendingDeletionIds(new Set());
+			checkHit(pos);
+		} else {
+			setIsCurrentlyDrawing(true);
+			activePath = {
+				id: Math.random().toString(36).substr(2, 9),
+				points: [pos],
+				color: currentColor(),
+				width: MARKER_WIDTH,
+				isEraser: false,
+			};
+		}
 	};
 
 	const draw = (e: MouseEvent | TouchEvent) => {
@@ -106,38 +156,50 @@ export default function PresentationMarker() {
 			markerCursorRef.style.transform = `translate(${clientX - 4}px, ${clientY - 4}px)`;
 		}
 
-		if (!isCurrentlyDrawing() || !isDrawingMode() || !activePath) return;
+		if (!isCurrentlyDrawing() || !isDrawingMode()) return;
 
-		activePath.points.push(pos);
-		updateTempCanvas();
+		if (currentTool() === "eraser") {
+			checkHit(pos);
+		} else if (activePath) {
+			activePath.points.push(pos);
+			updateTempCanvas();
+		}
 	};
 
 	const stopDrawing = () => {
-		if (isCurrentlyDrawing() && activePath) {
-			const newPaths = [...paths(), activePath];
-			setPaths(newPaths);
-			activePath = null;
-
-			if (tempCanvasRef) {
-				const ctx = tempCanvasRef.getContext("2d");
-				if (ctx) {
-					ctx.save();
-					ctx.setTransform(1, 0, 0, 1, 0, 0);
-					ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
-					ctx.restore();
+		if (isCurrentlyDrawing()) {
+			if (currentTool() === "eraser") {
+				const idsToDelete = pendingDeletionIds();
+				if (idsToDelete.size > 0) {
+					setPaths(paths().filter((p) => !idsToDelete.has(p.id)));
+					setPendingDeletionIds(new Set());
+					redraw();
 				}
+			} else if (activePath) {
+				setPaths([...paths(), activePath]);
+				activePath = null;
+				if (tempCanvasRef) {
+					const ctx = tempCanvasRef.getContext("2d");
+					if (ctx) {
+						ctx.save();
+						ctx.setTransform(1, 0, 0, 1, 0, 0);
+						ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
+						ctx.restore();
+					}
+				}
+				redraw();
 			}
-			redraw();
 		}
 		setIsCurrentlyDrawing(false);
 	};
 
-	// Draw smooth lines using perfect-freehand
-	const drawPath = (ctx: CanvasRenderingContext2D, path: Path) => {
+	const drawPath = (
+		ctx: CanvasRenderingContext2D,
+		path: Path,
+		isPendingDeletion: boolean,
+	) => {
 		if (path.points.length < 2) return;
 
-		// Convert Document points to Viewport points for rendering
-		// This makes persistence work with the fixed canvas
 		const scrollY = window.scrollY;
 		const viewportPoints = path.points.map((p) => [p.x, p.y - scrollY]);
 
@@ -151,12 +213,13 @@ export default function PresentationMarker() {
 		if (stroke.length === 0) return;
 
 		ctx.beginPath();
+		ctx.globalCompositeOperation = "source-over";
+		ctx.fillStyle = path.color;
 
-		if (path.isEraser) {
-			ctx.globalCompositeOperation = "destination-out";
+		if (isPendingDeletion) {
+			ctx.globalAlpha = 0.2;
 		} else {
-			ctx.globalCompositeOperation = "source-over";
-			ctx.fillStyle = path.color;
+			ctx.globalAlpha = 1.0;
 		}
 
 		ctx.moveTo(stroke[0][0], stroke[0][1]);
@@ -165,6 +228,7 @@ export default function PresentationMarker() {
 		}
 		ctx.closePath();
 		ctx.fill();
+		ctx.globalAlpha = 1.0; // Reset
 	};
 
 	const updateTempCanvas = () => {
@@ -177,7 +241,7 @@ export default function PresentationMarker() {
 		ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
 		ctx.restore();
 
-		drawPath(ctx, activePath);
+		drawPath(ctx, activePath, false);
 	};
 
 	const redraw = () => {
@@ -190,8 +254,9 @@ export default function PresentationMarker() {
 		ctx.clearRect(0, 0, mainCanvasRef.width, mainCanvasRef.height);
 		ctx.restore();
 
+		const pendingIds = pendingDeletionIds();
 		paths().forEach((path) => {
-			drawPath(ctx, path);
+			drawPath(ctx, path, pendingIds.has(path.id));
 		});
 	};
 
@@ -216,7 +281,7 @@ export default function PresentationMarker() {
 
 	onMount(() => {
 		window.addEventListener("resize", handleResize);
-		window.addEventListener("scroll", redraw); // Redraw on scroll to update positions!
+		window.addEventListener("scroll", redraw);
 		window.addEventListener("keydown", handleKeyDown);
 		handleResize();
 		onCleanup(() => {
@@ -237,13 +302,11 @@ export default function PresentationMarker() {
 
 	return (
 		<>
-			{/* Main Canvas: Holds all finished paths, fixed to viewport */}
 			<canvas
 				ref={mainCanvasRef}
 				class="fixed top-0 left-0 z-8000 pointer-events-none"
 			/>
 
-			{/* Temp Canvas: Holds the path currently being drawn, fixed to viewport */}
 			<canvas
 				ref={tempCanvasRef}
 				class={`fixed top-0 left-0 z-8001 ${isDrawingMode() ? "cursor-none pointer-events-auto" : "pointer-events-none"}`}
