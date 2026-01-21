@@ -1,469 +1,550 @@
 import { Title } from "@solidjs/meta";
-import { createSignal, For, onMount } from "solid-js";
-import "./index.css";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { For, onMount } from "solid-js";
 import { reportData } from "~/utils/data-loader";
 
-interface ExportOptions {
-	filename: string;
-	slideSize: string;
-	exclude: string[];
-	width: number;
-	height: number;
-}
-
-let domToPptx:
-	| ((elements: HTMLElement[], options: ExportOptions) => Promise<void>)
-	| undefined;
+gsap.registerPlugin(ScrollTrigger);
 
 export default function Report() {
-	const [isExporting, setIsExporting] = createSignal(false);
+	let heroRef: HTMLDivElement | undefined;
+	let overviewRef: HTMLDivElement | undefined;
+	let clustersRef: HTMLDivElement | undefined;
+	let competitionRef: HTMLDivElement | undefined;
+	let segmentsRef: HTMLDivElement | undefined;
+	let supplyRef: HTMLDivElement | undefined;
+	let risksRef: HTMLDivElement | undefined;
 
-	onMount(async () => {
-		const module = await import("dom-to-pptx");
-		domToPptx = (module.default ||
-			module.exportToPptx ||
-			module) as unknown as (
-			elements: HTMLElement[],
-			options: ExportOptions,
-		) => Promise<void>;
+	onMount(() => {
+		// Standard fade-in animations
+		const sections = [
+			overviewRef,
+			clustersRef,
+			competitionRef,
+			segmentsRef,
+			supplyRef,
+			risksRef,
+		];
+
+		sections.forEach((ref) => {
+			if (!ref) return;
+			gsap.from(ref.children, {
+				scrollTrigger: {
+					trigger: ref,
+					start: "top 80%",
+				},
+				y: 30,
+				opacity: 0,
+				duration: 0.8,
+				stagger: 0.1,
+				ease: "power2.out",
+			});
+		});
 	});
 
-	const handleExport = async () => {
-		if (!domToPptx) {
-			alert("Library not loaded yet");
-			return;
-		}
-
-		setIsExporting(true);
-		const slides = Array.from(
-			document.querySelectorAll(".slide"),
-		) as HTMLElement[];
-
-		if (slides.length > 0) {
-			try {
-				await domToPptx(slides, {
-					filename: "SriLanka_EV_Report_2026.pptx",
-					slideSize: "16x9",
-					exclude: [".no-export"],
-					width: 1280,
-					height: 720,
-				});
-			} catch (error) {
-				console.error("Export failed:", error);
-				alert("Failed to export PPTX.");
-			}
-		}
-		setIsExporting(false);
-	};
-
-	const topBrands = reportData.brandSales.slice(0, 5);
-	const topRegions = reportData.allRegionalData.slice(0, 4);
-
 	return (
-		<main class="report-container">
+		<main class="w-full min-h-screen bg-black text-white selection:bg-cyan-900 selection:text-white pb-20">
 			<Title>{reportData.meta.title}</Title>
 
-			<div class="header-actions no-export">
-				<button type="button" class="export-btn" onClick={handleExport} disabled={isExporting()}>
-					{isExporting() ? "导出中..." : "导出 PPT"}
-				</button>
-			</div>
+			{/* Hero Section */}
+			<section
+				ref={heroRef}
+				class="section-container min-h-screen flex flex-col justify-center items-center text-center relative overflow-hidden"
+			>
+				<div class="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-blue-900/20 via-black to-black -z-10"></div>
+				<div class="max-w-5xl px-6">
+					<h2 class="hero-subtitle text-xl md:text-2xl text-cyan-400 font-medium tracking-widest uppercase mb-4 animate-pulse">
+						{reportData.meta.subtitle}
+					</h2>
+					<h1 class="hero-title text-5xl md:text-7xl lg:text-9xl font-bold tracking-tighter text-transparent bg-clip-text bg-linear-to-b from-white to-gray-600 mb-8 leading-none">
+						2025-2026
+						<br />
+						越南电动车市场
+					</h1>
+					<div class="hero-meta flex justify-center items-center gap-6 text-gray-400 font-mono text-sm md:text-base">
+						<span>{reportData.meta.date}</span>
+						<span class="w-1 h-1 bg-gray-600 rounded-full"></span>
+						<span>{reportData.meta.author}</span>
+					</div>
+				</div>
+			</section>
 
-			<div id="report-content" class="slide-deck">
-				{/* Slide 1: Cover Page */}
-				<section class="slide title-slide">
-					<div class="slide-content">
-						<div class="company-logo">EV INSIGHTS | 电动汽车行业洞察</div>
-						<h1>{reportData.meta.title}</h1>
-						<h2>{reportData.meta.subtitle}</h2>
-						<div class="decor-line"></div>
-						<div class="meta">
-							<span class="meta-item">{reportData.meta.date}</span>
-							<span class="meta-divider">|</span>
-							<span class="meta-item">{reportData.meta.author}</span>
+			{/* Macro Overview */}
+			<section ref={overviewRef} class="section-container relative z-10 py-24">
+				<div class="max-w-7xl w-full px-6">
+					<div class="border-l-4 border-cyan-500 pl-6 mb-12">
+						<h2 class="text-3xl md:text-5xl font-bold mb-2">市场宏观概况</h2>
+						<p class="text-xl text-gray-400">
+							{reportData.marketOverview.status}
+						</p>
+					</div>
+
+					<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+						<div class="glass-card p-8 hover:border-cyan-500/50 transition-colors">
+							<span class="text-gray-500 text-sm uppercase tracking-wider block mb-4">
+								社会保有量
+							</span>
+							<span class="text-6xl font-bold text-white block mb-2">
+								{reportData.marketOverview.totalHolding}
+							</span>
+							<span class="text-xs text-gray-500">东南亚最高之一</span>
+						</div>
+						<div class="glass-card p-8 hover:border-purple-500/50 transition-colors">
+							<span class="text-gray-500 text-sm uppercase tracking-wider block mb-4">
+								年总产量
+							</span>
+							<span class="text-6xl font-bold text-white block mb-2">
+								{reportData.marketOverview.annualProduction}
+							</span>
+							<span class="text-xs text-gray-500">目前产能保持稳定</span>
+						</div>
+						<div class="glass-card p-8 hover:border-red-500/50 transition-colors">
+							<span class="text-gray-500 text-sm uppercase tracking-wider block mb-4">
+								主要竞争
+							</span>
+							<span class="text-6xl font-bold text-white block mb-2">70%</span>
+							<span class="text-xs text-gray-500">
+								{reportData.marketOverview.dominantPlayer}
+							</span>
 						</div>
 					</div>
-				</section>
+				</div>
+			</section>
 
-				{/* Slide 2: Executive Summary */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">01</span>
-						<h3>执行摘要 (Executive Summary)</h3>
-					</div>
-					<div class="slide-body">
-						<div class="kpi-grid">
-							<div class="kpi-card">
-								<div class="kpi-label">月度销量峰值</div>
-								<div class="kpi-value">{reportData.monthlyTotals[0].total.toLocaleString()}</div>
-								<div class="kpi-period">2025年8月</div>
-							</div>
-							<div class="kpi-card">
-								<div class="kpi-label">市场领先品牌总销量</div>
-								<div class="kpi-value">7,695</div>
-								<div class="kpi-period">Yadea (雅迪)</div>
-							</div>
-							<div class="kpi-card highlight-green">
-								<div class="kpi-label">CKD 组装关税</div>
-								<div class="kpi-value">10%</div>
-								<div class="kpi-period">本地组装激励费率</div>
-							</div>
-							<div class="kpi-card highlight-red">
-								<div class="kpi-label">CBU 整车关税</div>
-								<div class="kpi-value">30%</div>
-								<div class="kpi-period">全进口费率</div>
-							</div>
-						</div>
-						<div class="key-insight">
-							<div class="insight-label">策略洞察 (Strategic Insight)</div>
-							<div class="insight-content">
-								CKD本地组装较整车进口具有 <strong>20% 的成本优势</strong>，
-								完全符合政府关于本地增值 (LVA) 达到 30% 的政策要求。
-							</div>
-						</div>
-					</div>
-				</section>
+			{/* Geographic Clusters */}
+			<section ref={clustersRef} class="section-container bg-zinc-900/30 py-24">
+				<div class="max-w-7xl w-full px-6">
+					<h3 class="text-2xl text-cyan-400 font-mono mb-8">
+						产业布局地理分布
+					</h3>
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+						<For each={reportData.marketOverview.clusters}>
+							{(cluster) => (
+								<div class="border border-white/10 bg-black/50 p-8 rounded-2xl relative overflow-hidden group">
+									<div class="absolute inset-0 bg-linear-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+									<h4 class="text-2xl font-bold mb-2">{cluster.name}</h4>
+									<p class="text-gray-400 mb-6 italic">{cluster.desc}</p>
 
-				{/* Slide 3: Market Trend Analysis */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">02</span>
-						<h3>市场趋势分析 (Market Trend)</h3>
-					</div>
-					<div class="slide-body two-col">
-						<div class="col">
-							<div class="chart-placeholder">
-								<div class="chart-title">月度销量走势 (单位：台)</div>
-								<div class="bar-chart">
-									<For each={reportData.monthlyTotals}>
-										{(item) => (
-											<div class="bar-group">
-												<div
-													class="bar"
-													style={{ height: `${(item.total / 5000) * 100}%` }}
-												>
-													<span class="bar-value">{item.total}</span>
-												</div>
-												<span class="bar-label">{item.month}</span>
+									<div class="space-y-4">
+										<div>
+											<span class="text-xs text-gray-500 uppercase block mb-2">
+												主要整车厂
+											</span>
+											<div class="flex flex-wrap gap-2">
+												<For each={cluster.brands}>
+													{(brand) => (
+														<span class="bg-gray-800 border border-gray-700 px-3 py-1 rounded text-sm">
+															{brand}
+														</span>
+													)}
+												</For>
 											</div>
+										</div>
+										{cluster.suppliers && (
+											<div>
+												<span class="text-xs text-gray-500 uppercase block mb-2">
+													关键配套
+												</span>
+												<div class="flex flex-wrap gap-2">
+													<For each={cluster.suppliers}>
+														{(supplier) => (
+															<span class="bg-indigo-900/30 border border-indigo-500/30 px-3 py-1 rounded text-sm text-indigo-300">
+																{supplier}
+															</span>
+														)}
+													</For>
+												</div>
+											</div>
+										)}
+									</div>
+								</div>
+							)}
+						</For>
+					</div>
+				</div>
+			</section>
+
+			{/* Comprehensive Competition League Table */}
+			<section ref={competitionRef} class="section-container py-24">
+				<div class="max-w-7xl w-full px-6">
+					<h2 class="text-4xl font-bold mb-12 flex items-center gap-4">
+						竞争格局全景
+					</h2>
+
+					{/* Tier 1 */}
+					<div class="mb-12">
+						<div class="text-xl font-bold text-gray-500 mb-4 border-b border-gray-800 pb-2">
+							Tier 1: 绝对统领
+						</div>
+						<For each={reportData.competition.tiers[0].brands}>
+							{(brand) => (
+								<div class="border border-red-500/30 rounded-2xl overflow-hidden hover:border-red-500 transition-all duration-300 group shadow-2xl shadow-red-900/10">
+									{/* 1. Large White Logo Header */}
+									<div class="bg-white h-40 w-full p-6 flex items-center justify-center relative">
+										{brand.logo ? (
+											<img
+												src={brand.logo}
+												alt={brand.name}
+												class="h-24 w-auto max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
+											/>
+										) : (
+											<h3 class="text-4xl font-bold text-black">
+												{brand.name}
+											</h3>
+										)}
+									</div>
+
+									{/* 2. Premium Content Body */}
+									<div class="p-8 bg-linear-to-b from-gray-900 to-black relative">
+										<div class="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-red-500/50 to-transparent"></div>
+
+										<div class="flex flex-col md:flex-row gap-8 items-start">
+											<div class="flex-1">
+												<h3 class="text-4xl font-bold text-white mb-4 tracking-tight">
+													{brand.name}
+												</h3>
+												<p class="text-lg text-gray-400 leading-relaxed max-w-2xl">
+													{brand.desc}
+												</p>
+											</div>
+
+											{/* Stats Block */}
+											<div class="flex gap-10 shrink-0 bg-white/5 p-6 rounded-xl border border-white/10">
+												<div class="text-center">
+													<div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
+														2025 产量
+													</div>
+													<div class="text-3xl font-mono font-bold text-cyan-400">
+														{brand.yield2025}
+													</div>
+												</div>
+												<div class="w-px bg-gray-700"></div>
+												<div class="text-center">
+													<div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
+														2026 规划
+													</div>
+													<div class="text-3xl font-mono font-bold text-red-500">
+														{brand.plan2026}
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							)}
+						</For>
+					</div>
+
+					{/* Tier 2 */}
+					<div class="mb-12">
+						<div class="text-xl font-bold text-gray-500 mb-4 border-b border-gray-800 pb-2">
+							Tier 2: 强势竞对
+						</div>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+							<For each={reportData.competition.tiers[1].brands}>
+								{(brand) => (
+									<div class="flex flex-col border border-white/10 bg-white/5 rounded-xl overflow-hidden hover:border-white/30 transition-all duration-300 group">
+										{/* 1. White Logo Header */}
+										<div class="bg-white h-32 w-full p-4 flex items-center justify-center">
+											{brand.logo ? (
+												<img
+													src={brand.logo}
+													alt={brand.name}
+													class="h-20 w-auto max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
+												/>
+											) : (
+												<span class="text-black font-bold text-xl opacity-20">
+													NO LOGO
+												</span>
+											)}
+										</div>
+
+										{/* 2. Content Body */}
+										<div class="p-6 flex-1 flex flex-col">
+											<div class="flex justify-between items-baseline mb-4">
+												<h3 class="text-2xl font-bold text-white">
+													{brand.name}
+												</h3>
+												<div class="text-sm font-mono bg-white/10 px-3 py-1 rounded text-cyan-200">
+													{brand.yield2025}{" "}
+													<span class="text-gray-500 mx-1">→</span>{" "}
+													{brand.plan2026}
+												</div>
+											</div>
+
+											<p class="text-sm text-gray-400 leading-relaxed mb-2">
+												{brand.desc}
+											</p>
+										</div>
+									</div>
+								)}
+							</For>
+						</div>
+					</div>
+
+					{/* Tier 3 Grid */}
+					<div>
+						<div class="text-xl font-bold text-gray-500 mb-4 border-b border-gray-800 pb-2">
+							Tier 3: 潜力增长与细分玩家
+						</div>
+						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+							<For each={reportData.competition.tiers[2].brands}>
+								{(brand) => (
+									<div class="flex flex-col border border-white/10 bg-white/5 rounded-xl overflow-hidden hover:border-cyan-500/50 transition-all duration-300 group">
+										{/* Logo Row: Fixed container height (h-32) */}
+										<div class="bg-white h-32 w-full p-4 flex items-center justify-center relative">
+											{brand.logo ? (
+												<img
+													src={brand.logo}
+													alt={brand.name}
+													// Fixed height (h-20) ensures all logos stand equally tall.
+													// w-auto maintains aspect ratio. max-w-full prevents overflow.
+													class="h-20 w-auto max-w-full object-contain group-hover:scale-110 transition-transform duration-500"
+												/>
+											) : (
+												<span class="text-black font-bold text-xl opacity-20">
+													NO LOGO
+												</span>
+											)}
+										</div>
+
+										{/* Content Body */}
+										<div class="p-5 flex-1 flex flex-col">
+											<div class="flex justify-between items-start mb-3">
+												<h4 class="font-bold text-xl text-white truncate pr-2">
+													{brand.name}
+												</h4>
+												<span class="text-xs font-mono text-cyan-300 bg-cyan-900/30 px-2 py-1 rounded border border-cyan-800 shrink-0">
+													{brand.yield2025}
+												</span>
+											</div>
+
+											<p class="text-sm text-gray-400 mb-4 line-clamp-2 leading-relaxed">
+												{brand.desc}
+											</p>
+
+											<div class="mt-auto pt-4 border-t border-white/10 flex justify-between items-center text-xs">
+												<span class="text-gray-500 uppercase tracking-wider">
+													2026 规划
+												</span>
+												<span class="text-white font-mono font-bold text-sm">
+													{brand.plan2026}
+												</span>
+											</div>
+										</div>
+									</div>
+								)}
+							</For>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* Segments Deep Dive */}
+			<section ref={segmentsRef} class="section-container bg-zinc-900 py-24">
+				<div class="max-w-7xl w-full px-6">
+					<h2 class="text-3xl md:text-5xl font-bold mb-16 text-center">
+						细分市场深度洞察
+					</h2>
+
+					<div class="space-y-6">
+						{/* Student */}
+						<div class="glass-card p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+							<div class="col-span-1">
+								<h3 class="text-2xl font-bold mb-2 text-yellow-400">
+									{reportData.segments[0].title}
+								</h3>
+								<div class="flex flex-wrap gap-2 mb-4">
+									<For each={reportData.segments[0].tags}>
+										{(tag) => (
+											<span class="text-xs border border-yellow-400/30 text-yellow-400 px-2 py-1 rounded-full">
+												{tag}
+											</span>
 										)}
 									</For>
 								</div>
+								<p class="text-sm text-gray-400">
+									{reportData.segments[0].features}
+								</p>
 							</div>
-						</div>
-						<div class="col insights-col">
-							<div class="findings-box">
-								<div class="findings-title">核心发现 (Key Findings)</div>
-								<ul class="findings-list">
-									<li>销量自8月峰值后呈现季节性回落</li>
-									<li>电动汽车 (EV) 市场渗透率保持平稳</li>
-									<li>雅迪 (Yadea) 以超过 50% 的份额占据绝对主导地位</li>
-								</ul>
-							</div>
-							<div class="highlight-box">
-								<div class="highlight-label">市场标杆品牌</div>
-								<div class="highlight-value">Yadea (雅迪)</div>
-								<div class="highlight-metric">7,695 台 (8月-11月累计)</div>
-							</div>
-						</div>
-					</div>
-				</section>
-
-				{/* Slide 4: Brand Performance */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">03</span>
-						<h3>品牌表现排名 (Brand Ranking)</h3>
-					</div>
-					<div class="slide-body">
-						<div class="brand-table">
-							<div class="brand-row header">
-								<div class="brand-col rank">排名</div>
-								<div class="brand-col name">品牌名称</div>
-								<div class="brand-col sales">总销量</div>
-								<div class="brand-col share">市场份额</div>
-							</div>
-							<For each={topBrands}>
-								{(brand, index) => (
-									<div class={`brand-row ${index() === 0 ? 'leader' : ''}`}>
-										<div class="brand-col rank">{index() + 1}</div>
-										<div class="brand-col name">{brand.brand}</div>
-										<div class="brand-col sales">{brand.total.toLocaleString()}</div>
-										<div class="brand-col share">
-											<div class="share-bar">
-												<div class="share-fill" style={{ width: `${(brand.total / 7695) * 100}%` }}></div>
+							<div class="col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+								<For each={reportData.segments[0].details}>
+									{(detail) => (
+										<div class="bg-black/30 p-4 rounded-lg">
+											<div class="text-xs text-gray-500 mb-1">
+												{detail.label}
 											</div>
-											<span class="share-pct">{((brand.total / 14031) * 100).toFixed(1)}%</span>
+											<div class="text-sm font-semibold">{detail.value}</div>
+										</div>
+									)}
+								</For>
+							</div>
+						</div>
+
+						{/* Adult */}
+						<div class="glass-card p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+							<div class="col-span-1">
+								<h3 class="text-2xl font-bold mb-2 text-blue-400">
+									{reportData.segments[1].title}
+								</h3>
+								<div class="flex flex-wrap gap-2 mb-4">
+									<For each={reportData.segments[1].tags}>
+										{(tag) => (
+											<span class="text-xs border border-blue-400/30 text-blue-400 px-2 py-1 rounded-full">
+												{tag}
+											</span>
+										)}
+									</For>
+								</div>
+								<p class="text-sm text-gray-400">
+									{reportData.segments[1].features}
+								</p>
+							</div>
+							<div class="col-span-2">
+								<div class="bg-blue-900/10 border border-blue-500/20 p-5 rounded-lg">
+									<h4 class="text-blue-300 text-sm font-bold uppercase mb-2">
+										关键案例对比
+									</h4>
+									<p class="text-gray-300 text-sm leading-relaxed mb-4">
+										{reportData.segments[1].insight}
+									</p>
+									<div class="text-xs text-blue-400 font-mono">
+										{">>>"} {reportData.segments[1].strategy}
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* B2B */}
+						<div class="glass-card p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+							<div class="col-span-1">
+								<h3 class="text-2xl font-bold mb-2 text-green-400">
+									{reportData.segments[2].title}
+								</h3>
+								<div class="flex flex-wrap gap-2 mb-4">
+									<For each={reportData.segments[2].tags}>
+										{(tag) => (
+											<span class="text-xs border border-green-400/30 text-green-400 px-2 py-1 rounded-full">
+												{tag}
+											</span>
+										)}
+									</For>
+								</div>
+								<p class="text-sm text-gray-400">
+									{reportData.segments[2].features}
+								</p>
+							</div>
+							<div class="col-span-2 flex flex-col justify-center">
+								<div class="flex items-stretch gap-4 text-center">
+									<div class="flex-1 bg-gray-800 p-4 rounded-lg opacity-50 flex flex-col justify-center">
+										<div class="text-xs text-gray-500">燃油车成本</div>
+										<div class="text-xl font-bold text-gray-300">
+											{reportData.segments[2].costComparison?.ice}
 										</div>
 									</div>
-								)}
-							</For>
-						</div>
-						<div class="table-note">
-							注：电动摩托车 (E-Motorcycle) 4月至11月累计注册量为：{reportData.eMotorcycle.aug + reportData.eMotorcycle.sep + reportData.eMotorcycle.oct + reportData.eMotorcycle.nov} 台
-						</div>
-					</div>
-				</section>
-
-				{/* Slide 4: Feature Comparison */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">04</span>
-						<h3>核心特性对比 (Feature Comparison)</h3>
-					</div>
-					<div class="slide-body">
-						<div class="comparison-table">
-							<div class="comp-row header">
-								<div class="comp-col feature">特性 (Feature)</div>
-								<div class="comp-col brand">Ather / TVS</div>
-								<div class="comp-col brand">雅迪 (石墨烯车型)</div>
-								<div class="comp-col brand">经济型/通用品牌</div>
-							</div>
-							<For each={reportData.featureComparison}>
-								{(item) => (
-									<div class="comp-row">
-										<div class="comp-col feature">{item.feature}</div>
-										<div class="comp-col val highlight-blue">{item.atherTvs}</div>
-										<div class="comp-col val highlight-teal">{item.yadea}</div>
-										<div class="comp-col val">{item.budget}</div>
+									<div class="text-2xl font-bold text-gray-600 self-center">
+										VS
 									</div>
-								)}
-							</For>
-						</div>
-					</div>
-				</section>
-
-				{/* Slide 5: Range Comparison */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">05</span>
-						<h3>续航里程对比 (Range Comparison)</h3>
-					</div>
-					<div class="slide-body">
-						<div class="range-table">
-							<div class="range-row header">
-								<div class="range-col model">品牌/型号</div>
-								<div class="range-col battery">电池类型</div>
-								<div class="range-col lab">实验室续航</div>
-								<div class="range-col real">估计实际续航</div>
-							</div>
-							<For each={reportData.rangeComparison}>
-								{(item) => (
-									<div class="range-row">
-										<div class="range-col model">{item.model}</div>
-										<div class="range-col battery">{item.battery}</div>
-										<div class="range-col lab">{item.labRange}</div>
-										<div class="range-col real highlight-green">{item.realRange}</div>
-									</div>
-								)}
-							</For>
-						</div>
-						<div class="key-insight">
-							<div class="insight-label">续航表现分析</div>
-							<div class="insight-content">
-								Ather 450X 在能量密度和实际转化率上领先；雅迪石墨烯型号在寿命与性价比之间取得了良好平衡。
-							</div>
-						</div>
-					</div>
-				</section>
-
-				{/* Slide 6: Regional Analysis */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">06</span>
-						<h3>区域市场分析 (Regional Analysis)</h3>
-					</div>
-					<div class="slide-body">
-						<div class="region-grid">
-							<For each={topRegions}>
-								{(region) => (
-									<div class="region-card">
-										<div class="region-badge">{region.province}</div>
-										<div class="region-name">{region.district}</div>
-										<div class="region-data">
-											<div class="data-row">
-												<span class="data-label">燃油车 (ICE)</span>
-												<span class="data-value">{region.ice.toLocaleString()}</span>
-											</div>
-											<div class="data-row highlight">
-												<span class="data-label">电动车 (EV)</span>
-												<span class="data-value">{region.ev}</span>
-											</div>
-											<div class="data-row">
-												<span class="data-label">EV 渗透率</span>
-												<span class="data-value accent">{((region.ev / (region.ice + region.ev)) * 100).toFixed(1)}%</span>
-											</div>
+									<div class="flex-1 bg-green-900/30 border border-green-500 p-4 rounded-lg shadow-lg shadow-green-900/20 flex flex-col justify-center">
+										<div class="text-xs text-green-300">电动车成本</div>
+										<div class="text-2xl font-bold text-white">
+											{reportData.segments[2].costComparison?.ev}
+										</div>
+										<div class="text-xs text-green-500 font-mono mt-1">
+											仅为油车的 {reportData.segments[2].costComparison?.ratio}
 										</div>
 									</div>
+								</div>
+								<div class="mt-4 text-center text-sm text-gray-400 italic">
+									"{reportData.segments[2].conclusion}"
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* Supply Chain & Strategy */}
+			<section ref={supplyRef} class="section-container  py-24">
+				<div class="max-w-7xl w-full px-6 grid grid-cols-1 lg:grid-cols-2 gap-12">
+					{/* Supply Chain */}
+					<div class="space-y-6">
+						<h2 class="text-2xl font-bold border-l-4 border-orange-500 pl-4">
+							{reportData.infrastructure.supplyChain.title}
+						</h2>
+						<ul class="space-y-4">
+							<For each={reportData.infrastructure.supplyChain.details}>
+								{(detail) => (
+									<li class="bg-gray-900/50 p-4 rounded border-l border-gray-700 hover:border-orange-500 transition-colors">
+										<span class="text-orange-400 font-bold block text-sm mb-1">
+											{detail.label}
+										</span>
+										<span class="text-gray-300 text-sm">{detail.value}</span>
+									</li>
 								)}
 							</For>
-						</div>
-						<div class="key-insight">
-							<div class="insight-label">区域扩张策略</div>
-							<div class="insight-content">
-								西部省 (科伦坡、甘帕哈) 是核心目标市场，拥有最强的购买力及最完善的电动车基础设施。
-							</div>
-						</div>
-					</div>
-				</section>
+						</ul>
 
-				{/* Slide 7: Target Demographics */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">07</span>
-						<h3>目标客户画像 (Customer Segments)</h3>
+						<h2 class="text-2xl font-bold border-l-4 border-red-500 pl-4 mt-8">
+							{reportData.infrastructure.operations.title}
+						</h2>
+						<ul class="space-y-4">
+							<For each={reportData.infrastructure.operations.details}>
+								{(detail) => (
+									<li class="bg-gray-900/50 p-4 rounded border-l border-gray-700 hover:border-red-500 transition-colors">
+										<span class="text-red-400 font-bold block text-sm mb-1">
+											{detail.label}
+										</span>
+										<span class="text-gray-300 text-sm">{detail.value}</span>
+									</li>
+								)}
+							</For>
+						</ul>
 					</div>
-					<div class="slide-body two-col">
-						<div class="col">
-							<div class="segment-card">
-								<div class="segment-header">电动三轮车细分市场</div>
-								<div class="segment-body">
-									<div class="segment-item">
-										<span class="item-label">年龄范围</span>
-										<span class="item-value">30-55 岁</span>
-									</div>
-									<div class="segment-item">
-										<span class="item-label">性别构成</span>
-										<span class="item-value">主要为男性</span>
-									</div>
-									<div class="segment-item">
-										<span class="item-label">职业类型</span>
-										<span class="item-value">个体司机、物流从业者、中小企业主</span>
-									</div>
-									<div class="segment-item">
-										<span class="item-label">核心动机</span>
-										<span class="item-value">创造收入、降低运营成本</span>
-									</div>
-								</div>
-							</div>
-						</div>
-						<div class="col">
-							<div class="segment-card">
-								<div class="segment-header">电动两轮车细分市场</div>
-								<div class="segment-body">
-									<div class="segment-item">
-										<span class="item-label">年龄范围</span>
-										<span class="item-value">18-45 岁</span>
-									</div>
-									<div class="segment-item">
-										<span class="item-label">性别构成</span>
-										<span class="item-value">男女均衡</span>
-									</div>
-									<div class="segment-item">
-										<span class="item-label">职业类型</span>
-										<span class="item-value">学生、企业员工、零工经济从业者</span>
-									</div>
-									<div class="segment-item">
-										<span class="item-label">核心动机</span>
-										<span class="item-value">日常通勤、节省燃油开支</span>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</section>
 
-				{/* Slide 8: Infrastructure Assessment */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">08</span>
-						<h3>基础设施评估 (Infrastructure)</h3>
-					</div>
-					<div class="slide-body">
-						<div class="infra-grid">
-							<div class="infra-card">
-								<div class="infra-header">电网稳定性</div>
-								<div class="infra-status status-good">基本可靠</div>
-								<div class="infra-detail">高峰时段偶有间歇性断电；城市地区稳定性显著优于农村</div>
-							</div>
-							<div class="infra-card">
-								<div class="infra-header">充电网络</div>
-								<div class="infra-status status-warning">尚不充足</div>
-								<div class="infra-detail">主要集中于主要城市中心；多数用户依赖个人充电方案</div>
-							</div>
-							<div class="infra-card">
-								<div class="infra-header">日均行驶里程</div>
-								<div class="infra-status status-info">约 38 km</div>
-								<div class="infra-detail">单程平均 20-25 km；往返总里程多在 55-60 km 区间</div>
-							</div>
-							<div class="infra-card">
-								<div class="infra-header">居民用电费率</div>
-								<div class="infra-status status-info">2.5-65 LKR</div>
-								<div class="infra-detail">采取阶梯计费模式；高用量段费率上涨明显</div>
-							</div>
-						</div>
-					</div>
-				</section>
+					{/* Risks */}
+					<div
+						ref={risksRef}
+						class="bg-white text-black rounded-3xl p-10 flex flex-col justify-between"
+					>
+						<div>
+							<h3 class="text-4xl font-bold mb-8">风险与挑战</h3>
 
-				{/* Slide 9: Regulatory Framework */}
-				<section class="slide text-slide">
-					<div class="slide-header">
-						<span class="slide-number">09</span>
-						<h3>监管框架与政策 (Regulatory)</h3>
-					</div>
-					<div class="slide-body two-col">
-						<div class="col">
-							<div class="policy-box">
-								<div class="policy-title">进口关税方案对比</div>
-								<div class="tariff-compare">
-									<div class="tariff-item cbu">
-										<div class="tariff-type">CBU 整车进口</div>
-										<div class="tariff-rate">30%</div>
-										<div class="tariff-note">+ 附加进口税费</div>
-									</div>
-									<div class="tariff-divider">
-										<span>vs</span>
-									</div>
-									<div class="tariff-item ckd">
-										<div class="tariff-type">CKD 本地组装</div>
-										<div class="tariff-rate">10%</div>
-										<div class="tariff-note">政府产业扶持费率</div>
-									</div>
-								</div>
+							<div class="mb-8">
+								<h4 class="text-xl font-bold mb-2 flex items-center gap-2">
+									<div class="w-2 h-2 bg-black rounded-full"></div>
+									{reportData.risks.protective.title}
+								</h4>
+								<p class="text-gray-600 leading-relaxed">
+									{reportData.risks.protective.desc}
+								</p>
 							</div>
-						</div>
-						<div class="col">
-							<div class="policy-box">
-								<div class="policy-title">准入认证要求</div>
-								<div class="cert-list">
-									<div class="cert-item">
-										<span class="cert-bullet"></span>
-										<span>符合国际 EV 道路安全合规标准</span>
-									</div>
-									<div class="cert-item">
-										<span class="cert-bullet"></span>
-										<span>提供至少 3 年的电池及电机质保</span>
-									</div>
-									<div class="cert-item">
-										<span class="cert-bullet"></span>
-										<span>提交明确的电池回收与处理计划</span>
-									</div>
-									<div class="cert-item">
-										<span class="cert-bullet"></span>
-										<span>符合 DMT 对高压电力系统的标准要求</span>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="recommendation-bar">
-						<strong>战略建议：</strong> 充分利用 10% 的 CKD 优惠关税进行本地化组装，确保满足 30% 本地增值要求以获取政策红利。
-					</div>
-				</section>
 
-				{/* Slide 10: Closing */}
-				<section class="slide title-slide closing-slide">
-					<div class="slide-content">
-						<div class="company-logo">EV INSIGHTS | 电动汽车行业洞察</div>
-						<h1>谢谢聆听</h1>
-						<div class="decor-line"></div>
-						<div class="contact-info">
-							<p>如需进一步的详细分析及战略咨询服务</p>
-							<p class="contact-cta">请联系我们的研究团队</p>
+							<div class="mb-8">
+								<h4 class="text-xl font-bold mb-2 flex items-center gap-2">
+									<div class="w-2 h-2 bg-black rounded-full"></div>
+									{reportData.risks.ip.title}
+								</h4>
+								<p class="text-gray-600 leading-relaxed">
+									{reportData.risks.ip.desc}
+								</p>
+							</div>
+						</div>
+
+						<div class="border-t-2 border-black pt-8">
+							<div class="text-6xl font-black opacity-10">2026</div>
+							<div class="text-sm font-bold uppercase tracking-widest mt-2">
+								Vietnam Market Outlook
+							</div>
 						</div>
 					</div>
-				</section>
-			</div>
+				</div>
+			</section>
+
+			{/* Footer */}
+			<footer class="py-12 text-center text-gray-700 text-sm">
+				<p>EV INSIGHTS | COPYRIGHT 2025</p>
+			</footer>
 		</main>
 	);
 }
