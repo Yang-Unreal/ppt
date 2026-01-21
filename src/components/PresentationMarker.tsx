@@ -16,6 +16,8 @@ export default function PresentationMarker() {
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
 	const [paths, setPaths] = createSignal<Path[]>([]);
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
+	const [mousePos, setMousePos] = createSignal({ x: 0, y: 0 });
+	const ERASER_SIZE = 50;
 
 	const colors = [
 		"#ff4444",
@@ -68,15 +70,22 @@ export default function PresentationMarker() {
 		const newPath: Path = {
 			points: [pos],
 			color: currentColor(),
-			width: currentTool() === "eraser" ? 20 : 4,
+			width: currentTool() === "eraser" ? ERASER_SIZE : 4,
 			isEraser: currentTool() === "eraser",
 		};
 		setPaths([...paths(), newPath]);
 	};
 
 	const draw = (e: MouseEvent | TouchEvent) => {
-		if (!isCurrentlyDrawing() || !isDrawingMode()) return;
 		const pos = getPos(e);
+		// Update mouse position for eraser preview
+		if ("touches" in e) {
+			setMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+		} else {
+			setMousePos({ x: e.clientX, y: e.clientY });
+		}
+
+		if (!isCurrentlyDrawing() || !isDrawingMode()) return;
 		const currentPaths = paths();
 		const lastPath = currentPaths[currentPaths.length - 1];
 		if (lastPath) {
@@ -159,17 +168,35 @@ export default function PresentationMarker() {
 		ctx?.clearRect(0, 0, canvasRef.width, canvasRef.height);
 	};
 
+	const undo = () => {
+		const currentPaths = paths();
+		if (currentPaths.length === 0) return;
+		setPaths(currentPaths.slice(0, -1));
+		redraw();
+	};
+
+	const handleKeyDown = (e: KeyboardEvent) => {
+		if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+			e.preventDefault();
+			undo();
+		}
+	};
+
 	onMount(() => {
 		window.addEventListener("resize", handleResize);
+		window.addEventListener("keydown", handleKeyDown);
 		handleResize();
-		onCleanup(() => window.removeEventListener("resize", handleResize));
+		onCleanup(() => {
+			window.removeEventListener("resize", handleResize);
+			window.removeEventListener("keydown", handleKeyDown);
+		});
 	});
 
 	return (
 		<>
 			<canvas
 				ref={canvasRef}
-				class={`absolute top-0 left-0 z-8000 ${isDrawingMode() ? "cursor-crosshair pointer-events-auto" : "pointer-events-none"}`}
+				class={`absolute top-0 left-0 z-8000 ${isDrawingMode() ? "cursor-none pointer-events-auto" : "pointer-events-none"}`}
 				onMouseDown={startDrawing}
 				onMouseMove={draw}
 				onMouseUp={stopDrawing}
@@ -179,6 +206,31 @@ export default function PresentationMarker() {
 				onTouchMove={draw}
 				onTouchEnd={stopDrawing}
 			/>
+
+			<Show when={isDrawingMode() && currentTool() === "eraser"}>
+				<div
+					class="fixed pointer-events-none z-8001 border border-white/50 rounded-full bg-white/10"
+					style={{
+						width: `${ERASER_SIZE}px`,
+						height: `${ERASER_SIZE}px`,
+						left: `${mousePos().x - ERASER_SIZE / 2}px`,
+						top: `${mousePos().y - ERASER_SIZE / 2}px`,
+					}}
+				/>
+			</Show>
+
+			<Show when={isDrawingMode() && currentTool() === "marker"}>
+				<div
+					class="fixed pointer-events-none z-8001 border border-white/50 rounded-full"
+					style={{
+						width: "8px",
+						height: "8px",
+						"background-color": currentColor(),
+						left: `${mousePos().x - 4}px`,
+						top: `${mousePos().y - 4}px`,
+					}}
+				/>
+			</Show>
 
 			<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-9000 flex items-center gap-4 bg-zinc-900/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-2xl">
 				{/* Mode Toggle */}
@@ -249,13 +301,23 @@ export default function PresentationMarker() {
 					<div class="w-px h-6 bg-white/10" />
 
 					{/* Actions */}
-					<button
-						type="button"
-						onClick={clearCanvas}
-						class="px-3 py-2 text-xs text-zinc-400 hover:text-red-400 transition-colors"
-					>
-						Clear All
-					</button>
+					<div class="flex gap-1">
+						<button
+							type="button"
+							onClick={undo}
+							class="px-3 py-2 text-xs text-zinc-400 hover:text-white transition-colors"
+							title="Undo (Ctrl+Z)"
+						>
+							Undo
+						</button>
+						<button
+							type="button"
+							onClick={clearCanvas}
+							class="px-3 py-2 text-xs text-zinc-400 hover:text-red-400 transition-colors"
+						>
+							Clear All
+						</button>
+					</div>
 				</Show>
 			</div>
 		</>
