@@ -277,7 +277,7 @@ export default function PresentationMarker() {
 
 	const renderElement = (
 		ctx: CanvasRenderingContext2D,
-		rc: any,
+		rc: ReturnType<typeof rough.canvas>,
 		el: Element,
 		isPending: boolean,
 	) => {
