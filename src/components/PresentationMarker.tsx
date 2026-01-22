@@ -13,7 +13,8 @@ type ElementType =
 	| "eraser"
 	| "rectangle"
 	| "ellipse"
-	| "arrow";
+	| "arrow"
+	| "text";
 
 interface Element {
 	id: string;
@@ -22,6 +23,7 @@ interface Element {
 	color: string;
 	width: number;
 	seed: number;
+	text?: string;
 }
 
 export default function PresentationMarker() {
@@ -41,6 +43,9 @@ export default function PresentationMarker() {
 	const [pendingDeletionIds, setPendingDeletionIds] = createSignal<Set<string>>(
 		new Set<string>(),
 	);
+	const [editingTextId, setEditingTextId] = createSignal<string | null>(null);
+	const [editingTextValue, setEditingTextValue] = createSignal("");
+	const [editingTextPos, setEditingTextPos] = createSignal<Point | null>(null);
 
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
@@ -104,7 +109,6 @@ export default function PresentationMarker() {
 	};
 
 	const hitTest = (pos: Point) => {
-		// Return the first element hit (topmost)
 		const sortedElements = [...elements()].reverse();
 		for (const el of sortedElements) {
 			let isHit = false;
@@ -143,6 +147,21 @@ export default function PresentationMarker() {
 			} else if (el.type === "arrow") {
 				const [a, b] = el.points;
 				if (distToSegment(pos, a, b) < 15) isHit = true;
+			} else if (el.type === "text" && el.text) {
+				const [p] = el.points;
+				const fontSize = el.width * 6;
+				const lineHeight = fontSize; // Match line-height 1
+				const lines = el.text.split("\n");
+				const totalHeight = lines.length * lineHeight;
+				// Precise hit test (matches canvas rendering exactly)
+				if (
+					pos.x >= p.x - 10 &&
+					pos.x <= p.x + 200 &&
+					pos.y >= p.y - 10 &&
+					pos.y <= p.y + totalHeight + 10
+				) {
+					isHit = true;
+				}
 			}
 			if (isHit) return el.id;
 		}
@@ -168,6 +187,15 @@ export default function PresentationMarker() {
 		} else if (currentTool() === "eraser") {
 			setPendingDeletionIds(new Set<string>());
 			checkHit(pos);
+		} else if (currentTool() === "text") {
+			if (editingTextId()) {
+				commitText();
+			}
+			const id = Math.random().toString(36).substr(2, 9);
+			setEditingTextId(id);
+			setEditingTextPos(pos);
+			setEditingTextValue("");
+			setIsCurrentlyDrawing(false);
 		} else {
 			setSelectedElementId(null);
 			activeElement = {
@@ -186,7 +214,7 @@ export default function PresentationMarker() {
 		let changed = false;
 		elements().forEach((el) => {
 			if (hitIds.has(el.id)) return;
-			const id = hitTest(pos); // Reuse hitTest logic
+			const id = hitTest(pos);
 			if (id === el.id) {
 				hitIds.add(el.id);
 				changed = true;
@@ -247,6 +275,30 @@ export default function PresentationMarker() {
 		}
 	};
 
+	const commitText = () => {
+		const id = editingTextId();
+		const pos = editingTextPos();
+		const text = editingTextValue().trim();
+
+		if (id && pos && text) {
+			const newElement: Element = {
+				id,
+				type: "text",
+				points: [{ ...pos }],
+				color: currentColor(),
+				width: MARKER_WIDTH,
+				seed: Math.floor(Math.random() * 2 ** 31),
+				text,
+			};
+			setElements([...elements(), newElement]);
+			redraw();
+		}
+
+		setEditingTextId(null);
+		setEditingTextPos(null);
+		setEditingTextValue("");
+	};
+
 	const stopDrawing = () => {
 		if (isCurrentlyDrawing()) {
 			if (currentTool() === "eraser") {
@@ -281,7 +333,7 @@ export default function PresentationMarker() {
 		el: Element,
 		isPending: boolean,
 	) => {
-		if (el.points.length < 2) return;
+		if (el.points.length < 1) return;
 		const scrollY = window.scrollY;
 		ctx.save();
 
@@ -289,6 +341,7 @@ export default function PresentationMarker() {
 		ctx.globalAlpha = isPending ? 0.2 : 1.0;
 
 		if (el.type === "marker") {
+			if (el.points.length < 2) return;
 			const viewportPoints = el.points.map((p) => [p.x, p.y - scrollY]);
 			const stroke = getStroke(viewportPoints, {
 				size: el.width,
@@ -305,7 +358,19 @@ export default function PresentationMarker() {
 				ctx.closePath();
 				ctx.fill();
 			}
-		} else {
+		} else if (el.type === "text" && el.text) {
+			const [p] = el.points;
+			const fontSize = el.width * 6;
+			const lineHeight = fontSize; // Match line-height 1
+			ctx.font = `${fontSize}px "Excalifont", "Xiaolai", sans-serif`;
+			ctx.textBaseline = "top";
+			ctx.fillStyle = el.color;
+
+			const lines = el.text.split("\n");
+			lines.forEach((line, i) => {
+				ctx.fillText(line, p.x, p.y - scrollY + i * lineHeight);
+			});
+		} else if (el.points.length >= 2) {
 			const [p1, p2] = el.points;
 			const options = {
 				stroke: el.color,
@@ -347,13 +412,25 @@ export default function PresentationMarker() {
 			ctx.setLineDash([5, 5]);
 			ctx.strokeStyle = "#3b82f6";
 			ctx.lineWidth = 2;
-			// Simple bounding box for highlight
-			const xs = el.points.map((p) => p.x);
-			const ys = el.points.map((p) => p.y - scrollY);
-			const minX = Math.min(...xs) - 5;
-			const maxX = Math.max(...xs) + 5;
-			const minY = Math.min(...ys) - 5;
-			const maxY = Math.max(...ys) + 5;
+			let minX: number, maxX: number, minY: number, maxY: number;
+			if (el.type === "text" && el.text) {
+				const [p] = el.points;
+				const fontSize = el.width * 6;
+				const lineHeight = fontSize; // Match line-height 1
+				const lines = el.text.split("\n");
+				const totalHeight = lines.length * lineHeight;
+				minX = p.x - 5;
+				maxX = p.x + 205;
+				minY = p.y - scrollY - 5;
+				maxY = p.y - scrollY + totalHeight + 5;
+			} else {
+				const xs = el.points.map((p) => p.x);
+				const ys = el.points.map((p) => p.y - scrollY);
+				minX = Math.min(...xs) - 5;
+				maxX = Math.max(...xs) + 5;
+				minY = Math.min(...ys) - 5;
+				maxY = Math.max(...ys) + 5;
+			}
 			ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
 		}
 
@@ -406,6 +483,15 @@ export default function PresentationMarker() {
 				e.preventDefault();
 				undo();
 			}
+			if (e.key === "Enter" && e.ctrlKey && editingTextId()) {
+				e.preventDefault();
+				commitText();
+			}
+			if (e.key === "Escape" && editingTextId()) {
+				setEditingTextId(null);
+				setEditingTextPos(null);
+				setEditingTextValue("");
+			}
 		});
 		handleResize();
 		onCleanup(() => {
@@ -420,6 +506,7 @@ export default function PresentationMarker() {
 		"rectangle",
 		"ellipse",
 		"arrow",
+		"text",
 		"eraser",
 	];
 
@@ -429,6 +516,39 @@ export default function PresentationMarker() {
 				ref={mainCanvasRef}
 				class="fixed top-0 left-0 z-8000 pointer-events-none"
 			/>
+			<Show when={editingTextPos()}>
+				{(pos) => (
+					<textarea
+						value={editingTextValue()}
+						class="drawing-text-area fixed"
+						style={{
+							left: `${pos().x}px`,
+							top: `${pos().y - window.scrollY}px`,
+							color: currentColor(),
+							"font-size": `${MARKER_WIDTH * 6}px`,
+							"min-width": "1px",
+						}}
+						onInput={(e) => {
+							setEditingTextValue(e.currentTarget.value);
+						}}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && e.ctrlKey) {
+								e.preventDefault();
+								commitText();
+							}
+							if (e.key === "Escape") {
+								setEditingTextId(null);
+								setEditingTextPos(null);
+								setEditingTextValue("");
+							}
+						}}
+						onBlur={commitText}
+						ref={(el) => {
+							setTimeout(() => el.focus(), 0);
+						}}
+					/>
+				)}
+			</Show>
 			<canvas
 				ref={tempCanvasRef}
 				class={`fixed top-0 left-0 z-8001 ${isDrawingMode() ? "cursor-none pointer-events-auto" : "pointer-events-none"}`}
