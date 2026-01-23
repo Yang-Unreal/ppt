@@ -126,7 +126,7 @@ h6 {
 	overflow: visible;
 	white-space: pre-wrap;
 	word-wrap: break-word;
-	line-height: 1;
+	line-height: 1.25;
 	color: inherit;
 	font-family: "Excalifont", "Xiaolai", sans-serif;
 	z-index: 8003;

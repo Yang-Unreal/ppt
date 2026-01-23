@@ -150,15 +150,17 @@ export default function PresentationMarker() {
 			} else if (el.type === "text" && el.text) {
 				const [p] = el.points;
 				const fontSize = el.width * 6;
-				const lineHeight = fontSize; // Match line-height 1
+				const lineHeight = fontSize * 1.25; // Match line-height 1.25
 				const lines = el.text.split("\n");
 				const totalHeight = lines.length * lineHeight;
+				const xOffset = -(fontSize * 0.025);
+				const yOffset = fontSize * 0.17; // Align hit test with text vertical offset
 				// Precise hit test (matches canvas rendering exactly)
 				if (
-					pos.x >= p.x - 10 &&
-					pos.x <= p.x + 200 &&
-					pos.y >= p.y - 10 &&
-					pos.y <= p.y + totalHeight + 10
+					pos.x >= p.x - 10 + xOffset &&
+					pos.x <= p.x + 200 + xOffset &&
+					pos.y >= p.y - 10 + yOffset &&
+					pos.y <= p.y + totalHeight + 10 + yOffset
 				) {
 					isHit = true;
 				}
@@ -361,14 +363,21 @@ export default function PresentationMarker() {
 		} else if (el.type === "text" && el.text) {
 			const [p] = el.points;
 			const fontSize = el.width * 6;
-			const lineHeight = fontSize; // Match line-height 1
+			const lineHeight = fontSize * 1.25; // Match line-height 1.25
 			ctx.font = `${fontSize}px "Excalifont", "Xiaolai", sans-serif`;
 			ctx.textBaseline = "top";
 			ctx.fillStyle = el.color;
 
 			const lines = el.text.split("\n");
+			// Correction for line-height vertical centering and browser offset quirks
+			const xOffset = -(fontSize * 0.025);
+			const yOffset = fontSize * 0.17;
 			lines.forEach((line, i) => {
-				ctx.fillText(line, p.x, p.y - scrollY + i * lineHeight);
+				ctx.fillText(
+					line,
+					p.x + xOffset,
+					p.y - scrollY + yOffset + i * lineHeight,
+				);
 			});
 		} else if (el.points.length >= 2) {
 			const [p1, p2] = el.points;
@@ -416,13 +425,16 @@ export default function PresentationMarker() {
 			if (el.type === "text" && el.text) {
 				const [p] = el.points;
 				const fontSize = el.width * 6;
-				const lineHeight = fontSize; // Match line-height 1
+				const lineHeight = fontSize * 1.25; // Match line-height 1.25
 				const lines = el.text.split("\n");
 				const totalHeight = lines.length * lineHeight;
-				minX = p.x - 5;
-				maxX = p.x + 205;
-				minY = p.y - scrollY - 5;
-				maxY = p.y - scrollY + totalHeight + 5;
+				// Align selection box with text vertical/horizontal offset
+				const xOffset = -(fontSize * 0.025);
+				const yOffset = fontSize * 0.17;
+				minX = p.x - 5 + xOffset;
+				maxX = p.x + 205 + xOffset;
+				minY = p.y - scrollY - 5 + yOffset;
+				maxY = p.y - scrollY + totalHeight + 5 + yOffset;
 			} else {
 				const xs = el.points.map((p) => p.x);
 				const ys = el.points.map((p) => p.y - scrollY);
