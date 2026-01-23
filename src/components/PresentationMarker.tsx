@@ -46,6 +46,14 @@ export default function PresentationMarker() {
 	const [editingTextId, setEditingTextId] = createSignal<string | null>(null);
 	const [editingTextValue, setEditingTextValue] = createSignal("");
 	const [editingTextPos, setEditingTextPos] = createSignal<Point | null>(null);
+	const [resizeHandle, setResizeHandle] = createSignal<string | null>(null);
+	const [resizeStartBounds, setResizeStartBounds] = createSignal<{
+		minX: number;
+		maxX: number;
+		minY: number;
+		maxY: number;
+	} | null>(null);
+	const [resizeInitialWidth, setResizeInitialWidth] = createSignal(0);
 
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
@@ -178,7 +186,65 @@ export default function PresentationMarker() {
 		);
 	};
 
+	const getElementBounds = (el: Element) => {
+		let minX: number, maxX: number, minY: number, maxY: number;
+		if (el.type === "text" && el.text) {
+			const [p] = el.points;
+			const fontSize = el.width * CONSTANTS.FONT_SIZE_MULTIPLIER;
+			const lineHeight = fontSize * CONSTANTS.LINE_HEIGHT;
+			const lines = el.text.split("\n");
+			const totalHeight = lines.length * lineHeight;
+			const xOffset = 0;
+			const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
+			minX = p.x - 5 + xOffset;
+			maxX = p.x + 205 + xOffset;
+			minY = p.y - 5 + yOffset;
+			maxY = p.y + totalHeight + 5 + yOffset;
+		} else {
+			const xs = el.points.map((p) => p.x);
+			const ys = el.points.map((p) => p.y);
+			minX = Math.min(...xs) - 5;
+			maxX = Math.max(...xs) + 5;
+			minY = Math.min(...ys) - 5;
+			maxY = Math.max(...ys) + 5;
+		}
+		return { minX, maxX, minY, maxY };
+	};
+
+	const hitTestResizeHandle = (pos: Point) => {
+		const selectedId = selectedElementId();
+		if (!selectedId) return null;
+
+		const el = elements().find((e) => e.id === selectedId);
+		if (!el) return null;
+
+		const bounds = getElementBounds(el);
+		const handleSize = 6;
+		const handles = [
+			{ name: "nw", x: bounds.minX, y: bounds.minY },
+			{ name: "ne", x: bounds.maxX, y: bounds.minY },
+			{ name: "sw", x: bounds.minX, y: bounds.maxY },
+			{ name: "se", x: bounds.maxX, y: bounds.maxY },
+		];
+
+		for (const handle of handles) {
+			if (
+				pos.x >= handle.x - handleSize / 2 &&
+				pos.x <= handle.x + handleSize / 2 &&
+				pos.y >= handle.y - handleSize / 2 &&
+				pos.y <= handle.y + handleSize / 2
+			) {
+				return handle.name;
+			}
+		}
+		return null;
+	};
+
 	const hitTest = (pos: Point) => {
+		// Check resize handles first
+		const resizeHit = hitTestResizeHandle(pos);
+		if (resizeHit) return `resize-${resizeHit}`;
+
 		const sortedElements = [...elements()].reverse();
 		for (const el of sortedElements) {
 			let isHit = false;
@@ -210,13 +276,33 @@ export default function PresentationMarker() {
 		setIsCurrentlyDrawing(true);
 
 		if (currentTool() === "select") {
-			const id = hitTest(pos);
-			setSelectedElementId(id);
-			if (id) {
-				const el = elements().find((e) => e.id === id);
-				if (el) {
-					dragStartPos = pos;
-					dragInitialPoints = el.points.map((p) => ({ ...p }));
+			const hitResult = hitTest(pos);
+			if (hitResult?.startsWith("resize-")) {
+				// Handle resize handle click
+				const handle = hitResult.split("-")[1];
+				setResizeHandle(handle);
+				const selectedId = selectedElementId();
+				if (selectedId) {
+					const el = elements().find((e) => e.id === selectedId);
+					if (el) {
+						setResizeStartBounds(getElementBounds(el));
+						// Important: Capture initial points and width for smooth resizing of all elements
+						dragInitialPoints = el.points.map((p) => ({ ...p }));
+						setResizeInitialWidth(el.width);
+						dragStartPos = pos;
+					}
+				}
+			} else {
+				// Handle element selection
+				setSelectedElementId(hitResult);
+				setResizeHandle(null);
+				setResizeStartBounds(null);
+				if (hitResult) {
+					const el = elements().find((e) => e.id === hitResult);
+					if (el) {
+						dragStartPos = pos;
+						dragInitialPoints = el.points.map((p) => ({ ...p }));
+					}
 				}
 			}
 			redraw();
@@ -284,20 +370,113 @@ export default function PresentationMarker() {
 			const dx = pos.x - dragStartPos.x;
 			const dy = pos.y - dragStartPos.y;
 
-			setElements(
-				elements().map((el) => {
-					if (el.id === selectedElementId()) {
-						return {
-							...el,
-							points: dragInitialPoints.map((p) => ({
-								x: p.x + dx,
-								y: p.y + dy,
-							})),
-						};
+			if (resizeHandle()) {
+				// Handle resize
+				const handle = resizeHandle();
+				const startBounds = resizeStartBounds();
+				if (handle && startBounds) {
+					const newBounds = { ...startBounds };
+					if (handle.includes("e")) newBounds.maxX = startBounds.maxX + dx;
+					if (handle.includes("w")) newBounds.minX = startBounds.minX + dx;
+					if (handle.includes("s")) newBounds.maxY = startBounds.maxY + dy;
+					if (handle.includes("n")) newBounds.minY = startBounds.minY + dy;
+
+					// Ensure minimum size
+					const minSize = 20;
+					if (newBounds.maxX - newBounds.minX < minSize) {
+						if (handle.includes("e")) newBounds.maxX = newBounds.minX + minSize;
+						else if (handle.includes("w"))
+							newBounds.minX = newBounds.maxX - minSize;
 					}
-					return el;
-				}),
-			);
+					if (newBounds.maxY - newBounds.minY < minSize) {
+						if (handle.includes("s")) newBounds.maxY = newBounds.minY + minSize;
+						else if (handle.includes("n"))
+							newBounds.minY = newBounds.maxY - minSize;
+					}
+
+					setElements(
+						elements().map((el) => {
+							if (el.id === selectedElementId()) {
+								const oldWidth = startBounds.maxX - startBounds.minX;
+								const oldHeight = startBounds.maxY - startBounds.minY;
+								const newWidth = newBounds.maxX - newBounds.minX;
+								const newHeight = newBounds.maxY - newBounds.minY;
+								const safeOldWidth = oldWidth === 0 ? 1 : oldWidth;
+								const safeOldHeight = oldHeight === 0 ? 1 : oldHeight;
+
+								const scaleX = newWidth / safeOldWidth;
+								const scaleY = newHeight / safeOldHeight;
+
+								if (el.type === "rectangle" || el.type === "ellipse") {
+									return {
+										...el,
+										points: [
+											{ x: newBounds.minX + 5, y: newBounds.minY + 5 },
+											{ x: newBounds.maxX - 5, y: newBounds.maxY - 5 },
+										],
+									};
+								} else if (
+									el.type === "marker" ||
+									el.type === "arrow" ||
+									el.type === "text"
+								) {
+									let newPoints: Point[];
+									let newElementWidth = el.width;
+
+									if (el.type === "text") {
+										// For text, we position based on the new top-left
+										// and scale the font size based on the height change to keep typical aspect ratio expectations
+										// or scale based on average if user expects stretch.
+										// Here we rely on height to determine font size as text is vertically constrained.
+										newPoints = [
+											{ x: newBounds.minX + 5, y: newBounds.minY + 5 },
+										];
+										newElementWidth = resizeInitialWidth() * scaleY;
+									} else {
+										// For markers and arrows, we normalize coordinates and map them to the new box.
+										// This allows for stretching (non-uniform scaling).
+										newPoints = dragInitialPoints.map((p) => ({
+											x:
+												newBounds.minX +
+												((p.x - startBounds.minX) / safeOldWidth) * newWidth,
+											y:
+												newBounds.minY +
+												((p.y - startBounds.minY) / safeOldHeight) * newHeight,
+										}));
+
+										// Scale stroke width. Using average scale prevents strokes from becoming too thick/thin uniquely
+										newElementWidth =
+											resizeInitialWidth() * ((scaleX + scaleY) / 2);
+									}
+
+									return {
+										...el,
+										points: newPoints,
+										width: Math.max(1, newElementWidth),
+									};
+								}
+							}
+							return el;
+						}),
+					);
+				}
+			} else {
+				// Handle move
+				setElements(
+					elements().map((el) => {
+						if (el.id === selectedElementId()) {
+							return {
+								...el,
+								points: dragInitialPoints.map((p) => ({
+									x: p.x + dx,
+									y: p.y + dy,
+								})),
+							};
+						}
+						return el;
+					}),
+				);
+			}
 			redraw();
 		} else if (currentTool() === "eraser") {
 			checkHit(pos);
@@ -389,6 +568,8 @@ export default function PresentationMarker() {
 		}
 		setIsCurrentlyDrawing(false);
 		dragStartPos = null;
+		setResizeHandle(null);
+		setResizeStartBounds(null);
 	};
 
 	const renderElement = (
@@ -506,6 +687,33 @@ export default function PresentationMarker() {
 				maxY = Math.max(...ys) + 5;
 			}
 			ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+
+			// Draw resize handles
+			ctx.setLineDash([]);
+			ctx.fillStyle = "#3b82f6";
+			ctx.strokeStyle = "#ffffff";
+			ctx.lineWidth = 1;
+			const handleSize = 6;
+			const handles = [
+				[minX, minY], // top-left
+				[maxX, minY], // top-right
+				[minX, maxY], // bottom-left
+				[maxX, maxY], // bottom-right
+			];
+			handles.forEach(([hx, hy]) => {
+				ctx.fillRect(
+					hx - handleSize / 2,
+					hy - handleSize / 2,
+					handleSize,
+					handleSize,
+				);
+				ctx.strokeRect(
+					hx - handleSize / 2,
+					hy - handleSize / 2,
+					handleSize,
+					handleSize,
+				);
+			});
 		}
 
 		ctx.restore();
