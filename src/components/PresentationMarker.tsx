@@ -169,21 +169,20 @@ export default function PresentationMarker() {
 		return distToSegment(pos, a, b) < CONSTANTS.HIT_RADIUS_DEFAULT;
 	};
 
-	const hitTestText = (el: Element, pos: Point) => {
-		if (!el.text) return false;
-		const [p] = el.points;
-		const fontSize = el.width * CONSTANTS.FONT_SIZE_MULTIPLIER;
-		const lineHeight = fontSize * CONSTANTS.LINE_HEIGHT;
-		const lines = el.text.split("\n");
-		const totalHeight = lines.length * lineHeight;
-		const xOffset = 0;
-		const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
-		return (
-			pos.x >= p.x - 10 + xOffset &&
-			pos.x <= p.x + 200 + xOffset &&
-			pos.y >= p.y - 10 + yOffset &&
-			pos.y <= p.y + totalHeight + 10 + yOffset
-		);
+	const measureElementText = (text: string, fontSize: number) => {
+		if (!mainCanvasRef) return 0;
+		const ctx = mainCanvasRef.getContext("2d");
+		if (!ctx) return 0;
+		ctx.save();
+		ctx.font = `${fontSize}px "Excalifont", "Xiaolai", sans-serif`;
+		const lines = text.split("\n");
+		let maxWidth = 0;
+		lines.forEach((line) => {
+			const w = ctx.measureText(line).width;
+			if (w > maxWidth) maxWidth = w;
+		});
+		ctx.restore();
+		return maxWidth;
 	};
 
 	const getElementBounds = (el: Element) => {
@@ -194,21 +193,36 @@ export default function PresentationMarker() {
 			const lineHeight = fontSize * CONSTANTS.LINE_HEIGHT;
 			const lines = el.text.split("\n");
 			const totalHeight = lines.length * lineHeight;
+			const textWidth = measureElementText(el.text, fontSize);
 			const xOffset = 0;
 			const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
-			minX = p.x - 5 + xOffset;
-			maxX = p.x + 205 + xOffset;
-			minY = p.y - 5 + yOffset;
-			maxY = p.y + totalHeight + 5 + yOffset;
+
+			minX = p.x - CONSTANTS.SELECTION_PADDING + xOffset;
+			maxX = p.x + textWidth + CONSTANTS.SELECTION_PADDING + xOffset;
+			minY = p.y - CONSTANTS.SELECTION_PADDING + yOffset;
+			maxY = p.y + totalHeight + CONSTANTS.SELECTION_PADDING + yOffset;
 		} else {
 			const xs = el.points.map((p) => p.x);
 			const ys = el.points.map((p) => p.y);
-			minX = Math.min(...xs) - 5;
-			maxX = Math.max(...xs) + 5;
-			minY = Math.min(...ys) - 5;
-			maxY = Math.max(...ys) + 5;
+			minX = Math.min(...xs) - CONSTANTS.SELECTION_PADDING;
+			maxX = Math.max(...xs) + CONSTANTS.SELECTION_PADDING;
+			minY = Math.min(...ys) - CONSTANTS.SELECTION_PADDING;
+			maxY = Math.max(...ys) + CONSTANTS.SELECTION_PADDING;
 		}
 		return { minX, maxX, minY, maxY };
+	};
+
+	const hitTestText = (el: Element, pos: Point) => {
+		if (!el.text) return false;
+		const bounds = getElementBounds(el);
+		// Add small tolerance for easier selection
+		const tolerance = 5;
+		return (
+			pos.x >= bounds.minX - tolerance &&
+			pos.x <= bounds.maxX + tolerance &&
+			pos.y >= bounds.minY - tolerance &&
+			pos.y <= bounds.maxY + tolerance
+		);
 	};
 
 	const hitTestResizeHandle = (pos: Point) => {
@@ -411,8 +425,14 @@ export default function PresentationMarker() {
 									return {
 										...el,
 										points: [
-											{ x: newBounds.minX + 5, y: newBounds.minY + 5 },
-											{ x: newBounds.maxX - 5, y: newBounds.maxY - 5 },
+											{
+												x: newBounds.minX + CONSTANTS.SELECTION_PADDING,
+												y: newBounds.minY + CONSTANTS.SELECTION_PADDING,
+											},
+											{
+												x: newBounds.maxX - CONSTANTS.SELECTION_PADDING,
+												y: newBounds.maxY - CONSTANTS.SELECTION_PADDING,
+											},
 										],
 									};
 								} else if (
@@ -424,17 +444,84 @@ export default function PresentationMarker() {
 									let newElementWidth = el.width;
 
 									if (el.type === "text") {
-										// For text, we position based on the new top-left
-										// and scale the font size based on the height change to keep typical aspect ratio expectations
-										// or scale based on average if user expects stretch.
-										// Here we rely on height to determine font size as text is vertically constrained.
+										// For text, we must anchor the opposite side to prevent "drift" when resizing
+										// from the left (W, NW, SW).
+										const PADDING = CONSTANTS.SELECTION_PADDING;
+										const startWidth = startBounds.maxX - startBounds.minX;
+										const startHeight = startBounds.maxY - startBounds.minY;
+										// Content dims excluding padding
+										const startContentWidth = Math.max(
+											1,
+											startWidth - 2 * PADDING,
+										);
+										const startContentHeight = Math.max(
+											1,
+											startHeight - 2 * PADDING,
+										);
+
+										// New raw dims from mouse (assuming mouse controls "box" size)
+										const newRawWidth = Math.max(
+											1,
+											newBounds.maxX - newBounds.minX - 2 * PADDING,
+										);
+										const newRawHeight = Math.max(
+											1,
+											newBounds.maxY - newBounds.minY - 2 * PADDING,
+										);
+
+										const sx = newRawWidth / startContentWidth;
+										const sy = newRawHeight / startContentHeight;
+
+										// Apply aspect ratio lock logic for text
+										let scale = 1;
+										if (handle.includes("n") || handle.includes("s")) {
+											scale = sy;
+										} else if (handle === "e" || handle === "w") {
+											scale = sx;
+										} else {
+											scale = Math.abs(sx - 1) > Math.abs(sy - 1) ? sx : sy;
+										}
+
+										const finalContentWidth = startContentWidth * scale;
+										const finalContentHeight = startContentHeight * scale;
+										const finalWidth = finalContentWidth + 2 * PADDING;
+										const finalHeight = finalContentHeight + 2 * PADDING;
+
+										// Determine Anchor Position (Top-Left) based on the FIXED opposite handle
+										let newMinX = newBounds.minX;
+										let newMinY = newBounds.minY;
+
+										if (handle.includes("w")) {
+											// Dragging West: Right (maxX) is fixed
+											newMinX = startBounds.maxX - finalWidth;
+										} else if (handle.includes("e")) {
+											// Dragging East: Left (minX) is fixed
+											newMinX = startBounds.minX;
+										}
+
+										if (handle.includes("n")) {
+											// Dragging North: Bottom (maxY) is fixed
+											newMinY = startBounds.maxY - finalHeight;
+										} else if (handle.includes("s")) {
+											// Dragging South: Top (minY) is fixed
+											newMinY = startBounds.minY;
+										}
+
+										// Default fallbacks for single-axis drags to ensure standard alignment
+										if (handle === "w" || handle === "e")
+											newMinY = startBounds.minY; // Top-align for width resize
+										if (handle === "n" || handle === "s")
+											newMinX = startBounds.minX; // Left-align for height resize
+
 										newPoints = [
-											{ x: newBounds.minX + 5, y: newBounds.minY + 5 },
+											{
+												x: newMinX + PADDING,
+												y: newMinY + PADDING,
+											},
 										];
-										newElementWidth = resizeInitialWidth() * scaleY;
+										newElementWidth = resizeInitialWidth() * scale;
 									} else {
-										// For markers and arrows, we normalize coordinates and map them to the new box.
-										// This allows for stretching (non-uniform scaling).
+										// For markers/arrows, normalize coords and map to new box
 										newPoints = dragInitialPoints.map((p) => ({
 											x:
 												newBounds.minX +
@@ -444,7 +531,7 @@ export default function PresentationMarker() {
 												((p.y - startBounds.minY) / safeOldHeight) * newHeight,
 										}));
 
-										// Scale stroke width. Using average scale prevents strokes from becoming too thick/thin uniquely
+										// Scale stroke width using average to handle non-uniform scaling gracefully
 										newElementWidth =
 											resizeInitialWidth() * ((scaleX + scaleY) / 2);
 									}
@@ -664,28 +751,16 @@ export default function PresentationMarker() {
 			ctx.setLineDash([5, 5]);
 			ctx.strokeStyle = "#3b82f6";
 			ctx.lineWidth = 2;
-			let minX: number, maxX: number, minY: number, maxY: number;
-			if (el.type === "text" && el.text) {
-				const [p] = el.points;
-				const fontSize = el.width * 6;
-				const lineHeight = fontSize * 1.25; // Match line-height 1.25
-				const lines = el.text.split("\n");
-				const totalHeight = lines.length * lineHeight;
-				// Align selection box with text vertical/horizontal offset
-				const xOffset = 0;
-				const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
-				minX = p.x - 5 + xOffset;
-				maxX = p.x + 205 + xOffset;
-				minY = p.y - scrollY - 5 + yOffset;
-				maxY = p.y - scrollY + totalHeight + 5 + yOffset;
-			} else {
-				const xs = el.points.map((p) => p.x);
-				const ys = el.points.map((p) => p.y - scrollY);
-				minX = Math.min(...xs) - 5;
-				maxX = Math.max(...xs) + 5;
-				minY = Math.min(...ys) - 5;
-				maxY = Math.max(...ys) + 5;
-			}
+
+			// Use consistent bounding box logic
+			const bounds = getElementBounds(el);
+			// RenderElement handles scrollY for primitives manually, but bounds are absolute.
+			// We must adjust bounds for current scroll to draw the selection box correctly on screen.
+			const minX = bounds.minX;
+			const maxX = bounds.maxX;
+			const minY = bounds.minY - scrollY;
+			const maxY = bounds.maxY - scrollY;
+
 			ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
 
 			// Draw resize handles
