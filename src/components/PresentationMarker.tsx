@@ -24,6 +24,7 @@ interface Element {
 	width: number;
 	seed: number;
 	text?: string;
+	angle: number;
 }
 
 export default function PresentationMarker() {
@@ -54,6 +55,7 @@ export default function PresentationMarker() {
 		maxY: number;
 	} | null>(null);
 	const [resizeInitialWidth, setResizeInitialWidth] = createSignal(0);
+	const [dragStartAngle, setDragStartAngle] = createSignal(0);
 
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
@@ -63,12 +65,14 @@ export default function PresentationMarker() {
 		ERASER_SIZE: 50,
 		MARKER_WIDTH: 4,
 		FONT_SIZE_MULTIPLIER: 6,
-		LINE_HEIGHT: 1.1,
+		LINE_HEIGHT: 1.25,
 		SELECTION_PADDING: 5,
 		HIT_RADIUS_MARKER: 10,
 		HIT_RADIUS_DEFAULT: 15,
 		ARROW_HEAD_SIZE: 15,
-		TEXT_Y_OFFSET_MULTIPLIER: 0.177,
+		TEXT_BASELINE_OFFSET: 0.875,
+		HANDLE_SIZE: 10,
+		ROTATION_HANDLE_OFFSET: 25,
 	} as const;
 
 	// High-DPI Scaling Utility
@@ -106,6 +110,15 @@ export default function PresentationMarker() {
 		return {
 			x: clientX - rect.left,
 			y: clientY - rect.top + window.scrollY,
+		};
+	};
+
+	const rotatePoint = (p: Point, center: Point, angle: number): Point => {
+		const cos = Math.cos(angle);
+		const sin = Math.sin(angle);
+		return {
+			x: center.x + (p.x - center.x) * cos - (p.y - center.y) * sin,
+			y: center.y + (p.x - center.x) * sin + (p.y - center.y) * cos,
 		};
 	};
 
@@ -194,13 +207,11 @@ export default function PresentationMarker() {
 			const lines = el.text.split("\n");
 			const totalHeight = lines.length * lineHeight;
 			const textWidth = measureElementText(el.text, fontSize);
-			const xOffset = 0;
-			const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
 
-			minX = p.x - CONSTANTS.SELECTION_PADDING + xOffset;
-			maxX = p.x + textWidth + CONSTANTS.SELECTION_PADDING + xOffset;
-			minY = p.y - CONSTANTS.SELECTION_PADDING + yOffset;
-			maxY = p.y + totalHeight + CONSTANTS.SELECTION_PADDING + yOffset;
+			minX = p.x - CONSTANTS.SELECTION_PADDING;
+			maxX = p.x + textWidth + CONSTANTS.SELECTION_PADDING;
+			minY = p.y - CONSTANTS.SELECTION_PADDING;
+			maxY = p.y + totalHeight + CONSTANTS.SELECTION_PADDING;
 		} else {
 			const xs = el.points.map((p) => p.x);
 			const ys = el.points.map((p) => p.y);
@@ -215,7 +226,6 @@ export default function PresentationMarker() {
 	const hitTestText = (el: Element, pos: Point) => {
 		if (!el.text) return false;
 		const bounds = getElementBounds(el);
-		// Add small tolerance for easier selection
 		const tolerance = 5;
 		return (
 			pos.x >= bounds.minX - tolerance &&
@@ -225,15 +235,9 @@ export default function PresentationMarker() {
 		);
 	};
 
-	const hitTestResizeHandle = (pos: Point) => {
-		const selectedId = selectedElementId();
-		if (!selectedId) return null;
-
-		const el = elements().find((e) => e.id === selectedId);
-		if (!el) return null;
-
+	const hitTestResizeHandle = (el: Element, localPos: Point) => {
 		const bounds = getElementBounds(el);
-		const handleSize = 6;
+		const handleSize = CONSTANTS.HANDLE_SIZE;
 		const handles = [
 			{ name: "nw", x: bounds.minX, y: bounds.minY },
 			{ name: "ne", x: bounds.maxX, y: bounds.minY },
@@ -243,40 +247,65 @@ export default function PresentationMarker() {
 
 		for (const handle of handles) {
 			if (
-				pos.x >= handle.x - handleSize / 2 &&
-				pos.x <= handle.x + handleSize / 2 &&
-				pos.y >= handle.y - handleSize / 2 &&
-				pos.y <= handle.y + handleSize / 2
+				localPos.x >= handle.x - handleSize / 2 &&
+				localPos.x <= handle.x + handleSize / 2 &&
+				localPos.y >= handle.y - handleSize / 2 &&
+				localPos.y <= handle.y + handleSize / 2
 			) {
 				return handle.name;
 			}
 		}
+
+		const cx = (bounds.minX + bounds.maxX) / 2;
+		const rotY = bounds.minY - CONSTANTS.ROTATION_HANDLE_OFFSET;
+		if (
+			localPos.x >= cx - handleSize / 2 &&
+			localPos.x <= cx + handleSize / 2 &&
+			localPos.y >= rotY - handleSize / 2 &&
+			localPos.y <= rotY + handleSize / 2
+		) {
+			return "rotate";
+		}
+
 		return null;
 	};
 
 	const hitTest = (pos: Point) => {
-		// Check resize handles first
-		const resizeHit = hitTestResizeHandle(pos);
-		if (resizeHit) return `resize-${resizeHit}`;
+		if (selectedElementId()) {
+			const el = elements().find((e) => e.id === selectedElementId());
+			if (el) {
+				const bounds = getElementBounds(el);
+				const cx = (bounds.minX + bounds.maxX) / 2;
+				const cy = (bounds.minY + bounds.maxY) / 2;
+				const localPos = rotatePoint(pos, { x: cx, y: cy }, -el.angle);
+				const handle = hitTestResizeHandle(el, localPos);
+				if (handle) return `resize-${handle}`;
+			}
+		}
 
 		const sortedElements = [...elements()].reverse();
 		for (const el of sortedElements) {
 			let isHit = false;
+			const bounds = getElementBounds(el);
+			const cx = (bounds.minX + bounds.maxX) / 2;
+			const cy = (bounds.minY + bounds.maxY) / 2;
+			const localPos = rotatePoint(pos, { x: cx, y: cy }, -el.angle);
+
 			switch (el.type) {
 				case "marker":
-					isHit = hitTestMarker(el, pos);
+					isHit = hitTestMarker(el, localPos);
 					break;
 				case "rectangle":
-					isHit = hitTestRectangle(el, pos);
+					isHit = hitTestRectangle(el, localPos);
 					break;
 				case "ellipse":
-					isHit = hitTestEllipse(el, pos);
+					isHit = hitTestEllipse(el, localPos);
 					break;
 				case "arrow":
-					isHit = hitTestArrow(el, pos);
+					isHit = hitTestArrow(el, localPos);
 					break;
 				case "text":
-					isHit = hitTestText(el, pos);
+					isHit = hitTestText(el, localPos);
 					break;
 			}
 			if (isHit) return el.id;
@@ -292,7 +321,6 @@ export default function PresentationMarker() {
 		if (currentTool() === "select") {
 			const hitResult = hitTest(pos);
 			if (hitResult?.startsWith("resize-")) {
-				// Handle resize handle click
 				const handle = hitResult.split("-")[1];
 				setResizeHandle(handle);
 				const selectedId = selectedElementId();
@@ -300,14 +328,13 @@ export default function PresentationMarker() {
 					const el = elements().find((e) => e.id === selectedId);
 					if (el) {
 						setResizeStartBounds(getElementBounds(el));
-						// Important: Capture initial points and width for smooth resizing of all elements
 						dragInitialPoints = el.points.map((p) => ({ ...p }));
 						setResizeInitialWidth(el.width);
+						setDragStartAngle(el.angle);
 						dragStartPos = pos;
 					}
 				}
 			} else {
-				// Handle element selection
 				setSelectedElementId(hitResult);
 				setResizeHandle(null);
 				setResizeStartBounds(null);
@@ -324,8 +351,11 @@ export default function PresentationMarker() {
 			setPendingDeletionIds(new Set<string>());
 			checkHit(pos);
 		} else if (currentTool() === "text") {
+			// If we are currently editing text, committing it takes precedence.
+			// Return immediately after commit to avoid creating a new text box.
 			if (editingTextId()) {
 				commitText();
+				return;
 			}
 			const id = Math.random().toString(36).substr(2, 9);
 			setEditingTextId(id);
@@ -341,6 +371,7 @@ export default function PresentationMarker() {
 				color: currentColor(),
 				width: CONSTANTS.MARKER_WIDTH,
 				seed: Math.floor(Math.random() * 2 ** 31),
+				angle: 0,
 			};
 		}
 	};
@@ -381,21 +412,48 @@ export default function PresentationMarker() {
 		if (!isCurrentlyDrawing() || !isDrawingMode()) return;
 
 		if (currentTool() === "select" && selectedElementId() && dragStartPos) {
-			const dx = pos.x - dragStartPos.x;
-			const dy = pos.y - dragStartPos.y;
-
-			if (resizeHandle()) {
-				// Handle resize
+			if (resizeHandle() === "rotate") {
+				setElements(
+					elements().map((el) => {
+						if (el.id === selectedElementId()) {
+							const bounds = getElementBounds(el);
+							const cx = (bounds.minX + bounds.maxX) / 2;
+							const cy = (bounds.minY + bounds.maxY) / 2;
+							const angle = Math.atan2(pos.y - cy, pos.x - cx) + Math.PI / 2;
+							return { ...el, angle };
+						}
+						return el;
+					}),
+				);
+			} else if (resizeHandle()) {
 				const handle = resizeHandle();
 				const startBounds = resizeStartBounds();
+
 				if (handle && startBounds) {
+					const cx = (startBounds.minX + startBounds.maxX) / 2;
+					const cy = (startBounds.minY + startBounds.maxY) / 2;
+
+					const dragStartAngleVal = dragStartAngle();
+					const localPos = rotatePoint(
+						pos,
+						{ x: cx, y: cy },
+						-dragStartAngleVal,
+					);
+					const localStartPos = rotatePoint(
+						dragStartPos,
+						{ x: cx, y: cy },
+						-dragStartAngleVal,
+					);
+
+					const dx = localPos.x - localStartPos.x;
+					const dy = localPos.y - localStartPos.y;
+
 					const newBounds = { ...startBounds };
 					if (handle.includes("e")) newBounds.maxX = startBounds.maxX + dx;
 					if (handle.includes("w")) newBounds.minX = startBounds.minX + dx;
 					if (handle.includes("s")) newBounds.maxY = startBounds.maxY + dy;
 					if (handle.includes("n")) newBounds.minY = startBounds.minY + dy;
 
-					// Ensure minimum size
 					const minSize = 20;
 					if (newBounds.maxX - newBounds.minX < minSize) {
 						if (handle.includes("e")) newBounds.maxX = newBounds.minX + minSize;
@@ -444,12 +502,9 @@ export default function PresentationMarker() {
 									let newElementWidth = el.width;
 
 									if (el.type === "text") {
-										// For text, we must anchor the opposite side to prevent "drift" when resizing
-										// from the left (W, NW, SW).
 										const PADDING = CONSTANTS.SELECTION_PADDING;
 										const startWidth = startBounds.maxX - startBounds.minX;
 										const startHeight = startBounds.maxY - startBounds.minY;
-										// Content dims excluding padding
 										const startContentWidth = Math.max(
 											1,
 											startWidth - 2 * PADDING,
@@ -458,8 +513,6 @@ export default function PresentationMarker() {
 											1,
 											startHeight - 2 * PADDING,
 										);
-
-										// New raw dims from mouse (assuming mouse controls "box" size)
 										const newRawWidth = Math.max(
 											1,
 											newBounds.maxX - newBounds.minX - 2 * PADDING,
@@ -468,60 +521,37 @@ export default function PresentationMarker() {
 											1,
 											newBounds.maxY - newBounds.minY - 2 * PADDING,
 										);
-
 										const sx = newRawWidth / startContentWidth;
 										const sy = newRawHeight / startContentHeight;
-
-										// Apply aspect ratio lock logic for text
 										let scale = 1;
-										if (handle.includes("n") || handle.includes("s")) {
+										if (handle.includes("n") || handle.includes("s"))
 											scale = sy;
-										} else if (handle === "e" || handle === "w") {
-											scale = sx;
-										} else {
-											scale = Math.abs(sx - 1) > Math.abs(sy - 1) ? sx : sy;
-										}
+										else if (handle === "e" || handle === "w") scale = sx;
+										else scale = Math.abs(sx - 1) > Math.abs(sy - 1) ? sx : sy;
 
 										const finalContentWidth = startContentWidth * scale;
 										const finalContentHeight = startContentHeight * scale;
 										const finalWidth = finalContentWidth + 2 * PADDING;
 										const finalHeight = finalContentHeight + 2 * PADDING;
 
-										// Determine Anchor Position (Top-Left) based on the FIXED opposite handle
 										let newMinX = newBounds.minX;
 										let newMinY = newBounds.minY;
-
-										if (handle.includes("w")) {
-											// Dragging West: Right (maxX) is fixed
+										if (handle.includes("w"))
 											newMinX = startBounds.maxX - finalWidth;
-										} else if (handle.includes("e")) {
-											// Dragging East: Left (minX) is fixed
-											newMinX = startBounds.minX;
-										}
-
-										if (handle.includes("n")) {
-											// Dragging North: Bottom (maxY) is fixed
+										else if (handle.includes("e")) newMinX = startBounds.minX;
+										if (handle.includes("n"))
 											newMinY = startBounds.maxY - finalHeight;
-										} else if (handle.includes("s")) {
-											// Dragging South: Top (minY) is fixed
-											newMinY = startBounds.minY;
-										}
-
-										// Default fallbacks for single-axis drags to ensure standard alignment
+										else if (handle.includes("s")) newMinY = startBounds.minY;
 										if (handle === "w" || handle === "e")
-											newMinY = startBounds.minY; // Top-align for width resize
+											newMinY = startBounds.minY;
 										if (handle === "n" || handle === "s")
-											newMinX = startBounds.minX; // Left-align for height resize
+											newMinX = startBounds.minX;
 
 										newPoints = [
-											{
-												x: newMinX + PADDING,
-												y: newMinY + PADDING,
-											},
+											{ x: newMinX + PADDING, y: newMinY + PADDING },
 										];
 										newElementWidth = resizeInitialWidth() * scale;
 									} else {
-										// For markers/arrows, normalize coords and map to new box
 										newPoints = dragInitialPoints.map((p) => ({
 											x:
 												newBounds.minX +
@@ -530,12 +560,9 @@ export default function PresentationMarker() {
 												newBounds.minY +
 												((p.y - startBounds.minY) / safeOldHeight) * newHeight,
 										}));
-
-										// Scale stroke width using average to handle non-uniform scaling gracefully
 										newElementWidth =
 											resizeInitialWidth() * ((scaleX + scaleY) / 2);
 									}
-
 									return {
 										...el,
 										points: newPoints,
@@ -548,7 +575,8 @@ export default function PresentationMarker() {
 					);
 				}
 			} else {
-				// Handle move
+				const dx = pos.x - dragStartPos.x;
+				const dy = pos.y - dragStartPos.y;
 				setElements(
 					elements().map((el) => {
 						if (el.id === selectedElementId()) {
@@ -585,7 +613,6 @@ export default function PresentationMarker() {
 		if (id && pos && text) {
 			const existingElement = elements().find((el) => el.id === id);
 			if (existingElement) {
-				// Update existing element
 				setElements(
 					elements().map((el) =>
 						el.id === id
@@ -594,7 +621,6 @@ export default function PresentationMarker() {
 					),
 				);
 			} else {
-				// Create new element
 				const newElement: Element = {
 					id,
 					type: "text",
@@ -603,10 +629,18 @@ export default function PresentationMarker() {
 					width: CONSTANTS.MARKER_WIDTH,
 					seed: Math.floor(Math.random() * 2 ** 31),
 					text,
+					angle: 0,
 				};
 				setElements([...elements(), newElement]);
 			}
+			// Automatically switch to Select tool and select the created text
+			// This matches standard diagramming tool behavior
+			setCurrentTool("select");
+			setSelectedElementId(id);
 			redraw();
+		} else {
+			// If text was empty or cancelled, ensure we leave text mode to avoid confusion
+			setCurrentTool("select");
 		}
 
 		setEditingTextId(null);
@@ -623,7 +657,6 @@ export default function PresentationMarker() {
 		const element = elements().find((el) => el.id === selectedId);
 		if (!element || element.type !== "text" || !element.text) return;
 
-		// Enter edit mode for the selected text element
 		setEditingTextId(element.id);
 		setEditingTextPos(element.points[0]);
 		setEditingTextValue(element.text);
@@ -639,7 +672,32 @@ export default function PresentationMarker() {
 					redraw();
 				}
 			} else if (activeElement) {
-				setElements([...elements(), activeElement]);
+				let shouldAdd = false;
+				if (
+					activeElement.type === "rectangle" ||
+					activeElement.type === "ellipse" ||
+					activeElement.type === "arrow"
+				) {
+					const [p1, p2] = activeElement.points;
+					const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+					if (dist > 5) shouldAdd = true;
+				} else if (activeElement.type === "marker") {
+					const p1 = activeElement.points[0];
+					const pLast = activeElement.points[activeElement.points.length - 1];
+					const dist = Math.hypot(pLast.x - p1.x, pLast.y - p1.y);
+					if (activeElement.points.length > 2 || dist > 5) shouldAdd = true;
+				} else {
+					shouldAdd = true;
+				}
+
+				if (shouldAdd) {
+					setElements([...elements(), activeElement]);
+
+					if (["rectangle", "ellipse", "arrow"].includes(activeElement.type)) {
+						setCurrentTool("select");
+						setSelectedElementId(activeElement.id);
+					}
+				}
 				activeElement = null;
 				if (tempCanvasRef) {
 					const ctx = tempCanvasRef.getContext("2d");
@@ -672,6 +730,14 @@ export default function PresentationMarker() {
 		const isSelected = selectedElementId() === el.id;
 		ctx.globalAlpha = isPending ? 0.2 : 1.0;
 
+		const bounds = getElementBounds(el);
+		const cx = (bounds.minX + bounds.maxX) / 2;
+		const cy = (bounds.minY + bounds.maxY) / 2;
+
+		ctx.translate(cx, cy - scrollY);
+		ctx.rotate(el.angle);
+		ctx.translate(-cx, -(cy - scrollY));
+
 		if (el.type === "marker") {
 			if (el.points.length < 2) return;
 			const viewportPoints = el.points.map((p) => [p.x, p.y - scrollY]);
@@ -693,20 +759,20 @@ export default function PresentationMarker() {
 		} else if (el.type === "text" && el.text) {
 			const [p] = el.points;
 			const fontSize = el.width * 6;
-			const lineHeight = fontSize * 1.25; // Match line-height 1.25
+			const lineHeight = fontSize * CONSTANTS.LINE_HEIGHT;
+
 			ctx.font = `${fontSize}px "Excalifont", "Xiaolai", sans-serif`;
-			ctx.textBaseline = "top";
+			ctx.textBaseline = "alphabetic";
 			ctx.fillStyle = el.color;
 
 			const lines = el.text.split("\n");
-			// Correction for line-height vertical centering and browser offset quirks
-			const xOffset = 0;
-			const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
+			const verticalOffset = fontSize * CONSTANTS.TEXT_BASELINE_OFFSET;
+
 			lines.forEach((line, i) => {
 				ctx.fillText(
 					line,
-					p.x + xOffset,
-					p.y - scrollY + yOffset + i * lineHeight,
+					p.x,
+					p.y - scrollY + i * lineHeight + verticalOffset,
 				);
 			});
 		} else if (el.points.length >= 2) {
@@ -752,10 +818,6 @@ export default function PresentationMarker() {
 			ctx.strokeStyle = "#3b82f6";
 			ctx.lineWidth = 2;
 
-			// Use consistent bounding box logic
-			const bounds = getElementBounds(el);
-			// RenderElement handles scrollY for primitives manually, but bounds are absolute.
-			// We must adjust bounds for current scroll to draw the selection box correctly on screen.
 			const minX = bounds.minX;
 			const maxX = bounds.maxX;
 			const minY = bounds.minY - scrollY;
@@ -763,12 +825,11 @@ export default function PresentationMarker() {
 
 			ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
 
-			// Draw resize handles
 			ctx.setLineDash([]);
 			ctx.fillStyle = "#3b82f6";
 			ctx.strokeStyle = "#ffffff";
 			ctx.lineWidth = 1;
-			const handleSize = 6;
+			const handleSize = CONSTANTS.HANDLE_SIZE;
 			const handles = [
 				[minX, minY], // top-left
 				[maxX, minY], // top-right
@@ -789,6 +850,27 @@ export default function PresentationMarker() {
 					handleSize,
 				);
 			});
+
+			const rotX = (minX + maxX) / 2;
+			const rotY = minY - CONSTANTS.ROTATION_HANDLE_OFFSET;
+
+			ctx.beginPath();
+			ctx.moveTo(rotX, minY);
+			ctx.lineTo(rotX, rotY);
+			ctx.stroke();
+
+			ctx.fillRect(
+				rotX - handleSize / 2,
+				rotY - handleSize / 2,
+				handleSize,
+				handleSize,
+			);
+			ctx.strokeRect(
+				rotX - handleSize / 2,
+				rotY - handleSize / 2,
+				handleSize,
+				handleSize,
+			);
 		}
 
 		ctx.restore();
@@ -832,28 +914,53 @@ export default function PresentationMarker() {
 		redraw();
 	};
 
-	onMount(() => {
-		window.addEventListener("resize", handleResize);
-		window.addEventListener("scroll", redraw);
-		window.addEventListener("keydown", (e) => {
-			if ((e.ctrlKey || e.metaKey) && e.key === "z") {
-				e.preventDefault();
-				undo();
-			}
-			if (e.key === "Enter" && e.ctrlKey && editingTextId()) {
-				e.preventDefault();
-				commitText();
-			}
-			if (e.key === "Escape" && editingTextId()) {
+	const handleKeyDown = (e: KeyboardEvent) => {
+		if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+			e.preventDefault();
+			undo();
+		}
+		if (e.key === "Enter" && e.ctrlKey && editingTextId()) {
+			e.preventDefault();
+			// commitText now handles tool switching, no need to duplicate logic here
+			commitText();
+		}
+		if (e.key === "Escape") {
+			if (editingTextId()) {
 				setEditingTextId(null);
 				setEditingTextPos(null);
 				setEditingTextValue("");
+			} else if (selectedElementId()) {
+				setSelectedElementId(null);
+				setResizeHandle(null);
+				setResizeStartBounds(null);
+				redraw();
 			}
-		});
+		}
+		if (
+			e.shiftKey &&
+			(e.key === "Delete" || e.key === "Backspace" || e.key === "Del")
+		) {
+			const id = selectedElementId();
+			if (id && !editingTextId()) {
+				e.preventDefault();
+				setElements(elements().filter((el) => el.id !== id));
+				setSelectedElementId(null);
+				setResizeHandle(null);
+				setResizeStartBounds(null);
+				redraw();
+			}
+		}
+	};
+
+	onMount(() => {
+		window.addEventListener("resize", handleResize);
+		window.addEventListener("scroll", redraw);
+		window.addEventListener("keydown", handleKeyDown);
 		handleResize();
 		onCleanup(() => {
 			window.removeEventListener("resize", handleResize);
 			window.removeEventListener("scroll", redraw);
+			window.removeEventListener("keydown", handleKeyDown);
 		});
 	});
 
@@ -888,7 +995,6 @@ export default function PresentationMarker() {
 						}}
 						onInput={(e) => {
 							setEditingTextValue(e.currentTarget.value);
-							// Auto-resize height for multi-line text
 							const target = e.currentTarget;
 							target.style.height = "1px";
 							target.style.height = `${target.scrollHeight}px`;
@@ -908,7 +1014,6 @@ export default function PresentationMarker() {
 						ref={(el) => {
 							setTimeout(() => {
 								el.focus();
-								// Initial auto-resize height
 								el.style.height = "1px";
 								el.style.height = `${el.scrollHeight}px`;
 							}, 0);
