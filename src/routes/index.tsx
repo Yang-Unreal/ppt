@@ -2,6 +2,8 @@ import { Title } from "@solidjs/meta";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { For, onMount } from "solid-js";
+import BrandCard from "~/components/BrandCard";
+import SegmentCard from "~/components/SegmentCard";
 import { reportData } from "~/utils/data-loader";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -177,61 +179,7 @@ export default function Report() {
 							Tier 1: 绝对统领
 						</div>
 						<For each={reportData.competition.tiers[0].brands}>
-							{(brand) => (
-								<div class="border border-red-500/30 rounded-2xl overflow-hidden hover:border-red-500 transition-all duration-300 group shadow-2xl shadow-red-900/10">
-									{/* 1. Large White Logo Header */}
-									<div class="bg-white h-40 w-full p-6 flex items-center justify-center relative">
-										{brand.logo ? (
-											<img
-												src={brand.logo}
-												alt={brand.name}
-												class="h-24 w-auto max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
-											/>
-										) : (
-											<h3 class="text-4xl font-bold text-black">
-												{brand.name}
-											</h3>
-										)}
-									</div>
-
-									{/* 2. Premium Content Body */}
-									<div class="p-8 bg-linear-to-b from-gray-900 to-black relative">
-										<div class="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-red-500/50 to-transparent"></div>
-
-										<div class="flex flex-col md:flex-row gap-8 items-start">
-											<div class="flex-1">
-												<h3 class="text-4xl font-bold text-white mb-4 tracking-tight">
-													{brand.name}
-												</h3>
-												<p class="text-lg text-gray-400 leading-relaxed max-w-2xl">
-													{brand.desc}
-												</p>
-											</div>
-
-											{/* Stats Block */}
-											<div class="flex gap-10 shrink-0 bg-white/5 p-6 rounded-xl border border-white/10">
-												<div class="text-center">
-													<div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
-														2025 产量
-													</div>
-													<div class="text-3xl font-mono font-bold text-cyan-400">
-														{brand.yield2025}
-													</div>
-												</div>
-												<div class="w-px bg-gray-700"></div>
-												<div class="text-center">
-													<div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
-														2026 规划
-													</div>
-													<div class="text-3xl font-mono font-bold text-red-500">
-														{brand.plan2026}
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
-							)}
+							{(brand) => <BrandCard brand={brand} tier={1} />}
 						</For>
 					</div>
 
@@ -242,42 +190,7 @@ export default function Report() {
 						</div>
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 							<For each={reportData.competition.tiers[1].brands}>
-								{(brand) => (
-									<div class="flex flex-col border border-white/10 bg-white/5 rounded-xl overflow-hidden hover:border-white/30 transition-all duration-300 group">
-										{/* 1. White Logo Header */}
-										<div class="bg-white h-32 w-full p-4 flex items-center justify-center">
-											{brand.logo ? (
-												<img
-													src={brand.logo}
-													alt={brand.name}
-													class="h-20 w-auto max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
-												/>
-											) : (
-												<span class="text-black font-bold text-xl opacity-20">
-													NO LOGO
-												</span>
-											)}
-										</div>
-
-										{/* 2. Content Body */}
-										<div class="p-6 flex-1 flex flex-col">
-											<div class="flex justify-between items-baseline mb-4">
-												<h3 class="text-2xl font-bold text-white">
-													{brand.name}
-												</h3>
-												<div class="text-sm font-mono bg-white/10 px-3 py-1 rounded text-cyan-200">
-													{brand.yield2025}{" "}
-													<span class="text-gray-500 mx-1">→</span>{" "}
-													{brand.plan2026}
-												</div>
-											</div>
-
-											<p class="text-sm text-gray-400 leading-relaxed mb-2">
-												{brand.desc}
-											</p>
-										</div>
-									</div>
-								)}
+								{(brand) => <BrandCard brand={brand} tier={2} />}
 							</For>
 						</div>
 					</div>
@@ -289,51 +202,7 @@ export default function Report() {
 						</div>
 						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 							<For each={reportData.competition.tiers[2].brands}>
-								{(brand) => (
-									<div class="flex flex-col border border-white/10 bg-white/5 rounded-xl overflow-hidden hover:border-cyan-500/50 transition-all duration-300 group">
-										{/* Logo Row: Fixed container height (h-32) */}
-										<div class="bg-white h-32 w-full p-4 flex items-center justify-center relative">
-											{brand.logo ? (
-												<img
-													src={brand.logo}
-													alt={brand.name}
-													// Fixed height (h-20) ensures all logos stand equally tall.
-													// w-auto maintains aspect ratio. max-w-full prevents overflow.
-													class="h-20 w-auto max-w-full object-contain group-hover:scale-110 transition-transform duration-500"
-												/>
-											) : (
-												<span class="text-black font-bold text-xl opacity-20">
-													NO LOGO
-												</span>
-											)}
-										</div>
-
-										{/* Content Body */}
-										<div class="p-5 flex-1 flex flex-col">
-											<div class="flex justify-between items-start mb-3">
-												<h4 class="font-bold text-xl text-white truncate pr-2">
-													{brand.name}
-												</h4>
-												<span class="text-xs font-mono text-cyan-300 bg-cyan-900/30 px-2 py-1 rounded border border-cyan-800 shrink-0">
-													{brand.yield2025}
-												</span>
-											</div>
-
-											<p class="text-sm text-gray-400 mb-4 line-clamp-2 leading-relaxed">
-												{brand.desc}
-											</p>
-
-											<div class="mt-auto pt-4 border-t border-white/10 flex justify-between items-center text-xs">
-												<span class="text-gray-500 uppercase tracking-wider">
-													2026 规划
-												</span>
-												<span class="text-white font-mono font-bold text-sm">
-													{brand.plan2026}
-												</span>
-											</div>
-										</div>
-									</div>
-								)}
+								{(brand) => <BrandCard brand={brand} tier={3} />}
 							</For>
 						</div>
 					</div>
@@ -349,117 +218,13 @@ export default function Report() {
 
 					<div class="space-y-6">
 						{/* Student */}
-						<div class="glass-card p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-							<div class="col-span-1">
-								<h3 class="text-2xl font-bold mb-2 text-yellow-400">
-									{reportData.segments[0].title}
-								</h3>
-								<div class="flex flex-wrap gap-2 mb-4">
-									<For each={reportData.segments[0].tags}>
-										{(tag) => (
-											<span class="text-xs border border-yellow-400/30 text-yellow-400 px-2 py-1 rounded-full">
-												{tag}
-											</span>
-										)}
-									</For>
-								</div>
-								<p class="text-sm text-gray-400">
-									{reportData.segments[0].features}
-								</p>
-							</div>
-							<div class="col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-								<For each={reportData.segments[0].details}>
-									{(detail) => (
-										<div class="bg-black/30 p-4 rounded-lg">
-											<div class="text-xs text-gray-500 mb-1">
-												{detail.label}
-											</div>
-											<div class="text-sm font-semibold">{detail.value}</div>
-										</div>
-									)}
-								</For>
-							</div>
-						</div>
+						<SegmentCard segment={reportData.segments[0]} color="yellow" />
 
 						{/* Adult */}
-						<div class="glass-card p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-							<div class="col-span-1">
-								<h3 class="text-2xl font-bold mb-2 text-blue-400">
-									{reportData.segments[1].title}
-								</h3>
-								<div class="flex flex-wrap gap-2 mb-4">
-									<For each={reportData.segments[1].tags}>
-										{(tag) => (
-											<span class="text-xs border border-blue-400/30 text-blue-400 px-2 py-1 rounded-full">
-												{tag}
-											</span>
-										)}
-									</For>
-								</div>
-								<p class="text-sm text-gray-400">
-									{reportData.segments[1].features}
-								</p>
-							</div>
-							<div class="col-span-2">
-								<div class="bg-blue-900/10 border border-blue-500/20 p-5 rounded-lg">
-									<h4 class="text-blue-300 text-sm font-bold uppercase mb-2">
-										关键案例对比
-									</h4>
-									<p class="text-gray-300 text-sm leading-relaxed mb-4">
-										{reportData.segments[1].insight}
-									</p>
-									<div class="text-xs text-blue-400 font-mono">
-										{">>>"} {reportData.segments[1].strategy}
-									</div>
-								</div>
-							</div>
-						</div>
+						<SegmentCard segment={reportData.segments[1]} color="blue" />
 
 						{/* B2B */}
-						<div class="glass-card p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-							<div class="col-span-1">
-								<h3 class="text-2xl font-bold mb-2 text-green-400">
-									{reportData.segments[2].title}
-								</h3>
-								<div class="flex flex-wrap gap-2 mb-4">
-									<For each={reportData.segments[2].tags}>
-										{(tag) => (
-											<span class="text-xs border border-green-400/30 text-green-400 px-2 py-1 rounded-full">
-												{tag}
-											</span>
-										)}
-									</For>
-								</div>
-								<p class="text-sm text-gray-400">
-									{reportData.segments[2].features}
-								</p>
-							</div>
-							<div class="col-span-2 flex flex-col justify-center">
-								<div class="flex items-stretch gap-4 text-center">
-									<div class="flex-1 bg-gray-800 p-4 rounded-lg opacity-50 flex flex-col justify-center">
-										<div class="text-xs text-gray-500">燃油车成本</div>
-										<div class="text-xl font-bold text-gray-300">
-											{reportData.segments[2].costComparison?.ice}
-										</div>
-									</div>
-									<div class="text-2xl font-bold text-gray-600 self-center">
-										VS
-									</div>
-									<div class="flex-1 bg-green-900/30 border border-green-500 p-4 rounded-lg shadow-lg shadow-green-900/20 flex flex-col justify-center">
-										<div class="text-xs text-green-300">电动车成本</div>
-										<div class="text-2xl font-bold text-white">
-											{reportData.segments[2].costComparison?.ev}
-										</div>
-										<div class="text-xs text-green-500 font-mono mt-1">
-											仅为油车的 {reportData.segments[2].costComparison?.ratio}
-										</div>
-									</div>
-								</div>
-								<div class="mt-4 text-center text-sm text-gray-400 italic">
-									"{reportData.segments[2].conclusion}"
-								</div>
-							</div>
-						</div>
+						<SegmentCard segment={reportData.segments[2]} color="green" />
 					</div>
 				</div>
 			</section>

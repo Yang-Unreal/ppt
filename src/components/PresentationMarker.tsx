@@ -51,8 +51,17 @@ export default function PresentationMarker() {
 	let dragStartPos: Point | null = null;
 	let dragInitialPoints: Point[] = [];
 
-	const ERASER_SIZE = 50;
-	const MARKER_WIDTH = 4;
+	const CONSTANTS = {
+		ERASER_SIZE: 50,
+		MARKER_WIDTH: 4,
+		FONT_SIZE_MULTIPLIER: 6,
+		LINE_HEIGHT: 1.1,
+		SELECTION_PADDING: 5,
+		HIT_RADIUS_MARKER: 10,
+		HIT_RADIUS_DEFAULT: 15,
+		ARROW_HEAD_SIZE: 15,
+		TEXT_Y_OFFSET_MULTIPLIER: 0.177,
+	} as const;
 
 	// High-DPI Scaling Utility
 	const setupCanvas = (canvas: HTMLCanvasElement) => {
@@ -108,62 +117,87 @@ export default function PresentationMarker() {
 		return Math.sqrt(dpb.x * dpb.x + dpb.y * dpb.y);
 	};
 
+	const hitTestMarker = (el: Element, pos: Point) => {
+		for (let i = 0; i < el.points.length - 1; i++) {
+			if (
+				distToSegment(pos, el.points[i], el.points[i + 1]) <
+				el.width + CONSTANTS.HIT_RADIUS_MARKER
+			) {
+				return true;
+			}
+		}
+		return false;
+	};
+
+	const hitTestRectangle = (el: Element, pos: Point) => {
+		const [a, b] = el.points;
+		const minX = Math.min(a.x, b.x);
+		const maxX = Math.max(a.x, b.x);
+		const minY = Math.min(a.y, b.y);
+		const maxY = Math.max(a.y, b.y);
+		const edges = [
+			distToSegment(pos, { x: minX, y: minY }, { x: maxX, y: minY }),
+			distToSegment(pos, { x: maxX, y: minY }, { x: maxX, y: maxY }),
+			distToSegment(pos, { x: maxX, y: maxY }, { x: minX, y: maxY }),
+			distToSegment(pos, { x: minX, y: maxY }, { x: minX, y: minY }),
+		];
+		return edges.some((d) => d < CONSTANTS.HIT_RADIUS_DEFAULT);
+	};
+
+	const hitTestEllipse = (el: Element, pos: Point) => {
+		const [a, b] = el.points;
+		const cx = (a.x + b.x) / 2;
+		const cy = (a.y + b.y) / 2;
+		const rx = Math.abs(a.x - b.x) / 2;
+		const ry = Math.abs(a.y - b.y) / 2;
+		const dx = pos.x - cx;
+		const dy = pos.y - cy;
+		const val = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+		return val >= 0.7 && val <= 1.3;
+	};
+
+	const hitTestArrow = (el: Element, pos: Point) => {
+		const [a, b] = el.points;
+		return distToSegment(pos, a, b) < CONSTANTS.HIT_RADIUS_DEFAULT;
+	};
+
+	const hitTestText = (el: Element, pos: Point) => {
+		if (!el.text) return false;
+		const [p] = el.points;
+		const fontSize = el.width * CONSTANTS.FONT_SIZE_MULTIPLIER;
+		const lineHeight = fontSize * CONSTANTS.LINE_HEIGHT;
+		const lines = el.text.split("\n");
+		const totalHeight = lines.length * lineHeight;
+		const xOffset = 0;
+		const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
+		return (
+			pos.x >= p.x - 10 + xOffset &&
+			pos.x <= p.x + 200 + xOffset &&
+			pos.y >= p.y - 10 + yOffset &&
+			pos.y <= p.y + totalHeight + 10 + yOffset
+		);
+	};
+
 	const hitTest = (pos: Point) => {
 		const sortedElements = [...elements()].reverse();
 		for (const el of sortedElements) {
 			let isHit = false;
-			const hitRadius = el.type === "marker" ? el.width + 10 : 15;
-
-			if (el.type === "marker") {
-				for (let i = 0; i < el.points.length - 1; i++) {
-					if (distToSegment(pos, el.points[i], el.points[i + 1]) < hitRadius) {
-						isHit = true;
-						break;
-					}
-				}
-			} else if (el.type === "rectangle") {
-				const [a, b] = el.points;
-				const minX = Math.min(a.x, b.x);
-				const maxX = Math.max(a.x, b.x);
-				const minY = Math.min(a.y, b.y);
-				const maxY = Math.max(a.y, b.y);
-				const edges = [
-					distToSegment(pos, { x: minX, y: minY }, { x: maxX, y: minY }),
-					distToSegment(pos, { x: maxX, y: minY }, { x: maxX, y: maxY }),
-					distToSegment(pos, { x: maxX, y: maxY }, { x: minX, y: maxY }),
-					distToSegment(pos, { x: minX, y: maxY }, { x: minX, y: minY }),
-				];
-				if (edges.some((d) => d < 10)) isHit = true;
-			} else if (el.type === "ellipse") {
-				const [a, b] = el.points;
-				const cx = (a.x + b.x) / 2;
-				const cy = (a.y + b.y) / 2;
-				const rx = Math.abs(a.x - b.x) / 2;
-				const ry = Math.abs(a.y - b.y) / 2;
-				const dx = pos.x - cx;
-				const dy = pos.y - cy;
-				const val = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
-				if (val >= 0.7 && val <= 1.3) isHit = true;
-			} else if (el.type === "arrow") {
-				const [a, b] = el.points;
-				if (distToSegment(pos, a, b) < 15) isHit = true;
-			} else if (el.type === "text" && el.text) {
-				const [p] = el.points;
-				const fontSize = el.width * 6;
-				const lineHeight = fontSize * 1.25; // Match line-height 1.25
-				const lines = el.text.split("\n");
-				const totalHeight = lines.length * lineHeight;
-				const xOffset = -(fontSize * 0.025);
-				const yOffset = fontSize * 0.17; // Align hit test with text vertical offset
-				// Precise hit test (matches canvas rendering exactly)
-				if (
-					pos.x >= p.x - 10 + xOffset &&
-					pos.x <= p.x + 200 + xOffset &&
-					pos.y >= p.y - 10 + yOffset &&
-					pos.y <= p.y + totalHeight + 10 + yOffset
-				) {
-					isHit = true;
-				}
+			switch (el.type) {
+				case "marker":
+					isHit = hitTestMarker(el, pos);
+					break;
+				case "rectangle":
+					isHit = hitTestRectangle(el, pos);
+					break;
+				case "ellipse":
+					isHit = hitTestEllipse(el, pos);
+					break;
+				case "arrow":
+					isHit = hitTestArrow(el, pos);
+					break;
+				case "text":
+					isHit = hitTestText(el, pos);
+					break;
 			}
 			if (isHit) return el.id;
 		}
@@ -205,7 +239,7 @@ export default function PresentationMarker() {
 				type: currentTool(),
 				points: [pos, pos],
 				color: currentColor(),
-				width: MARKER_WIDTH,
+				width: CONSTANTS.MARKER_WIDTH,
 				seed: Math.floor(Math.random() * 2 ** 31),
 			};
 		}
@@ -240,7 +274,7 @@ export default function PresentationMarker() {
 		}
 
 		if (eraserCursorRef)
-			eraserCursorRef.style.transform = `translate(${clientX - ERASER_SIZE / 2}px, ${clientY - ERASER_SIZE / 2}px)`;
+			eraserCursorRef.style.transform = `translate(${clientX - CONSTANTS.ERASER_SIZE / 2}px, ${clientY - CONSTANTS.ERASER_SIZE / 2}px)`;
 		if (markerCursorRef)
 			markerCursorRef.style.transform = `translate(${clientX - 4}px, ${clientY - 4}px)`;
 
@@ -283,22 +317,50 @@ export default function PresentationMarker() {
 		const text = editingTextValue().trim();
 
 		if (id && pos && text) {
-			const newElement: Element = {
-				id,
-				type: "text",
-				points: [{ ...pos }],
-				color: currentColor(),
-				width: MARKER_WIDTH,
-				seed: Math.floor(Math.random() * 2 ** 31),
-				text,
-			};
-			setElements([...elements(), newElement]);
+			const existingElement = elements().find((el) => el.id === id);
+			if (existingElement) {
+				// Update existing element
+				setElements(
+					elements().map((el) =>
+						el.id === id
+							? { ...el, points: [{ ...pos }], text, color: currentColor() }
+							: el,
+					),
+				);
+			} else {
+				// Create new element
+				const newElement: Element = {
+					id,
+					type: "text",
+					points: [{ ...pos }],
+					color: currentColor(),
+					width: CONSTANTS.MARKER_WIDTH,
+					seed: Math.floor(Math.random() * 2 ** 31),
+					text,
+				};
+				setElements([...elements(), newElement]);
+			}
 			redraw();
 		}
 
 		setEditingTextId(null);
 		setEditingTextPos(null);
 		setEditingTextValue("");
+	};
+
+	const handleDoubleClick = () => {
+		if (!isDrawingMode() || currentTool() !== "select") return;
+
+		const selectedId = selectedElementId();
+		if (!selectedId) return;
+
+		const element = elements().find((el) => el.id === selectedId);
+		if (!element || element.type !== "text" || !element.text) return;
+
+		// Enter edit mode for the selected text element
+		setEditingTextId(element.id);
+		setEditingTextPos(element.points[0]);
+		setEditingTextValue(element.text);
 	};
 
 	const stopDrawing = () => {
@@ -370,8 +432,8 @@ export default function PresentationMarker() {
 
 			const lines = el.text.split("\n");
 			// Correction for line-height vertical centering and browser offset quirks
-			const xOffset = -(fontSize * 0.025);
-			const yOffset = fontSize * 0.17;
+			const xOffset = 0;
+			const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
 			lines.forEach((line, i) => {
 				ctx.fillText(
 					line,
@@ -429,8 +491,8 @@ export default function PresentationMarker() {
 				const lines = el.text.split("\n");
 				const totalHeight = lines.length * lineHeight;
 				// Align selection box with text vertical/horizontal offset
-				const xOffset = -(fontSize * 0.025);
-				const yOffset = fontSize * 0.17;
+				const xOffset = 0;
+				const yOffset = fontSize * CONSTANTS.TEXT_Y_OFFSET_MULTIPLIER;
 				minX = p.x - 5 + xOffset;
 				maxX = p.x + 205 + xOffset;
 				minY = p.y - scrollY - 5 + yOffset;
@@ -537,11 +599,16 @@ export default function PresentationMarker() {
 							left: `${pos().x}px`,
 							top: `${pos().y - window.scrollY}px`,
 							color: currentColor(),
-							"font-size": `${MARKER_WIDTH * 6}px`,
+							"font-size": `${CONSTANTS.MARKER_WIDTH * CONSTANTS.FONT_SIZE_MULTIPLIER}px`,
 							"min-width": "1px",
+							"min-height": "1em",
 						}}
 						onInput={(e) => {
 							setEditingTextValue(e.currentTarget.value);
+							// Auto-resize height for multi-line text
+							const target = e.currentTarget;
+							target.style.height = "1px";
+							target.style.height = `${target.scrollHeight}px`;
 						}}
 						onKeyDown={(e) => {
 							if (e.key === "Enter" && e.ctrlKey) {
@@ -556,7 +623,12 @@ export default function PresentationMarker() {
 						}}
 						onBlur={commitText}
 						ref={(el) => {
-							setTimeout(() => el.focus(), 0);
+							setTimeout(() => {
+								el.focus();
+								// Initial auto-resize height
+								el.style.height = "1px";
+								el.style.height = `${el.scrollHeight}px`;
+							}, 0);
 						}}
 					/>
 				)}
@@ -569,6 +641,7 @@ export default function PresentationMarker() {
 				onMouseUp={stopDrawing}
 				onMouseOut={stopDrawing}
 				onBlur={stopDrawing}
+				onDblClick={handleDoubleClick}
 				onTouchStart={startDrawing}
 				onTouchMove={draw}
 				onTouchEnd={stopDrawing}
@@ -579,8 +652,8 @@ export default function PresentationMarker() {
 					ref={eraserCursorRef}
 					class="fixed pointer-events-none z-8002 border border-white/50 rounded-full bg-white/10"
 					style={{
-						width: `${ERASER_SIZE}px`,
-						height: `${ERASER_SIZE}px`,
+						width: `${CONSTANTS.ERASER_SIZE}px`,
+						height: `${CONSTANTS.ERASER_SIZE}px`,
 						top: "0",
 						left: "0",
 						"will-change": "transform",
