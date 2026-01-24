@@ -74,9 +74,13 @@ export default function PresentationMarker() {
 	});
 
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
-	const [selectedElementId, setSelectedElementId] = createSignal<string | null>(
-		null,
+	const [selectedElementIds, setSelectedElementIds] = createSignal<Set<string>>(
+		new Set(),
 	);
+	const [selectionBox, setSelectionBox] = createSignal<{
+		start: Point;
+		end: Point;
+	} | null>(null);
 	const [pendingDeletionIds, setPendingDeletionIds] = createSignal<Set<string>>(
 		new Set<string>(),
 	);
@@ -95,7 +99,8 @@ export default function PresentationMarker() {
 
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
-	let dragInitialPoints: Point[] = [];
+	const dragInitialPoints: Map<string, Point[]> = new Map();
+	let potentialClickId: string | null = null;
 
 	const CONSTANTS = {
 		ERASER_SIZE: 50,
@@ -307,8 +312,9 @@ export default function PresentationMarker() {
 	};
 
 	const hitTest = (pos: Point) => {
-		if (selectedElementId()) {
-			const el = elements().find((e) => e.id === selectedElementId());
+		if (selectedElementIds().size === 1) {
+			const id = Array.from(selectedElementIds())[0];
+			const el = elements().find((e) => e.id === id);
 			if (el) {
 				const bounds = getElementBounds(el);
 				const cx = (bounds.minX + bounds.maxX) / 2;
@@ -346,6 +352,42 @@ export default function PresentationMarker() {
 			}
 			if (isHit) return el.id;
 		}
+
+		// If no strict hit, and we are in select mode, allow hitting the selection frame of already selected elements
+		if (currentTool() === "select") {
+			for (const el of sortedElements) {
+				if (selectedElementIds().has(el.id)) {
+					const bounds = getElementBounds(el);
+					// Check if pos is within bounds.
+					// We use a slightly looser check than strict shape to match the visual selection box.
+					// Rotation is already handled because getElementBounds returns the axis-aligned bounding box of the rotated shape?
+					// Wait, getElementBounds logic:
+					// "xs = el.points.map((p) => p.x)... minX = Math.min..."
+					// This logic calculates AABB of the *points*.
+					// If the element is rotated, the points in `el.points` are NOT rotated in the data model (rotation is applied via `el.angle` during render).
+					// BUT `hitTest` uses `rotatePoint(pos ... -el.angle)` for strict tests.
+					// `getElementBounds` returns the bounds of the *unrotated* shape (local coordinates).
+					// So for consistency, we should check the rotated point against these bounds?
+					// YES.
+					// In the strict loop above: `const localPos = rotatePoint(pos, { x: cx, y: cy }, -el.angle);`
+					// We should replicate that logic.
+
+					const cx = (bounds.minX + bounds.maxX) / 2;
+					const cy = (bounds.minY + bounds.maxY) / 2;
+					const localPos = rotatePoint(pos, { x: cx, y: cy }, -el.angle);
+
+					if (
+						localPos.x >= bounds.minX &&
+						localPos.x <= bounds.maxX &&
+						localPos.y >= bounds.minY &&
+						localPos.y <= bounds.maxY
+					) {
+						return el.id;
+					}
+				}
+			}
+		}
+
 		return null;
 	};
 
@@ -359,27 +401,65 @@ export default function PresentationMarker() {
 			if (hitResult?.startsWith("resize-")) {
 				const handle = hitResult.split("-")[1];
 				setResizeHandle(handle);
-				const selectedId = selectedElementId();
-				if (selectedId) {
+				// Only allow resize if strictly one element is selected
+				if (selectedElementIds().size === 1) {
+					const selectedId = Array.from(selectedElementIds())[0];
 					const el = elements().find((e) => e.id === selectedId);
 					if (el) {
 						setResizeStartBounds(getElementBounds(el));
-						dragInitialPoints = el.points.map((p) => ({ ...p }));
+						dragInitialPoints.set(
+							el.id,
+							el.points.map((p) => ({ ...p })),
+						);
 						setResizeInitialWidth(el.width);
 						setDragStartAngle(el.angle);
 						dragStartPos = pos;
 					}
 				}
 			} else {
-				setSelectedElementId(hitResult);
 				setResizeHandle(null);
 				setResizeStartBounds(null);
+
 				if (hitResult) {
-					const el = elements().find((e) => e.id === hitResult);
-					if (el) {
-						dragStartPos = pos;
-						dragInitialPoints = el.points.map((p) => ({ ...p }));
+					// Clicked on an element
+					const newSelection = new Set(selectedElementIds());
+					if (e.shiftKey) {
+						if (newSelection.has(hitResult)) {
+							newSelection.delete(hitResult);
+						} else {
+							newSelection.add(hitResult);
+						}
+						setSelectedElementIds(newSelection);
+					} else {
+						// If not holding shift
+						if (newSelection.has(hitResult)) {
+							// If clicking an already selected item, do NOT change selection yet.
+							// We might be preparing to drag the whole group.
+							// Record this as a potential click-to-select-single action.
+							potentialClickId = hitResult;
+						} else {
+							// If clicking an unselected item, select it immediately (replaces group)
+							setSelectedElementIds(new Set<string>([hitResult]));
+						}
 					}
+
+					dragStartPos = pos;
+					dragInitialPoints.clear();
+					elements().forEach((el) => {
+						if (selectedElementIds().has(el.id)) {
+							dragInitialPoints.set(
+								el.id,
+								el.points.map((p) => ({ ...p })),
+							);
+						}
+					});
+				} else {
+					// Clicked on empty space
+					if (!e.shiftKey) {
+						setSelectedElementIds(new Set<string>());
+					}
+					// Start selection box
+					setSelectionBox({ start: pos, end: pos });
 				}
 			}
 			redraw();
@@ -399,7 +479,7 @@ export default function PresentationMarker() {
 			setEditingTextValue("");
 			setIsCurrentlyDrawing(false);
 		} else {
-			setSelectedElementId(null);
+			setSelectedElementIds(new Set<string>());
 			activeElement = {
 				id: Math.random().toString(36).substr(2, 9),
 				type: currentTool(),
@@ -447,162 +527,212 @@ export default function PresentationMarker() {
 
 		if (!isCurrentlyDrawing() || !isDrawingMode()) return;
 
-		if (currentTool() === "select" && selectedElementId() && dragStartPos) {
-			if (resizeHandle() === "rotate") {
-				setElements(
-					elements().map((el) => {
-						if (el.id === selectedElementId()) {
-							const bounds = getElementBounds(el);
-							const cx = (bounds.minX + bounds.maxX) / 2;
-							const cy = (bounds.minY + bounds.maxY) / 2;
-							const angle = Math.atan2(pos.y - cy, pos.x - cx) + Math.PI / 2;
-							return { ...el, angle };
-						}
-						return el;
-					}),
-				);
-			} else if (resizeHandle()) {
-				const handle = resizeHandle();
-				const startBounds = resizeStartBounds();
+		if (currentTool() === "select") {
+			if (selectionBox()) {
+				setSelectionBox((prev) => (prev ? { ...prev, end: pos } : null));
+				redraw();
+				return;
+			}
 
-				if (handle && startBounds) {
-					const cx = (startBounds.minX + startBounds.maxX) / 2;
-					const cy = (startBounds.minY + startBounds.maxY) / 2;
-
-					const dragStartAngleVal = dragStartAngle();
-					const localPos = rotatePoint(
-						pos,
-						{ x: cx, y: cy },
-						-dragStartAngleVal,
-					);
-					const localStartPos = rotatePoint(
-						dragStartPos,
-						{ x: cx, y: cy },
-						-dragStartAngleVal,
-					);
-
-					const dx = localPos.x - localStartPos.x;
-					const dy = localPos.y - localStartPos.y;
-
-					const newBounds = { ...startBounds };
-					if (handle.includes("e")) newBounds.maxX = startBounds.maxX + dx;
-					if (handle.includes("w")) newBounds.minX = startBounds.minX + dx;
-					if (handle.includes("s")) newBounds.maxY = startBounds.maxY + dy;
-					if (handle.includes("n")) newBounds.minY = startBounds.minY + dy;
-
-					const minSize = 20;
-					if (newBounds.maxX - newBounds.minX < minSize) {
-						if (handle.includes("e")) newBounds.maxX = newBounds.minX + minSize;
-						else if (handle.includes("w"))
-							newBounds.minX = newBounds.maxX - minSize;
-					}
-					if (newBounds.maxY - newBounds.minY < minSize) {
-						if (handle.includes("s")) newBounds.maxY = newBounds.minY + minSize;
-						else if (handle.includes("n"))
-							newBounds.minY = newBounds.maxY - minSize;
-					}
-
+			if (selectedElementIds().size > 0 && dragStartPos) {
+				if (resizeHandle() === "rotate" && selectedElementIds().size === 1) {
+					// Rotation only works for single selection
+					const selectedId = Array.from(selectedElementIds())[0];
 					setElements(
 						elements().map((el) => {
-							if (el.id === selectedElementId()) {
-								const oldWidth = startBounds.maxX - startBounds.minX;
-								const oldHeight = startBounds.maxY - startBounds.minY;
-								const newWidth = newBounds.maxX - newBounds.minX;
-								const newHeight = newBounds.maxY - newBounds.minY;
-								const safeOldWidth = oldWidth === 0 ? 1 : oldWidth;
-								const safeOldHeight = oldHeight === 0 ? 1 : oldHeight;
+							if (el.id === selectedId) {
+								const bounds = getElementBounds(el);
+								const cx = (bounds.minX + bounds.maxX) / 2;
+								const cy = (bounds.minY + bounds.maxY) / 2;
+								const angle = Math.atan2(pos.y - cy, pos.x - cx) + Math.PI / 2;
+								return { ...el, angle };
+							}
+							return el;
+						}),
+					);
+				} else if (resizeHandle() && selectedElementIds().size === 1) {
+					// Resizing only works for single selection
+					const selectedId = Array.from(selectedElementIds())[0];
+					const handle = resizeHandle();
+					const startBounds = resizeStartBounds();
 
-								const scaleX = newWidth / safeOldWidth;
-								const scaleY = newHeight / safeOldHeight;
+					if (handle && startBounds) {
+						const cx = (startBounds.minX + startBounds.maxX) / 2;
+						const cy = (startBounds.minY + startBounds.maxY) / 2;
 
-								if (el.type === "rectangle" || el.type === "ellipse") {
-									return {
-										...el,
-										points: [
-											{
-												x: newBounds.minX + CONSTANTS.SELECTION_PADDING,
-												y: newBounds.minY + CONSTANTS.SELECTION_PADDING,
-											},
-											{
-												x: newBounds.maxX - CONSTANTS.SELECTION_PADDING,
-												y: newBounds.maxY - CONSTANTS.SELECTION_PADDING,
-											},
-										],
-									};
-								} else if (
-									el.type === "marker" ||
-									el.type === "arrow" ||
-									el.type === "text"
-								) {
-									let newPoints: Point[];
-									let newElementWidth = el.width;
+						const dragStartAngleVal = dragStartAngle();
+						const localPos = rotatePoint(
+							pos,
+							{ x: cx, y: cy },
+							-dragStartAngleVal,
+						);
+						const localStartPos = rotatePoint(
+							dragStartPos,
+							{ x: cx, y: cy },
+							-dragStartAngleVal,
+						);
 
-									if (el.type === "text") {
-										const PADDING = CONSTANTS.SELECTION_PADDING;
-										const startWidth = startBounds.maxX - startBounds.minX;
-										const startHeight = startBounds.maxY - startBounds.minY;
-										const startContentWidth = Math.max(
-											1,
-											startWidth - 2 * PADDING,
-										);
-										const startContentHeight = Math.max(
-											1,
-											startHeight - 2 * PADDING,
-										);
-										const newRawWidth = Math.max(
-											1,
-											newBounds.maxX - newBounds.minX - 2 * PADDING,
-										);
-										const newRawHeight = Math.max(
-											1,
-											newBounds.maxY - newBounds.minY - 2 * PADDING,
-										);
-										const sx = newRawWidth / startContentWidth;
-										const sy = newRawHeight / startContentHeight;
-										let scale = 1;
-										if (handle.includes("n") || handle.includes("s"))
-											scale = sy;
-										else if (handle === "e" || handle === "w") scale = sx;
-										else scale = Math.abs(sx - 1) > Math.abs(sy - 1) ? sx : sy;
+						const dx = localPos.x - localStartPos.x;
+						const dy = localPos.y - localStartPos.y;
 
-										const finalContentWidth = startContentWidth * scale;
-										const finalContentHeight = startContentHeight * scale;
-										const finalWidth = finalContentWidth + 2 * PADDING;
-										const finalHeight = finalContentHeight + 2 * PADDING;
+						const newBounds = { ...startBounds };
+						if (handle.includes("e")) newBounds.maxX = startBounds.maxX + dx;
+						if (handle.includes("w")) newBounds.minX = startBounds.minX + dx;
+						if (handle.includes("s")) newBounds.maxY = startBounds.maxY + dy;
+						if (handle.includes("n")) newBounds.minY = startBounds.minY + dy;
 
-										let newMinX = newBounds.minX;
-										let newMinY = newBounds.minY;
-										if (handle.includes("w"))
-											newMinX = startBounds.maxX - finalWidth;
-										else if (handle.includes("e")) newMinX = startBounds.minX;
-										if (handle.includes("n"))
-											newMinY = startBounds.maxY - finalHeight;
-										else if (handle.includes("s")) newMinY = startBounds.minY;
-										if (handle === "w" || handle === "e")
-											newMinY = startBounds.minY;
-										if (handle === "n" || handle === "s")
-											newMinX = startBounds.minX;
+						const minSize = 20;
+						if (newBounds.maxX - newBounds.minX < minSize) {
+							if (handle.includes("e"))
+								newBounds.maxX = newBounds.minX + minSize;
+							else if (handle.includes("w"))
+								newBounds.minX = newBounds.maxX - minSize;
+						}
+						if (newBounds.maxY - newBounds.minY < minSize) {
+							if (handle.includes("s"))
+								newBounds.maxY = newBounds.minY + minSize;
+							else if (handle.includes("n"))
+								newBounds.minY = newBounds.maxY - minSize;
+						}
 
-										newPoints = [
-											{ x: newMinX + PADDING, y: newMinY + PADDING },
-										];
-										newElementWidth = resizeInitialWidth() * scale;
-									} else {
-										newPoints = dragInitialPoints.map((p) => ({
-											x:
-												newBounds.minX +
-												((p.x - startBounds.minX) / safeOldWidth) * newWidth,
-											y:
-												newBounds.minY +
-												((p.y - startBounds.minY) / safeOldHeight) * newHeight,
-										}));
-										newElementWidth =
-											resizeInitialWidth() * ((scaleX + scaleY) / 2);
+						setElements(
+							elements().map((el) => {
+								if (el.id === selectedId) {
+									const initialPts = dragInitialPoints.get(el.id);
+									if (!initialPts) return el;
+
+									const oldWidth = startBounds.maxX - startBounds.minX;
+									const oldHeight = startBounds.maxY - startBounds.minY;
+									const newWidth = newBounds.maxX - newBounds.minX;
+									const newHeight = newBounds.maxY - newBounds.minY;
+									const safeOldWidth = oldWidth === 0 ? 1 : oldWidth;
+									const safeOldHeight = oldHeight === 0 ? 1 : oldHeight;
+
+									const scaleX = newWidth / safeOldWidth;
+									const scaleY = newHeight / safeOldHeight;
+
+									if (el.type === "rectangle" || el.type === "ellipse") {
+										return {
+											...el,
+											points: [
+												{
+													x: newBounds.minX + CONSTANTS.SELECTION_PADDING,
+													y: newBounds.minY + CONSTANTS.SELECTION_PADDING,
+												},
+												{
+													x: newBounds.maxX - CONSTANTS.SELECTION_PADDING,
+													y: newBounds.maxY - CONSTANTS.SELECTION_PADDING,
+												},
+											],
+										};
+									} else if (
+										el.type === "marker" ||
+										el.type === "arrow" ||
+										el.type === "text"
+									) {
+										let newPoints: Point[];
+										let newElementWidth = el.width;
+
+										if (el.type === "text") {
+											const PADDING = CONSTANTS.SELECTION_PADDING;
+											const startWidth = startBounds.maxX - startBounds.minX;
+											const startHeight = startBounds.maxY - startBounds.minY;
+											const startContentWidth = Math.max(
+												1,
+												startWidth - 2 * PADDING,
+											);
+											const startContentHeight = Math.max(
+												1,
+												startHeight - 2 * PADDING,
+											);
+											const newRawWidth = Math.max(
+												1,
+												newBounds.maxX - newBounds.minX - 2 * PADDING,
+											);
+											const newRawHeight = Math.max(
+												1,
+												newBounds.maxY - newBounds.minY - 2 * PADDING,
+											);
+											const sx = newRawWidth / startContentWidth;
+											const sy = newRawHeight / startContentHeight;
+											let scale = 1;
+											if (handle.includes("n") || handle.includes("s"))
+												scale = sy;
+											else if (handle === "e" || handle === "w") scale = sx;
+											else
+												scale = Math.abs(sx - 1) > Math.abs(sy - 1) ? sx : sy;
+
+											const finalContentWidth = startContentWidth * scale;
+											const finalContentHeight = startContentHeight * scale;
+											const finalWidth = finalContentWidth + 2 * PADDING;
+											const finalHeight = finalContentHeight + 2 * PADDING;
+
+											let newMinX = newBounds.minX;
+											let newMinY = newBounds.minY;
+											if (handle.includes("w"))
+												newMinX = startBounds.maxX - finalWidth;
+											else if (handle.includes("e")) newMinX = startBounds.minX;
+											if (handle.includes("n"))
+												newMinY = startBounds.maxY - finalHeight;
+											else if (handle.includes("s")) newMinY = startBounds.minY;
+											if (handle === "w" || handle === "e")
+												newMinY = startBounds.minY;
+											if (handle === "n" || handle === "s")
+												newMinX = startBounds.minX;
+
+											newPoints = [
+												{ x: newMinX + PADDING, y: newMinY + PADDING },
+											];
+											newElementWidth = resizeInitialWidth() * scale;
+										} else {
+											newPoints = initialPts.map((p) => ({
+												x:
+													newBounds.minX +
+													((p.x - startBounds.minX) / safeOldWidth) * newWidth,
+												y:
+													newBounds.minY +
+													((p.y - startBounds.minY) / safeOldHeight) *
+														newHeight,
+											}));
+											newElementWidth =
+												resizeInitialWidth() * ((scaleX + scaleY) / 2);
+										}
+										return {
+											...el,
+											points: newPoints,
+											width: Math.max(1, newElementWidth),
+										};
 									}
+								}
+								return el;
+							}),
+						);
+					}
+				} else {
+					// Moving single or multiple elements
+					if (potentialClickId) {
+						const dist = Math.hypot(
+							pos.x - dragStartPos.x,
+							pos.y - dragStartPos.y,
+						);
+						if (dist > 5) {
+							potentialClickId = null;
+						}
+					}
+
+					const dx = pos.x - dragStartPos.x;
+					const dy = pos.y - dragStartPos.y;
+					setElements(
+						elements().map((el) => {
+							if (selectedElementIds().has(el.id)) {
+								const initialPts = dragInitialPoints.get(el.id);
+								if (initialPts) {
 									return {
 										...el,
-										points: newPoints,
-										width: Math.max(1, newElementWidth),
+										points: initialPts.map((p) => ({
+											x: p.x + dx,
+											y: p.y + dy,
+										})),
 									};
 								}
 							}
@@ -610,25 +740,8 @@ export default function PresentationMarker() {
 						}),
 					);
 				}
-			} else {
-				const dx = pos.x - dragStartPos.x;
-				const dy = pos.y - dragStartPos.y;
-				setElements(
-					elements().map((el) => {
-						if (el.id === selectedElementId()) {
-							return {
-								...el,
-								points: dragInitialPoints.map((p) => ({
-									x: p.x + dx,
-									y: p.y + dy,
-								})),
-							};
-						}
-						return el;
-					}),
-				);
+				redraw();
 			}
-			redraw();
 		} else if (currentTool() === "eraser") {
 			checkHit(pos);
 		} else if (activeElement) {
@@ -670,9 +783,8 @@ export default function PresentationMarker() {
 				setElements([...elements(), newElement]);
 			}
 			// Automatically switch to Select tool and select the created text
-			// This matches standard diagramming tool behavior
 			setCurrentTool("select");
-			setSelectedElementId(id);
+			setSelectedElementIds(new Set([id]));
 			redraw();
 		} else {
 			// If text was empty or cancelled, ensure we leave text mode to avoid confusion
@@ -687,7 +799,10 @@ export default function PresentationMarker() {
 	const handleDoubleClick = () => {
 		if (!isDrawingMode() || currentTool() !== "select") return;
 
-		const selectedId = selectedElementId();
+		// only edit if exactly one element is selected
+		if (selectedElementIds().size !== 1) return;
+
+		const selectedId = Array.from(selectedElementIds())[0];
 		if (!selectedId) return;
 
 		const element = elements().find((el) => el.id === selectedId);
@@ -700,7 +815,46 @@ export default function PresentationMarker() {
 
 	const stopDrawing = () => {
 		if (isCurrentlyDrawing()) {
-			if (currentTool() === "eraser") {
+			if (currentTool() === "select") {
+				if (potentialClickId) {
+					// We clicked a selected item but didn't drag it significantly.
+					// This means the user intended to select JUST this item.
+					setSelectedElementIds(new Set<string>([potentialClickId]));
+					potentialClickId = null;
+					redraw();
+				}
+
+				const box = selectionBox();
+				if (box) {
+					// Finalize box selection
+					const minX = Math.min(box.start.x, box.end.x);
+					const maxX = Math.max(box.start.x, box.end.x);
+					const minY = Math.min(box.start.y, box.end.y);
+					const maxY = Math.max(box.start.y, box.end.y);
+
+					const newSelectedIds = new Set(selectedElementIds());
+					elements().forEach((el) => {
+						const bounds = getElementBounds(el);
+						// Simple intersection check: check if element bounds overlap with selection box
+						// Or containment? Usually it's containment or intersection. Intersection is friendlier.
+						// Let's use intersection.
+						// Rect intersection: !(r2.left > r1.right || r2.right < r1.left || r2.top > r1.bottom || r2.bottom < r1.top)
+						const intersects = !(
+							bounds.minX > maxX ||
+							bounds.maxX < minX ||
+							bounds.minY > maxY ||
+							bounds.maxY < minY
+						);
+
+						if (intersects) {
+							newSelectedIds.add(el.id);
+						}
+					});
+					setSelectedElementIds(newSelectedIds);
+					setSelectionBox(null);
+					redraw();
+				}
+			} else if (currentTool() === "eraser") {
 				const ids = pendingDeletionIds();
 				if (ids.size > 0) {
 					setElements(elements().filter((el) => !ids.has(el.id)));
@@ -731,7 +885,7 @@ export default function PresentationMarker() {
 
 					if (["rectangle", "ellipse", "arrow"].includes(activeElement.type)) {
 						setCurrentTool("select");
-						setSelectedElementId(activeElement.id);
+						setSelectedElementIds(new Set<string>([activeElement.id]));
 					}
 				}
 				activeElement = null;
@@ -751,6 +905,8 @@ export default function PresentationMarker() {
 		dragStartPos = null;
 		setResizeHandle(null);
 		setResizeStartBounds(null);
+		setSelectionBox(null);
+		potentialClickId = null;
 	};
 
 	const renderElement = (
@@ -763,7 +919,7 @@ export default function PresentationMarker() {
 		const scrollY = window.scrollY;
 		ctx.save();
 
-		const isSelected = selectedElementId() === el.id;
+		const isSelected = selectedElementIds().has(el.id);
 		ctx.globalAlpha = isPending ? 0.2 : 1.0;
 
 		const bounds = getElementBounds(el);
@@ -861,52 +1017,55 @@ export default function PresentationMarker() {
 
 			ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
 
-			ctx.setLineDash([]);
-			ctx.fillStyle = "#3b82f6";
-			ctx.strokeStyle = "#ffffff";
-			ctx.lineWidth = 1;
-			const handleSize = CONSTANTS.HANDLE_SIZE;
-			const handles = [
-				[minX, minY], // top-left
-				[maxX, minY], // top-right
-				[minX, maxY], // bottom-left
-				[maxX, maxY], // bottom-right
-			];
-			handles.forEach(([hx, hy]) => {
+			// Only show resize handles if strictly one element is selected
+			if (selectedElementIds().size === 1) {
+				ctx.setLineDash([]);
+				ctx.fillStyle = "#3b82f6";
+				ctx.strokeStyle = "#ffffff";
+				ctx.lineWidth = 1;
+				const handleSize = CONSTANTS.HANDLE_SIZE;
+				const handles = [
+					[minX, minY], // top-left
+					[maxX, minY], // top-right
+					[minX, maxY], // bottom-left
+					[maxX, maxY], // bottom-right
+				];
+				handles.forEach(([hx, hy]) => {
+					ctx.fillRect(
+						hx - handleSize / 2,
+						hy - handleSize / 2,
+						handleSize,
+						handleSize,
+					);
+					ctx.strokeRect(
+						hx - handleSize / 2,
+						hy - handleSize / 2,
+						handleSize,
+						handleSize,
+					);
+				});
+
+				const rotX = (minX + maxX) / 2;
+				const rotY = minY - CONSTANTS.ROTATION_HANDLE_OFFSET;
+
+				ctx.beginPath();
+				ctx.moveTo(rotX, minY);
+				ctx.lineTo(rotX, rotY);
+				ctx.stroke();
+
 				ctx.fillRect(
-					hx - handleSize / 2,
-					hy - handleSize / 2,
+					rotX - handleSize / 2,
+					rotY - handleSize / 2,
 					handleSize,
 					handleSize,
 				);
 				ctx.strokeRect(
-					hx - handleSize / 2,
-					hy - handleSize / 2,
+					rotX - handleSize / 2,
+					rotY - handleSize / 2,
 					handleSize,
 					handleSize,
 				);
-			});
-
-			const rotX = (minX + maxX) / 2;
-			const rotY = minY - CONSTANTS.ROTATION_HANDLE_OFFSET;
-
-			ctx.beginPath();
-			ctx.moveTo(rotX, minY);
-			ctx.lineTo(rotX, rotY);
-			ctx.stroke();
-
-			ctx.fillRect(
-				rotX - handleSize / 2,
-				rotY - handleSize / 2,
-				handleSize,
-				handleSize,
-			);
-			ctx.strokeRect(
-				rotX - handleSize / 2,
-				rotY - handleSize / 2,
-				handleSize,
-				handleSize,
-			);
+			}
 		}
 
 		ctx.restore();
@@ -937,16 +1096,48 @@ export default function PresentationMarker() {
 		elements().forEach((el) => {
 			renderElement(ctx, rc, el, pIds.has(el.id));
 		});
+
+		const box = selectionBox();
+		if (box) {
+			const scrollY = window.scrollY;
+			ctx.save();
+			ctx.strokeStyle = "#00f2ff";
+			ctx.lineWidth = 1;
+			ctx.setLineDash([5, 5]);
+			ctx.fillStyle = "rgba(0, 242, 255, 0.1)";
+
+			const x = Math.min(box.start.x, box.end.x);
+			const y = Math.min(box.start.y, box.end.y) - scrollY;
+			const w = Math.abs(box.end.x - box.start.x);
+			const h = Math.abs(box.end.y - box.start.y);
+
+			ctx.fillRect(x, y, w, h);
+			ctx.strokeRect(x, y, w, h);
+			ctx.restore();
+		}
 	};
 
 	const undo = () => {
 		if (elements().length > 0) {
-			setElements(elements().slice(0, -1));
+			const newElements = elements().slice(0, -1);
+			setElements(newElements);
+			// validate selection
+			const newIds = new Set(newElements.map((e) => e.id));
+			const currentSelection = new Set(selectedElementIds());
+			let changed = false;
+			currentSelection.forEach((id) => {
+				if (!newIds.has(id)) {
+					currentSelection.delete(id);
+					changed = true;
+				}
+			});
+			if (changed) setSelectedElementIds(currentSelection);
 			redraw();
 		}
 	};
 	const clearCanvas = () => {
 		setElements([]);
+		setSelectedElementIds(new Set<string>());
 		redraw();
 	};
 
@@ -965,8 +1156,8 @@ export default function PresentationMarker() {
 				setEditingTextId(null);
 				setEditingTextPos(null);
 				setEditingTextValue("");
-			} else if (selectedElementId()) {
-				setSelectedElementId(null);
+			} else if (selectedElementIds().size > 0) {
+				setSelectedElementIds(new Set<string>());
 				setResizeHandle(null);
 				setResizeStartBounds(null);
 				redraw();
@@ -976,11 +1167,11 @@ export default function PresentationMarker() {
 			e.shiftKey &&
 			(e.key === "Delete" || e.key === "Backspace" || e.key === "Del")
 		) {
-			const id = selectedElementId();
-			if (id && !editingTextId()) {
+			const ids = selectedElementIds();
+			if (ids.size > 0 && !editingTextId()) {
 				e.preventDefault();
-				setElements(elements().filter((el) => el.id !== id));
-				setSelectedElementId(null);
+				setElements(elements().filter((el) => !ids.has(el.id)));
+				setSelectedElementIds(new Set<string>());
 				setResizeHandle(null);
 				setResizeStartBounds(null);
 				redraw();
