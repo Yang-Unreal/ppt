@@ -1273,7 +1273,7 @@ export default function PresentationMarker() {
 			}
 		}
 
-		if (isSelected) {
+		if (isSelected && resizeHandle() !== "rotate") {
 			ctx.setLineDash([5, 5]);
 			ctx.strokeStyle = "#3b82f6";
 			ctx.lineWidth = 2;
@@ -1365,7 +1365,7 @@ export default function PresentationMarker() {
 		});
 
 		// Draw group selection box and handles
-		if (selectedElementIds().size > 1) {
+		if (selectedElementIds().size > 1 && resizeHandle() !== "rotate") {
 			const bounds = getCommonBounds(selectedElementIds());
 			if (bounds) {
 				const scrollY = window.scrollY;
