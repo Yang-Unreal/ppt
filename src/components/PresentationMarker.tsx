@@ -762,22 +762,7 @@ export default function PresentationMarker() {
 						let scaleX = 1;
 						let scaleY = 1;
 
-						// Determine Anchor Point based on Handle
-						// The Anchor is the Fixed Point (opposite to handle)
-						let anchorX = 0;
-						let anchorY = 0;
-
-						if (handle.includes("w"))
-							anchorX = startBounds.maxX; // Moving West -> Anchor East
-						else if (handle.includes("e"))
-							anchorX = startBounds.minX; // Moving East -> Anchor West
-						else anchorX = (startBounds.minX + startBounds.maxX) / 2; // Center X
-
-						if (handle.includes("n"))
-							anchorY = startBounds.maxY; // Moving North -> Anchor South
-						else if (handle.includes("s"))
-							anchorY = startBounds.minY; // Moving South -> Anchor North
-						else anchorY = (startBounds.minY + startBounds.maxY) / 2; // Center Y
+						// Calculate content bounds change directly based on dx/dy
 
 						// Calculate Scale
 						// We project current mouse pos onto the axis relative to anchor
@@ -797,37 +782,39 @@ export default function PresentationMarker() {
 						if (handle.includes("s")) newBounds.maxY += dy;
 						if (handle.includes("n")) newBounds.minY += dy;
 
-						// Now derive scale from bounds change
-						const startWidth = startBounds.maxX - startBounds.minX;
-						const startHeight = startBounds.maxY - startBounds.minY;
-						const newWidth = newBounds.maxX - newBounds.minX;
-						const newHeight = newBounds.maxY - newBounds.minY;
+						// Calculate Content Dimensions (remove padding from the calculation)
+						const PAD = CONSTANTS.SELECTION_PADDING;
+						const startWidth = startBounds.maxX - startBounds.minX - 2 * PAD;
+						const startHeight = startBounds.maxY - startBounds.minY - 2 * PAD;
+						const newWidth = newBounds.maxX - newBounds.minX - 2 * PAD;
+						const newHeight = newBounds.maxY - newBounds.minY - 2 * PAD;
 
 						// Avoid division by zero
-						scaleX = startWidth === 0 ? 1 : newWidth / startWidth;
-						scaleY = startHeight === 0 ? 1 : newHeight / startHeight;
+						scaleX = startWidth <= 0 ? 1 : newWidth / startWidth;
+						scaleY = startHeight <= 0 ? 1 : newHeight / startHeight;
 
-						// If we flipped (width < 0), we need to handle it.
-						// But for simplicity, let's just clamp/allow negative if render supports it.
-						// Canvas rendering might not like negative width/height rects depending on impl.
-						// Our `renderElement` uses standard rect, likely fine or needs abs.
-						// But scaling math `(p - start) * scale` works fine with negative scale (flip).
+						// For groups, enforce fixed aspect ratio (Uniform Scaling) to prevent distortion
+						if (selectedElementIds().size > 1) {
+							const devX = Math.abs(scaleX - 1);
+							const devY = Math.abs(scaleY - 1);
+							const s = devX > devY ? scaleX : scaleY;
+							scaleX = s;
+							scaleY = s;
+						}
 
-						// IMPORTANT: The `origin` for scaling is the Anchor Point.
-						// `p_new = anchor + (p_old - anchor) * scale`
-						// But check the bounds logic again.
-						// If handle is 'e', anchor is `minX`. `newWidth = (maxX + dx) - minX`. `scale = newWidth/oldWidth`.
-						// `p_new = minX + (p_old - minX) * scale`. This is correct.
-						// If handle is 'w', anchor is `maxX`. `newWidth = maxX - (minX + dx)`.
-						// `scale = newWidth/oldWidth`.
-						// `p_new = maxX + (p_old - maxX) * scale`.
-						// Let's verify. If `p_old` was `minX`, term is `(minX - maxX)`.
-						// `(minX - maxX)` is `-width`.
-						// `maxX + (-width * scale)`.
-						// if `scale` is smaller (shrank from left), `width` is smaller.
-						// `maxX - smaller` -> point moves right. Correct.
+						// Determine Anchor Point (Content Edge)
+						let anchorX = 0;
+						let anchorY = 0;
 
-						// So we just need to use the correct `anchorX` and `anchorY` derived above.
+						if (handle.includes("w"))
+							anchorX = startBounds.maxX - PAD; // Moving West -> Anchor is East Content Edge
+						else if (handle.includes("e"))
+							anchorX = startBounds.minX + PAD; // Moving East -> Anchor is West Content Edge
+						else anchorX = (startBounds.minX + startBounds.maxX) / 2;
+
+						if (handle.includes("n")) anchorY = startBounds.maxY - PAD;
+						else if (handle.includes("s")) anchorY = startBounds.minY + PAD;
+						else anchorY = (startBounds.minY + startBounds.maxY) / 2;
 
 						setElements(
 							elements().map((el) => {
