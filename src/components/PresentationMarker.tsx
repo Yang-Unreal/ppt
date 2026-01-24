@@ -1,6 +1,13 @@
 import { getStroke } from "perfect-freehand";
 import rough from "roughjs";
-import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import {
+	createEffect,
+	createSignal,
+	For,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
 
 interface Point {
 	x: number;
@@ -37,6 +44,26 @@ export default function PresentationMarker() {
 	const [currentTool, setCurrentTool] = createSignal<ElementType>("marker");
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
 	const [elements, setElements] = createSignal<Element[]>([]);
+
+	onMount(() => {
+		const saved = localStorage.getItem("presentation_marker_elements");
+		if (saved) {
+			try {
+				setElements(JSON.parse(saved));
+				redraw();
+			} catch (e) {
+				console.error("Failed to parse saved elements", e);
+			}
+		}
+
+		createEffect(() => {
+			localStorage.setItem(
+				"presentation_marker_elements",
+				JSON.stringify(elements()),
+			);
+		});
+	});
+
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
 	const [selectedElementId, setSelectedElementId] = createSignal<string | null>(
 		null,
