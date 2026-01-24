@@ -860,68 +860,121 @@ export default function PresentationMarker() {
 
 						const isSingle = selectedElementIds().size === 1;
 
-						setElements(
-							elements().map((el) => {
-								if (selectedElementIds().has(el.id)) {
-									const state = dragInitialState.get(el.id);
-									if (!state) return el;
+						// PHASE 1: Apply Scaling
+						let nextElements = elements().map((el) => {
+							if (selectedElementIds().has(el.id)) {
+								const state = dragInitialState.get(el.id);
+								if (!state) return el;
 
-									let newPoints: Point[];
-									let newElementWidth = state.width;
+								let newPoints: Point[];
+								let newElementWidth = state.width;
 
-									if (el.type === "text") {
-										// Text scaling (origin = anchor)
-										const px = anchorX + (state.points[0].x - anchorX) * scaleX;
-										const py = anchorY + (state.points[0].y - anchorY) * scaleY;
-										newPoints = [{ x: px, y: py }];
+								if (el.type === "text") {
+									const px = anchorX + (state.points[0].x - anchorX) * scaleX;
+									const py = anchorY + (state.points[0].y - anchorY) * scaleY;
+									newPoints = [{ x: px, y: py }];
+									const avgScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
+									newElementWidth = state.width * avgScale;
+								} else {
+									newPoints = state.points.map((p) => ({
+										x: anchorX + (p.x - anchorX) * scaleX,
+										y: anchorY + (p.y - anchorY) * scaleY,
+									}));
+									const avgScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
+									newElementWidth = state.width * avgScale;
+								}
 
-										const avgScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
-										newElementWidth = state.width * avgScale;
-									} else {
-										// Shape/Marker scaling (origin = anchor)
-										newPoints = state.points.map((p) => ({
-											x: anchorX + (p.x - anchorX) * scaleX,
-											y: anchorY + (p.y - anchorY) * scaleY,
-										}));
-										const avgScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
-										newElementWidth = state.width * avgScale;
-									}
-
-									// 4. Drift Correction (Only for single elements where we track rotation)
-									if (isSingle) {
-										const newElBounds = getElementBounds({
-											...el,
-											points: newPoints,
-											width: newElementWidth,
-											angle: el.angle, // angle doesn't change during resize
-										} as Element);
-										const newCx = (newElBounds.minX + newElBounds.maxX) / 2;
-										const newCy = (newElBounds.minY + newElBounds.maxY) / 2;
-
-										const currentGlobalAnchor = rotatePoint(
-											{ x: anchorX, y: anchorY },
-											{ x: newCx, y: newCy },
-											el.angle,
-										);
-
-										const driftX = currentGlobalAnchor.x - globalFixedPoint.x;
-										const driftY = currentGlobalAnchor.y - globalFixedPoint.y;
-
-										newPoints = newPoints.map((p) => ({
-											x: p.x - driftX,
-											y: p.y - driftY,
-										}));
-									}
-
-									return {
+								// Single element rotation correction (keep this as it handles local rotation well)
+								if (isSingle) {
+									const newElBounds = getElementBounds({
 										...el,
 										points: newPoints,
-										width: Math.max(0.1, newElementWidth),
-									};
+										width: newElementWidth,
+										angle: el.angle,
+									} as Element);
+									const newCx = (newElBounds.minX + newElBounds.maxX) / 2;
+									const newCy = (newElBounds.minY + newElBounds.maxY) / 2;
+
+									const currentGlobalAnchor = rotatePoint(
+										{ x: anchorX, y: anchorY },
+										{ x: newCx, y: newCy },
+										el.angle,
+									);
+
+									const driftX = currentGlobalAnchor.x - globalFixedPoint.x;
+									const driftY = currentGlobalAnchor.y - globalFixedPoint.y;
+
+									newPoints = newPoints.map((p) => ({
+										x: p.x - driftX,
+										y: p.y - driftY,
+									}));
 								}
-								return el;
-							}),
-						);
+
+								return {
+									...el,
+									points: newPoints,
+									width: Math.max(0.1, newElementWidth),
+								};
+							}
+							return el;
+						});
+
+						// PHASE 2: Group Drift Correction
+						// If multiple elements, check if the group anchor drifted and correct purely by translation.
+						if (!isSingle && selectedElementIds().size > 1) {
+							// 1. Calculate new bounds of the group
+							let minX = Infinity,
+								maxX = -Infinity,
+								minY = Infinity,
+								maxY = -Infinity;
+							nextElements.forEach((el) => {
+								if (selectedElementIds().has(el.id)) {
+									const b = getRotatedBounds(el);
+									if (b.minX < minX) minX = b.minX;
+									if (b.maxX > maxX) maxX = b.maxX;
+									if (b.minY < minY) minY = b.minY;
+									if (b.maxY > maxY) maxY = b.maxY;
+								}
+							});
+
+							if (minX !== Infinity) {
+								// 2. Identify where the anchor IS now
+								let currentAnchorX = 0;
+								let currentAnchorY = 0;
+
+								// IMPORTANT: Anchor swap logic matches the setup logic
+								// If handle is 'w', fixed anchor was 'e' (maxX). So we check maxX.
+								if (handle.includes("w")) currentAnchorX = maxX - PAD;
+								else if (handle.includes("e")) currentAnchorX = minX + PAD;
+								else currentAnchorX = (minX + maxX) / 2;
+
+								if (handle.includes("n")) currentAnchorY = maxY - PAD;
+								else if (handle.includes("s")) currentAnchorY = minY + PAD;
+								else currentAnchorY = (minY + maxY) / 2;
+
+								// 3. Calculate Drift
+								const driftX = currentAnchorX - globalFixedPoint.x;
+								const driftY = currentAnchorY - globalFixedPoint.y;
+
+								// 4. Apply Correction
+								if (Math.abs(driftX) > 0.01 || Math.abs(driftY) > 0.01) {
+									nextElements = nextElements.map((el) => {
+										if (selectedElementIds().has(el.id)) {
+											return {
+												...el,
+												points: el.points.map((p) => ({
+													x: p.x - driftX,
+													y: p.y - driftY,
+												})),
+											};
+										}
+										return el;
+									});
+								}
+							}
+						}
+
+						setElements(nextElements);
 					}
 				} else {
 					// Moving single or multiple elements
