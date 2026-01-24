@@ -50,7 +50,16 @@ export default function PresentationMarker() {
 		if (saved) {
 			try {
 				setElements(JSON.parse(saved));
-				redraw();
+				// Explicitly wait for specific fonts to load
+				Promise.all([
+					document.fonts.load('20px "Excalifont"'),
+					document.fonts.load('20px "Xiaolai"'),
+				]).then(() => {
+					redraw();
+					// Backup redraw in case of race conditions or font swap timing
+					setTimeout(redraw, 100);
+					setTimeout(redraw, 500);
+				});
 			} catch (e) {
 				console.error("Failed to parse saved elements", e);
 			}
