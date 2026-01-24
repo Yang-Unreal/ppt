@@ -665,55 +665,6 @@ export default function PresentationMarker() {
 								if (selectedElementIds().has(el.id)) {
 									const state = dragInitialState.get(el.id);
 									if (state) {
-										// Rigid group rotation:
-										// 1. Rotate the element's position (center) around the group center.
-										// 2. Add the delta rotation to the element's own rotation.
-
-										// To effectively rotate points:
-										// For each point in the element, we can't just rotate it around group center
-										// because element points are local to the shape which might have its own rotation.
-										// Actually, our points ARE absolute coordinates.
-										// So, `rotatePoint(p, groupCenter, deltaAngle)` works perfect for preserving rigid structure.
-										// However, `el.angle` is also part of the transform.
-										// If we rotate the points, we are changing their positions.
-										// If we ALSO change `el.angle`, we might double-rotate if the points are defined relative to center...
-										// WAIT. `el.points` are absolute. `el.angle` rotates the drawing context around the element center.
-										// So if we have a rectangle at x,y with angle 0.
-										// We rotate group 90 deg.
-										// Rectangle moves to new position x',y'. Points are updated.
-										// AND rectangle should now be drawn with angle 90.
-										// The `rotatePoint` transform on points handles the orbital position change.
-										// But we ALSO need to rotate the element itself around its own center by the same delta.
-										// BUT: `rotatePoint` already moves the points.
-										// If we have a rectangle defined by 2 points (top-left, bottom-right).
-										// If we rotate these 2 points around a far group center, the shape formed by them might be skewed
-										// or just moved. A rectangle defined by 2 points is always axis-aligned in the data model (before `el.angle`).
-										// So we CANNOT just rotate the 2 defining points of an AABB shape (rect/ellipse) freely,
-										// because the resulting shape might not be an axis-aligned rectangle anymore.
-										//
-										// Correct approach for Rect/Ellipse/Text (defined by box/point + angle):
-										// 1. Calculate the NEW center of the element by rotating the OLD center around group center.
-										// 2. Update `el.angle += deltaAngle`.
-										// 3. Move the points such that the element center is at the new position.
-
-										// For Polyline/Marker (arbitrary points):
-										// We CAN just rotate all points around group center and add deltaAngle?
-										// No, marker drawing relies on points relative to... actually markers don't use `el.angle` usually?
-										// Looking at code: `renderElement` uses `ctx.rotate(el.angle)` for ALL types.
-										// So markers also have a local rotation.
-										// But markers have many points.
-										// Let's assume for Marker/Arrow we can just rotate all points around group center
-										// and NOT change `el.angle` (keep `el.angle` change 0)?
-										// Or Rotate points around group center AND change start state?
-										// If we rotate points around group center, the shape rotates.
-										// If we then apply `el.angle` (which rotates around element center), we are layering rotations.
-										//
-										// Let's stick to the "Rotate Center + Rotate Local" approach for all shapes.
-										// 1. Find element center (from state).
-										// 2. Rotate element center around group center -> New Center.
-										// 3. Offset raw points by (New Center - Old Center).
-										// 4. `el.angle = state.angle + deltaAngle`.
-
 										const bounds = getElementBounds({
 											...el,
 											points: state.points,
@@ -1626,11 +1577,11 @@ export default function PresentationMarker() {
 				/>
 			</Show>
 
-			<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-9000 flex items-center gap-4 bg-zinc-900/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-2xl">
+			<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-9000 flex items-center gap-4 bg-[#111111]/90 backdrop-blur-2xl border border-white/10 p-2 rounded-2xl shadow-[0_0_30px_-10px_rgba(0,0,0,0.8)]">
 				<button
 					type="button"
 					onClick={() => setIsDrawingMode(!isDrawingMode())}
-					class={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${isDrawingMode() ? "bg-cyan-500 text-black" : "text-zinc-400 hover:text-white"}`}
+					class={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${isDrawingMode() ? "bg-[#14F195] text-black shadow-[0_0_20px_rgba(20,241,149,0.3)]" : "text-zinc-400 hover:text-white"}`}
 				>
 					{isDrawingMode() ? "Mode: Drawing" : "Mode: Viewing"}
 				</button>
