@@ -783,27 +783,9 @@ export default function PresentationMarker() {
 						if (handle.includes("s")) newBounds.maxY += dy;
 						if (handle.includes("n")) newBounds.minY += dy;
 
-						// Calculate Content Dimensions (remove padding from the calculation)
-						const PAD = CONSTANTS.SELECTION_PADDING;
-						const startWidth = startBounds.maxX - startBounds.minX - 2 * PAD;
-						const startHeight = startBounds.maxY - startBounds.minY - 2 * PAD;
-						const newWidth = newBounds.maxX - newBounds.minX - 2 * PAD;
-						const newHeight = newBounds.maxY - newBounds.minY - 2 * PAD;
-
-						// Avoid division by zero
-						let scaleX = startWidth <= 0 ? 1 : newWidth / startWidth;
-						let scaleY = startHeight <= 0 ? 1 : newHeight / startHeight;
-
-						// For groups, enforce fixed aspect ratio (Uniform Scaling) to prevent distortion
-						if (selectedElementIds().size > 1) {
-							const devX = Math.abs(scaleX - 1);
-							const devY = Math.abs(scaleY - 1);
-							const s = devX > devY ? scaleX : scaleY;
-							scaleX = s;
-							scaleY = s;
-						}
-
 						// Determine Anchor Point (Content Edge)
+						// We need this early for vector projection
+						const PAD = CONSTANTS.SELECTION_PADDING;
 						let anchorX = 0;
 						let anchorY = 0;
 
@@ -816,6 +798,58 @@ export default function PresentationMarker() {
 						if (handle.includes("n")) anchorY = startBounds.maxY - PAD;
 						else if (handle.includes("s")) anchorY = startBounds.minY + PAD;
 						else anchorY = (startBounds.minY + startBounds.maxY) / 2;
+
+						const startWidth = startBounds.maxX - startBounds.minX - 2 * PAD;
+						const startHeight = startBounds.maxY - startBounds.minY - 2 * PAD;
+						const newWidth = newBounds.maxX - newBounds.minX - 2 * PAD;
+						const newHeight = newBounds.maxY - newBounds.minY - 2 * PAD;
+
+						// Avoid division by zero
+						let scaleX = startWidth <= 0 ? 1 : newWidth / startWidth;
+						let scaleY = startHeight <= 0 ? 1 : newHeight / startHeight;
+
+						// For groups, enforce fixed aspect ratio (Uniform Scaling) to prevent distortion
+						if (selectedElementIds().size > 1) {
+							// For Corner Handles: Use Vector Projection to avoid jitter
+							if (handle.length > 1) {
+								// Start Handle Position (Content Coords)
+								// If anchor is minX, handle was maxX.
+								// If anchor is centered, handle is centered (but this is corner, so not centered)
+								let startHandleX = 0;
+								let startHandleY = 0;
+
+								if (handle.includes("e")) startHandleX = startBounds.maxX - PAD;
+								else startHandleX = startBounds.minX + PAD;
+
+								if (handle.includes("s")) startHandleY = startBounds.maxY - PAD;
+								else startHandleY = startBounds.minY + PAD;
+
+								// Vector V (Anchor -> StartHandle)
+								const vx = startHandleX - anchorX;
+								const vy = startHandleY - anchorY;
+
+								// Vector M (Anchor -> CurrentHandle)
+								// CurrentHandle = StartHandle + (dx, dy)
+								const mx = vx + dx;
+								const my = vy + dy;
+
+								// Projection scalar = (M . V) / (V . V)
+								const vMagSq = vx * vx + vy * vy;
+								if (vMagSq > 0) {
+									const dot = mx * vx + my * vy;
+									const scale = dot / vMagSq;
+									scaleX = scale;
+									scaleY = scale;
+								}
+							} else {
+								// Side Handles: Dominant axis logic is fine
+								const devX = Math.abs(scaleX - 1);
+								const devY = Math.abs(scaleY - 1);
+								const s = devX > devY ? scaleX : scaleY;
+								scaleX = s;
+								scaleY = s;
+							}
+						}
 
 						// 3. Calculate Global Fixed Point (Where the anchor IS currently on screen)
 						const globalFixedPoint = rotatePoint(
