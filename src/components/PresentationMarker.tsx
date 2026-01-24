@@ -94,7 +94,6 @@ export default function PresentationMarker() {
 		minY: number;
 		maxY: number;
 	} | null>(null);
-	const [resizeInitialWidth, setResizeInitialWidth] = createSignal(0);
 	const [dragStartAngle, setDragStartAngle] = createSignal(0);
 
 	let activeElement: Element | null = null;
@@ -103,12 +102,6 @@ export default function PresentationMarker() {
 		string,
 		{ points: Point[]; angle: number; width: number }
 	> = new Map();
-	let dragStartGroupBounds: {
-		minX: number;
-		maxX: number;
-		minY: number;
-		maxY: number;
-	} | null = null;
 	let potentialClickId: string | null = null;
 
 	const CONSTANTS = {
@@ -520,11 +513,8 @@ export default function PresentationMarker() {
 						// Group bounds
 						const commonBounds = getCommonBounds(selectedElementIds());
 						setResizeStartBounds(commonBounds);
-						dragStartGroupBounds = commonBounds;
 						setDragStartAngle(0);
 					}
-
-					setResizeInitialWidth(0); // Not used for group, but keep for single safety
 
 					dragInitialState.clear();
 					elements().forEach((el) => {
@@ -809,7 +799,16 @@ export default function PresentationMarker() {
 						let scaleY = startHeight <= 0 ? 1 : newHeight / startHeight;
 
 						// For groups, enforce fixed aspect ratio (Uniform Scaling) to prevent distortion
-						if (selectedElementIds().size > 1) {
+						// For TEXT, also enforce fixed aspect ratio using Vector Projection to prevent jitter
+						const isGroup = selectedElementIds().size > 1;
+						let isText = false;
+						if (selectedElementIds().size === 1) {
+							const id = Array.from(selectedElementIds())[0];
+							const el = elements().find((e) => e.id === id);
+							if (el && el.type === "text") isText = true;
+						}
+
+						if (isGroup || isText) {
 							// For Corner Handles: Use Vector Projection to avoid jitter
 							if (handle.length > 1) {
 								// Start Handle Position (Content Coords)
@@ -873,8 +872,10 @@ export default function PresentationMarker() {
 									const px = anchorX + (state.points[0].x - anchorX) * scaleX;
 									const py = anchorY + (state.points[0].y - anchorY) * scaleY;
 									newPoints = [{ x: px, y: py }];
-									const avgScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
-									newElementWidth = state.width * avgScale;
+									const devX = Math.abs(scaleX - 1);
+									const devY = Math.abs(scaleY - 1);
+									const s = devX > devY ? scaleX : scaleY;
+									newElementWidth = state.width * s;
 								} else {
 									newPoints = state.points.map((p) => ({
 										x: anchorX + (p.x - anchorX) * scaleX,
