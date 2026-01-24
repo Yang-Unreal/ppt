@@ -512,16 +512,19 @@ export default function PresentationMarker() {
 					if (selectedElementIds().size === 1) {
 						const selectedId = Array.from(selectedElementIds())[0];
 						const el = elements().find((e) => e.id === selectedId);
-						if (el) setResizeStartBounds(getElementBounds(el));
+						if (el) {
+							setResizeStartBounds(getElementBounds(el));
+							setDragStartAngle(el.angle);
+						}
 					} else {
 						// Group bounds
 						const commonBounds = getCommonBounds(selectedElementIds());
 						setResizeStartBounds(commonBounds);
 						dragStartGroupBounds = commonBounds;
+						setDragStartAngle(0);
 					}
 
 					setResizeInitialWidth(0); // Not used for group, but keep for single safety
-					setDragStartAngle(0); // Not used for group directly
 
 					dragInitialState.clear();
 					elements().forEach((el) => {
@@ -759,22 +762,20 @@ export default function PresentationMarker() {
 					const startBounds = resizeStartBounds();
 
 					if (handle && startBounds) {
-						let scaleX = 1;
-						let scaleY = 1;
+						// 1. Calculate Center of Rotation for the resizing box
+						const cx = (startBounds.minX + startBounds.maxX) / 2;
+						const cy = (startBounds.minY + startBounds.maxY) / 2;
+						const angle = dragStartAngle();
 
-						// Calculate content bounds change directly based on dx/dy
-
-						// Calculate Scale
-						// We project current mouse pos onto the axis relative to anchor
-						// Or simply: Calculate new width/height based on mouse delta and handle direction
-
-						// Let's use the bounds-based approach but respecting anchor.
-						// Current approach: `newBounds.maxX += dx` etc.
-						// This correctly expands/shrinks the bounds box.
-						// We just need to ensure the math follows the fixed point.
-
-						const dx = pos.x - dragStartPos.x;
-						const dy = pos.y - dragStartPos.y;
+						// 2. Project mouse delta into local space
+						const localPos = rotatePoint(pos, { x: cx, y: cy }, -angle);
+						const localStart = rotatePoint(
+							dragStartPos,
+							{ x: cx, y: cy },
+							-angle,
+						);
+						const dx = localPos.x - localStart.x;
+						const dy = localPos.y - localStart.y;
 
 						const newBounds = { ...startBounds };
 						if (handle.includes("e")) newBounds.maxX += dx;
@@ -790,8 +791,8 @@ export default function PresentationMarker() {
 						const newHeight = newBounds.maxY - newBounds.minY - 2 * PAD;
 
 						// Avoid division by zero
-						scaleX = startWidth <= 0 ? 1 : newWidth / startWidth;
-						scaleY = startHeight <= 0 ? 1 : newHeight / startHeight;
+						let scaleX = startWidth <= 0 ? 1 : newWidth / startWidth;
+						let scaleY = startHeight <= 0 ? 1 : newHeight / startHeight;
 
 						// For groups, enforce fixed aspect ratio (Uniform Scaling) to prevent distortion
 						if (selectedElementIds().size > 1) {
@@ -815,6 +816,15 @@ export default function PresentationMarker() {
 						if (handle.includes("n")) anchorY = startBounds.maxY - PAD;
 						else if (handle.includes("s")) anchorY = startBounds.minY + PAD;
 						else anchorY = (startBounds.minY + startBounds.maxY) / 2;
+
+						// 3. Calculate Global Fixed Point (Where the anchor IS currently on screen)
+						const globalFixedPoint = rotatePoint(
+							{ x: anchorX, y: anchorY },
+							{ x: cx, y: cy },
+							angle,
+						);
+
+						const isSingle = selectedElementIds().size === 1;
 
 						setElements(
 							elements().map((el) => {
@@ -842,6 +852,33 @@ export default function PresentationMarker() {
 										const avgScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
 										newElementWidth = state.width * avgScale;
 									}
+
+									// 4. Drift Correction (Only for single elements where we track rotation)
+									if (isSingle) {
+										const newElBounds = getElementBounds({
+											...el,
+											points: newPoints,
+											width: newElementWidth,
+											angle: el.angle, // angle doesn't change during resize
+										} as Element);
+										const newCx = (newElBounds.minX + newElBounds.maxX) / 2;
+										const newCy = (newElBounds.minY + newElBounds.maxY) / 2;
+
+										const currentGlobalAnchor = rotatePoint(
+											{ x: anchorX, y: anchorY },
+											{ x: newCx, y: newCy },
+											el.angle,
+										);
+
+										const driftX = currentGlobalAnchor.x - globalFixedPoint.x;
+										const driftY = currentGlobalAnchor.y - globalFixedPoint.y;
+
+										newPoints = newPoints.map((p) => ({
+											x: p.x - driftX,
+											y: p.y - driftY,
+										}));
+									}
+
 									return {
 										...el,
 										points: newPoints,
