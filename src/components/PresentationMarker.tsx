@@ -40,6 +40,8 @@ interface Element {
 	fillStyle?: "solid" | "hachure" | "cross-hatch" | "dots";
 	strokeWidth?: number; // Alias for width to be more explicit, but we use width
 	opacity?: number;
+	startBinding?: { elementId: string; focus: number; gap: number };
+	endBinding?: { elementId: string; focus: number; gap: number };
 }
 
 const FILL_STYLES = ["solid", "hachure", "cross-hatch", "dots"] as const;
@@ -65,6 +67,9 @@ export default function PresentationMarker() {
 	const [currentOpacity, setCurrentOpacity] = createSignal(100);
 
 	const [elements, setElements] = createSignal<Element[]>([]);
+	const [previewElements, setPreviewElements] = createSignal<Element[]>([]);
+	const [lastArrowKey, setLastArrowKey] = createSignal<string | null>(null);
+	const [arrowKeyPressCount, setArrowKeyPressCount] = createSignal<number>(0);
 
 	const strokeStyles: StrokeStyle[] = ["solid", "dashed", "dotted"];
 
@@ -376,6 +381,126 @@ export default function PresentationMarker() {
 		};
 	};
 
+	const intersectElementBorder = (el: Element, pFrom: Point): Point => {
+		const bounds = getElementBounds(el);
+		const cx = (bounds.minX + bounds.maxX) / 2;
+		const cy = (bounds.minY + bounds.maxY) / 2;
+
+		// Transform pFrom into element's local coordinate system (unrotated)
+		const localPFrom = rotatePoint(pFrom, { x: cx, y: cy }, -el.angle);
+
+		// Calculate intersection with the AABB
+		const dx = localPFrom.x - cx;
+		const dy = localPFrom.y - cy;
+		if (dx === 0 && dy === 0) return { x: cx, y: cy };
+
+		let localIntersect = { x: cx, y: cy };
+
+		if (el.type === "ellipse") {
+			const rx = (bounds.maxX - bounds.minX) / 2;
+			const ry = (bounds.maxY - bounds.minY) / 2;
+			if (rx > 0 && ry > 0) {
+				// Ellipse equation: (x/rx)^2 + (y/ry)^2 = 1
+				// Ray: x = t*dx, y = t*dy
+				// t^2 * ((dx/rx)^2 + (dy/ry)^2) = 1
+				const t = 1 / Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
+				localIntersect = {
+					x: cx + dx * t,
+					y: cy + dy * t,
+				};
+			}
+		} else {
+			// Rectangle AABB intersection (default)
+			const halfW = (bounds.maxX - bounds.minX) / 2;
+			const halfH = (bounds.maxY - bounds.minY) / 2;
+
+			let t = 1;
+			if (halfW > 0) {
+				const tx = halfW / Math.abs(dx);
+				if (tx < t) t = tx;
+			}
+			if (halfH > 0) {
+				const ty = halfH / Math.abs(dy);
+				if (ty < t) t = ty;
+			}
+
+			localIntersect = {
+				x: cx + dx * t,
+				y: cy + dy * t,
+			};
+		}
+
+		// Transform back to global coordinates
+		return rotatePoint(localIntersect, { x: cx, y: cy }, el.angle);
+	};
+
+	const updateBoundArrows = (currentElements: Element[]) => {
+		return currentElements.map((el) => {
+			if (el.type !== "arrow") return el;
+
+			const newPoints = [...el.points];
+			let changed = false;
+
+			if (el.startBinding) {
+				const target = currentElements.find(
+					(e) => e.id === el.startBinding?.elementId,
+				);
+				if (target) {
+					const pNext = el.points[1];
+					const pTarget = intersectElementBorder(target, pNext);
+					if (
+						Math.abs(newPoints[0].x - pTarget.x) > 0.1 ||
+						Math.abs(newPoints[0].y - pTarget.y) > 0.1
+					) {
+						newPoints[0] = pTarget;
+						// Keep orthogonal if 4 points
+						if (newPoints.length === 4) {
+							const dx = Math.abs(newPoints[1].x - newPoints[0].x);
+							const dy = Math.abs(newPoints[1].y - newPoints[0].y);
+							if (dx > dy) newPoints[1].y = newPoints[0].y;
+							else newPoints[1].x = newPoints[0].x;
+						}
+						changed = true;
+					}
+				}
+			}
+
+			if (el.endBinding) {
+				const target = currentElements.find(
+					(e) => e.id === el.endBinding?.elementId,
+				);
+				if (target) {
+					const lastIdx = newPoints.length - 1;
+					const pPrev = el.points[lastIdx - 1];
+					const pTarget = intersectElementBorder(target, pPrev);
+					if (
+						Math.abs(newPoints[lastIdx].x - pTarget.x) > 0.1 ||
+						Math.abs(newPoints[lastIdx].y - pTarget.y) > 0.1
+					) {
+						newPoints[lastIdx] = pTarget;
+						// Keep orthogonal if 4 points
+						if (newPoints.length === 4) {
+							const dx = Math.abs(
+								newPoints[lastIdx].x - newPoints[lastIdx - 1].x,
+							);
+							const dy = Math.abs(
+								newPoints[lastIdx].y - newPoints[lastIdx - 1].y,
+							);
+							if (dx > dy) newPoints[lastIdx - 1].y = newPoints[lastIdx].y;
+							else newPoints[lastIdx - 1].x = newPoints[lastIdx].x;
+						}
+						changed = true;
+					}
+				}
+			}
+
+			if (changed) {
+				return { ...el, points: newPoints };
+			}
+			return el;
+		});
+	};
+
 	const getCommonBounds = (selectedIds: Set<string>) => {
 		let minX = Infinity;
 		let maxX = -Infinity;
@@ -614,10 +739,32 @@ export default function PresentationMarker() {
 			setIsCurrentlyDrawing(false);
 		} else {
 			setSelectedElementIds(new Set<string>());
+			const startId = hitTest(pos);
+			const initialStartBinding =
+				currentTool() === "arrow" && startId
+					? { elementId: startId, focus: 0, gap: 0 }
+					: undefined;
+
+			const startPos = pos;
+			if (initialStartBinding) {
+				const target = elements().find((e) => e.id === startId);
+				if (target) {
+					// For start point, we don't have a "target" yet (end point), so just snap to closest point or center?
+					// Usually arrows start from border.
+					// Let's assume user clicks on border.
+					// Or just snap to border closest to click.
+					// intersectElementBorder needs a "from" point.
+					// If we are inside, we can cast ray out?
+					// Or just use the click position but register the binding.
+					// Later when end point moves, start point will adjust.
+					// For now, let's keep pos but register binding.
+				}
+			}
+
 			activeElement = {
 				id: Math.random().toString(36).substr(2, 9),
 				type: currentTool(),
-				points: [pos, pos],
+				points: [startPos, startPos],
 				color: currentColor(),
 				width: currentWidth(),
 				seed: Math.floor(Math.random() * 2 ** 31),
@@ -627,6 +774,7 @@ export default function PresentationMarker() {
 				backgroundColor: currentBackgroundColor(),
 				fillStyle: currentFillStyle(),
 				opacity: currentOpacity(),
+				startBinding: initialStartBinding,
 			};
 		}
 	};
@@ -954,7 +1102,7 @@ export default function PresentationMarker() {
 							}
 						}
 
-						setElements(nextElements);
+						setElements(updateBoundArrows(nextElements));
 					}
 				} else {
 					// Moving single or multiple elements
@@ -970,23 +1118,22 @@ export default function PresentationMarker() {
 
 					const dx = pos.x - dragStartPos.x;
 					const dy = pos.y - dragStartPos.y;
-					setElements(
-						elements().map((el) => {
-							if (selectedElementIds().has(el.id)) {
-								const state = dragInitialState.get(el.id);
-								if (state) {
-									return {
-										...el,
-										points: state.points.map((p) => ({
-											x: p.x + dx,
-											y: p.y + dy,
-										})),
-									};
-								}
+					const movedElements = elements().map((el) => {
+						if (selectedElementIds().has(el.id)) {
+							const state = dragInitialState.get(el.id);
+							if (state) {
+								return {
+									...el,
+									points: state.points.map((p) => ({
+										x: p.x + dx,
+										y: p.y + dy,
+									})),
+								};
 							}
-							return el;
-						}),
-					);
+						}
+						return el;
+					});
+					setElements(updateBoundArrows(movedElements));
 				}
 				redraw();
 			}
@@ -995,6 +1142,27 @@ export default function PresentationMarker() {
 		} else if (activeElement) {
 			if (activeElement.type === "marker") {
 				activeElement.points.push(pos);
+			} else if (activeElement.type === "arrow") {
+				// While drawing arrow, check for binding
+				const hitId = hitTest(pos);
+				if (hitId && hitId !== activeElement.id) {
+					// We are over a shape. Simple "end binding" logic.
+					// We only bind the END point while drawing.
+					// What about start point? Usually start point binding happens on MouseDown.
+					activeElement.endBinding = { elementId: hitId, focus: 0, gap: 0 };
+					// Snap to border
+					const targetEl = elements().find((e) => e.id === hitId);
+					if (targetEl) {
+						const pFrom = activeElement.points[0];
+						const snapped = intersectElementBorder(targetEl, pFrom);
+						activeElement.points[1] = snapped;
+					} else {
+						activeElement.points[1] = pos;
+					}
+				} else {
+					activeElement.endBinding = undefined;
+					activeElement.points[1] = pos;
+				}
 			} else {
 				activeElement.points[1] = pos;
 			}
@@ -1254,21 +1422,26 @@ export default function PresentationMarker() {
 				const ch = Math.abs(y2 - y1);
 				rc.ellipse((p1.x + p2.x) / 2, (y1 + y2) / 2, cw, ch, options);
 			} else if (el.type === "arrow") {
-				rc.line(p1.x, y1, p2.x, y2, options);
-				const angle = Math.atan2(y2 - y1, p2.x - p1.x);
+				const pts = el.points.map(
+					(p) => [p.x, p.y - scrollY] as [number, number],
+				);
+				rc.linearPath(pts, options);
+				const last = el.points[el.points.length - 1];
+				const prev = el.points[el.points.length - 2];
+				const angle = Math.atan2(last.y - prev.y, last.x - prev.x);
 				const h = 15;
 				rc.line(
-					p2.x,
-					y2,
-					p2.x - h * Math.cos(angle - Math.PI / 6),
-					y2 - h * Math.sin(angle - Math.PI / 6),
+					last.x,
+					last.y - scrollY,
+					last.x - h * Math.cos(angle - Math.PI / 6),
+					last.y - scrollY - h * Math.sin(angle - Math.PI / 6),
 					options,
 				);
 				rc.line(
-					p2.x,
-					y2,
-					p2.x - h * Math.cos(angle + Math.PI / 6),
-					y2 - h * Math.sin(angle + Math.PI / 6),
+					last.x,
+					last.y - scrollY,
+					last.x - h * Math.cos(angle + Math.PI / 6),
+					last.y - scrollY - h * Math.sin(angle + Math.PI / 6),
 					options,
 				);
 			}
@@ -1363,6 +1536,9 @@ export default function PresentationMarker() {
 		const pIds = pendingDeletionIds();
 		elements().forEach((el) => {
 			renderElement(ctx, rc, el, pIds.has(el.id));
+		});
+		previewElements().forEach((el) => {
+			renderElement(ctx, rc, el, false);
 		});
 
 		// Draw group selection box and handles
@@ -1482,7 +1658,6 @@ export default function PresentationMarker() {
 		}
 		if (e.key === "Enter" && e.ctrlKey && editingTextId()) {
 			e.preventDefault();
-			// commitText now handles tool switching, no need to duplicate logic here
 			commitText();
 		}
 		if (e.key === "Escape") {
@@ -1490,13 +1665,171 @@ export default function PresentationMarker() {
 				setEditingTextId(null);
 				setEditingTextPos(null);
 				setEditingTextValue("");
-			} else if (selectedElementIds().size > 0) {
-				setSelectedElementIds(new Set<string>());
-				setResizeHandle(null);
-				setResizeStartBounds(null);
+			} else {
+				setPreviewElements([]);
+				setLastArrowKey(null);
+				setArrowKeyPressCount(0);
+				if (selectedElementIds().size > 0) {
+					setSelectedElementIds(new Set<string>());
+					setResizeHandle(null);
+					setResizeStartBounds(null);
+				}
 				redraw();
 			}
 		}
+		if (
+			e.ctrlKey &&
+			(e.key === "ArrowUp" ||
+				e.key === "ArrowDown" ||
+				e.key === "ArrowLeft" ||
+				e.key === "ArrowRight")
+		) {
+			if (selectedElementIds().size === 1) {
+				const id = Array.from(selectedElementIds())[0];
+				const el = elements().find((e) => e.id === id);
+				if (el && ["rectangle", "ellipse", "diamond"].includes(el.type)) {
+					e.preventDefault();
+
+					const currentCount =
+						e.key === lastArrowKey() ? arrowKeyPressCount() + 1 : 1;
+					setLastArrowKey(e.key);
+					setArrowKeyPressCount(currentCount);
+
+					const GAP = 100;
+					const bounds = getElementBounds(el);
+					const width = bounds.maxX - bounds.minX;
+					const height = bounds.maxY - bounds.minY;
+
+					let baseDX = 0;
+					let baseDY = 0;
+					if (e.key === "ArrowRight") baseDX = width + GAP;
+					if (e.key === "ArrowLeft") baseDX = -(width + GAP);
+					if (e.key === "ArrowDown") baseDY = height + GAP;
+					if (e.key === "ArrowUp") baseDY = -(height + GAP);
+
+					const newPreviews: Element[] = [];
+					const sourceCenter = {
+						x: (bounds.minX + bounds.maxX) / 2,
+						y: (bounds.minY + bounds.maxY) / 2,
+					};
+
+					const splitGap = GAP / 2;
+					let splitX = sourceCenter.x;
+					let splitY = sourceCenter.y;
+					if (e.key === "ArrowRight") splitX = bounds.maxX + splitGap;
+					if (e.key === "ArrowLeft") splitX = bounds.minX - splitGap;
+					if (e.key === "ArrowDown") splitY = bounds.maxY + splitGap;
+					if (e.key === "ArrowUp") splitY = bounds.minY - splitGap;
+
+					for (let i = 0; i < currentCount; i++) {
+						let offsetDX = 0;
+						let offsetDY = 0;
+						const stepSize =
+							e.key === "ArrowRight" || e.key === "ArrowLeft"
+								? height + 20
+								: width + 20;
+						const step = (i - (currentCount - 1) / 2) * stepSize;
+
+						if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+							offsetDY = step;
+						} else {
+							offsetDX = step;
+						}
+
+						const dx = baseDX + offsetDX;
+						const dy = baseDY + offsetDY;
+
+						const newPoints = el.points.map((p) => ({
+							x: p.x + dx,
+							y: p.y + dy,
+						}));
+
+						const newEl: Element = {
+							...el,
+							id: Math.random().toString(36).substr(2, 9),
+							points: newPoints,
+							seed: Math.floor(Math.random() * 2 ** 31),
+							opacity: 50,
+						};
+
+						const newElBounds = getElementBounds(newEl);
+						const targetCenter = {
+							x: (newElBounds.minX + newElBounds.maxX) / 2,
+							y: (newElBounds.minY + newElBounds.maxY) / 2,
+						};
+
+						const arrowStart = intersectElementBorder(el, {
+							x:
+								e.key === "ArrowRight"
+									? bounds.maxX + 1
+									: e.key === "ArrowLeft"
+										? bounds.minX - 1
+										: sourceCenter.x,
+							y:
+								e.key === "ArrowDown"
+									? bounds.maxY + 1
+									: e.key === "ArrowUp"
+										? bounds.minY - 1
+										: sourceCenter.y,
+						});
+						const arrowEnd = intersectElementBorder(newEl, {
+							x:
+								e.key === "ArrowRight"
+									? newElBounds.minX - 1
+									: e.key === "ArrowLeft"
+										? newElBounds.maxX + 1
+										: targetCenter.x,
+							y:
+								e.key === "ArrowDown"
+									? newElBounds.minY - 1
+									: e.key === "ArrowUp"
+										? newElBounds.maxY + 1
+										: targetCenter.y,
+						});
+
+						let arrowPoints: Point[] = [arrowStart, arrowEnd];
+						if (currentCount > 1) {
+							if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+								arrowPoints = [
+									arrowStart,
+									{ x: splitX, y: arrowStart.y },
+									{ x: splitX, y: arrowEnd.y },
+									arrowEnd,
+								];
+							} else {
+								arrowPoints = [
+									arrowStart,
+									{ x: arrowStart.x, y: splitY },
+									{ x: arrowEnd.x, y: splitY },
+									arrowEnd,
+								];
+							}
+						}
+
+						const arrowEl: Element = {
+							id: Math.random().toString(36).substr(2, 9),
+							type: "arrow",
+							points: arrowPoints,
+							color: el.color,
+							width: 2,
+							seed: Math.floor(Math.random() * 2 ** 31),
+							angle: 0,
+							strokeStyle: "solid",
+							roughness: 1,
+							opacity: 50,
+							startBinding: { elementId: el.id, focus: 0, gap: 0 },
+							endBinding: { elementId: newEl.id, focus: 0, gap: 0 },
+						};
+
+						newPreviews.push(newEl, arrowEl);
+					}
+
+					setPreviewElements(newPreviews);
+					redraw();
+				}
+			}
+		}
+
 		if (
 			e.shiftKey &&
 			(e.key === "Delete" || e.key === "Backspace" || e.key === "Del")
@@ -1513,15 +1846,42 @@ export default function PresentationMarker() {
 		}
 	};
 
+	const handleKeyUp = (e: KeyboardEvent) => {
+		if (e.key === "Control" || e.key === "Meta") {
+			if (previewElements().length > 0) {
+				const committed = previewElements().map((el) => ({
+					...el,
+					opacity: 100,
+				}));
+				setElements([...elements(), ...committed]);
+
+				const newNodeIds = committed
+					.filter((el) => el.type !== "arrow")
+					.map((el) => el.id);
+
+				if (newNodeIds.length > 0) {
+					setSelectedElementIds(new Set([newNodeIds[newNodeIds.length - 1]]));
+				}
+
+				setPreviewElements([]);
+				setLastArrowKey(null);
+				setArrowKeyPressCount(0);
+				redraw();
+			}
+		}
+	};
+
 	onMount(() => {
 		window.addEventListener("resize", handleResize);
 		window.addEventListener("scroll", redraw);
 		window.addEventListener("keydown", handleKeyDown);
+		window.addEventListener("keyup", handleKeyUp);
 		handleResize();
 		onCleanup(() => {
 			window.removeEventListener("resize", handleResize);
 			window.removeEventListener("scroll", redraw);
 			window.removeEventListener("keydown", handleKeyDown);
+			window.removeEventListener("keyup", handleKeyUp);
 		});
 	});
 

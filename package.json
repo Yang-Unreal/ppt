@@ -5,7 +5,8 @@
 		"dev": "vinxi dev",
 		"build": "vinxi build",
 		"start": "vinxi start",
-		"version": "vinxi version"
+		"version": "vinxi version",
+		"biome": "biome check"
 	},
 	"dependencies": {
 		"@excalidraw/excalidraw": "^0.18.0",
@@ -29,6 +30,7 @@
 		"node": ">=22"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.3.12",
 		"@tailwindcss/postcss": "^4.1.18",
 		"postcss": "^8.5.6"
 	}
