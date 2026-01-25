@@ -1219,21 +1219,29 @@ export default function PresentationMarker() {
 		setEditingTextValue("");
 	};
 
-	const handleDoubleClick = () => {
+	const handleDoubleClick = (e: MouseEvent) => {
 		if (!isDrawingMode() || currentTool() !== "select") return;
 
 		// only edit if exactly one element is selected
-		if (selectedElementIds().size !== 1) return;
+		if (selectedElementIds().size === 1) {
+			const selectedId = Array.from(selectedElementIds())[0];
+			if (selectedId) {
+				const element = elements().find((el) => el.id === selectedId);
+				if (element && element.type === "text" && element.text) {
+					setEditingTextId(element.id);
+					setEditingTextPos(element.points[0]);
+					setEditingTextValue(element.text);
+					return;
+				}
+			}
+		}
 
-		const selectedId = Array.from(selectedElementIds())[0];
-		if (!selectedId) return;
-
-		const element = elements().find((el) => el.id === selectedId);
-		if (!element || element.type !== "text" || !element.text) return;
-
-		setEditingTextId(element.id);
-		setEditingTextPos(element.points[0]);
-		setEditingTextValue(element.text);
+		const pos = getPos(e);
+		setCurrentTool("text");
+		const id = Math.random().toString(36).substr(2, 9);
+		setEditingTextId(id);
+		setEditingTextValue("");
+		setEditingTextPos(pos);
 	};
 
 	const stopDrawing = () => {
