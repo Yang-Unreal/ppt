@@ -1601,7 +1601,7 @@ export default function PresentationMarker() {
 				<button
 					type="button"
 					onClick={() => setIsDrawingMode(!isDrawingMode())}
-					class={`px-4 py-2 text-xs font-bold tracking-widest uppercase transition-all ${isDrawingMode() ? "bg-white text-black" : "text-zinc-600 hover:text-white"}`}
+					class={`px-4 py-2 text-xs font-bold tracking-widest uppercase ${isDrawingMode() ? "bg-black text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-white"}`}
 				>
 					{isDrawingMode() ? "Mode: Drawing" : "Mode: Viewing"}
 				</button>
