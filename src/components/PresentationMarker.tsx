@@ -23,6 +23,8 @@ type ElementType =
 	| "arrow"
 	| "text";
 
+type StrokeStyle = "solid" | "dashed" | "dotted";
+
 interface Element {
 	id: string;
 	type: ElementType;
@@ -32,6 +34,10 @@ interface Element {
 	seed: number;
 	text?: string;
 	angle: number;
+	strokeStyle?: StrokeStyle;
+	roughness?: number;
+	backgroundColor?: string;
+	fillStyle?: "solid" | "hachure";
 }
 
 export default function PresentationMarker() {
@@ -43,7 +49,13 @@ export default function PresentationMarker() {
 	const [isDrawingMode, setIsDrawingMode] = createSignal(false);
 	const [currentTool, setCurrentTool] = createSignal<ElementType>("marker");
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
+	const [currentWidth, setCurrentWidth] = createSignal(4);
+	const [currentStrokeStyle, setCurrentStrokeStyle] =
+		createSignal<StrokeStyle>("solid");
+	const [currentRoughness, setCurrentRoughness] = createSignal(1);
 	const [elements, setElements] = createSignal<Element[]>([]);
+
+	const strokeStyles: StrokeStyle[] = ["solid", "dashed", "dotted"];
 
 	onMount(() => {
 		const saved = localStorage.getItem("presentation_marker_elements");
@@ -596,9 +608,11 @@ export default function PresentationMarker() {
 				type: currentTool(),
 				points: [pos, pos],
 				color: currentColor(),
-				width: CONSTANTS.MARKER_WIDTH,
+				width: currentWidth(),
 				seed: Math.floor(Math.random() * 2 ** 31),
 				angle: 0,
+				strokeStyle: currentStrokeStyle(),
+				roughness: currentRoughness(),
 			};
 		}
 	};
@@ -1192,8 +1206,14 @@ export default function PresentationMarker() {
 			const options = {
 				stroke: el.color,
 				strokeWidth: el.width,
-				roughness: 1.5,
+				roughness: el.roughness ?? 1.5,
 				seed: el.seed,
+				strokeLineDash:
+					el.strokeStyle === "dashed"
+						? [10, 10]
+						: el.strokeStyle === "dotted"
+							? [3, 6]
+							: undefined,
 			};
 			const y1 = p1.y - scrollY;
 			const y2 = p2.y - scrollY;
@@ -1617,7 +1637,16 @@ export default function PresentationMarker() {
 									type="button"
 									onClick={() => {
 										setCurrentColor(color);
-										if (
+										if (selectedElementIds().size > 0) {
+											setElements(
+												elements().map((el) =>
+													selectedElementIds().has(el.id)
+														? { ...el, color }
+														: el,
+												),
+											);
+											redraw();
+										} else if (
 											currentTool() === "eraser" ||
 											currentTool() === "select"
 										)
@@ -1626,6 +1655,88 @@ export default function PresentationMarker() {
 									class={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
 									style={{ "background-color": color }}
 								/>
+							)}
+						</For>
+					</div>
+					<div class="w-px h-6 bg-white/10" />
+					<div class="flex flex-col gap-2">
+						<div class="flex items-center gap-2">
+							<span class="text-[8px] text-zinc-500 uppercase w-8">Width</span>
+							<input
+								type="range"
+								min="1"
+								max="20"
+								value={currentWidth()}
+								onInput={(e) => {
+									const val = Number(e.currentTarget.value);
+									setCurrentWidth(val);
+									if (selectedElementIds().size > 0) {
+										setElements(
+											elements().map((el) =>
+												selectedElementIds().has(el.id)
+													? { ...el, width: val }
+													: el,
+											),
+										);
+										redraw();
+									}
+								}}
+								class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+							/>
+						</div>
+						<div class="flex items-center gap-2">
+							<span class="text-[8px] text-zinc-500 uppercase w-8">Rough</span>
+							<input
+								type="range"
+								min="0"
+								max="3"
+								step="0.5"
+								value={currentRoughness()}
+								onInput={(e) => {
+									const val = Number(e.currentTarget.value);
+									setCurrentRoughness(val);
+									if (selectedElementIds().size > 0) {
+										setElements(
+											elements().map((el) =>
+												selectedElementIds().has(el.id)
+													? { ...el, roughness: val }
+													: el,
+											),
+										);
+										redraw();
+									}
+								}}
+								class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+							/>
+						</div>
+					</div>
+					<div class="w-px h-6 bg-white/10" />
+					<div class="flex flex-col justify-center gap-1">
+						<For each={strokeStyles}>
+							{(style) => (
+								<button
+									type="button"
+									onClick={() => {
+										setCurrentStrokeStyle(style);
+										if (selectedElementIds().size > 0) {
+											setElements(
+												elements().map((el) =>
+													selectedElementIds().has(el.id)
+														? { ...el, strokeStyle: style }
+														: el,
+												),
+											);
+											redraw();
+										}
+									}}
+									class={`px-1.5 py-0.5 text-[8px] uppercase rounded border border-white/10 ${
+										currentStrokeStyle() === style
+											? "bg-white text-black"
+											: "text-zinc-500 hover:text-white"
+									}`}
+								>
+									{style}
+								</button>
 							)}
 						</For>
 					</div>

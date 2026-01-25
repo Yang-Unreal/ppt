@@ -224,38 +224,43 @@ export default function Report() {
 
 					<div class="space-y-32">
 						{/* Tiers with simple numbering */}
-						{reportData.competition.tiers.map((tier, idx) => (
-							<div class="relative">
-								<div class="flex items-end gap-6 mb-12 border-b border-zinc-900 pb-12">
-									<span class="text-6xl font-bold text-zinc-800 leading-none">
-										0{idx + 1}
-									</span>
-									<div class="flex-1">
-										<h3 class="text-2xl font-bold text-white uppercase tracking-tight">
-											{tier.name.split("：")[0]}
-										</h3>
-										<p class="text-zinc-500 text-sm mt-1">
-											{tier.name.split("：")[1]}
-										</p>
+						<For each={reportData.competition.tiers}>
+							{(tier, idx) => (
+								<div class="relative">
+									<div class="flex items-end gap-6 mb-12 border-b border-zinc-900 pb-12">
+										<span class="text-6xl font-bold text-zinc-800 leading-none">
+											0{idx() + 1}
+										</span>
+										<div class="flex-1">
+											<h3 class="text-2xl font-bold text-white uppercase tracking-tight">
+												{tier.name.split("：")[0]}
+											</h3>
+											<p class="text-zinc-500 text-sm mt-1">
+												{tier.name.split("：")[1]}
+											</p>
+										</div>
+									</div>
+									<div
+										class={
+											idx() === 2
+												? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+												: idx() === 1
+													? "grid grid-cols-1 md:grid-cols-2 gap-8"
+													: "space-y-8"
+										}
+									>
+										<For each={tier.brands}>
+											{(brand) => (
+												<BrandCard
+													brand={brand}
+													tier={(idx() + 1) as 1 | 2 | 3}
+												/>
+											)}
+										</For>
 									</div>
 								</div>
-								<div
-									class={
-										idx === 2
-											? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-											: idx === 1
-												? "grid grid-cols-1 md:grid-cols-2 gap-8"
-												: "space-y-8"
-									}
-								>
-									<For each={tier.brands}>
-										{(brand) => (
-											<BrandCard brand={brand} tier={(idx + 1) as 1 | 2 | 3} />
-										)}
-									</For>
-								</div>
-							</div>
-						))}
+							)}
+						</For>
 					</div>
 				</div>
 			</section>
