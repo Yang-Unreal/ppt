@@ -37,8 +37,12 @@ interface Element {
 	strokeStyle?: StrokeStyle;
 	roughness?: number;
 	backgroundColor?: string;
-	fillStyle?: "solid" | "hachure";
+	fillStyle?: "solid" | "hachure" | "cross-hatch" | "dots";
+	strokeWidth?: number; // Alias for width to be more explicit, but we use width
+	opacity?: number;
 }
+
+const FILL_STYLES = ["solid", "hachure", "cross-hatch", "dots"] as const;
 
 export default function PresentationMarker() {
 	let mainCanvasRef: HTMLCanvasElement | undefined;
@@ -49,10 +53,17 @@ export default function PresentationMarker() {
 	const [isDrawingMode, setIsDrawingMode] = createSignal(false);
 	const [currentTool, setCurrentTool] = createSignal<ElementType>("marker");
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
+	const [currentBackgroundColor, setCurrentBackgroundColor] =
+		createSignal("transparent");
+	const [currentFillStyle, setCurrentFillStyle] = createSignal<
+		"solid" | "hachure" | "cross-hatch" | "dots"
+	>("hachure");
 	const [currentWidth, setCurrentWidth] = createSignal(4);
 	const [currentStrokeStyle, setCurrentStrokeStyle] =
 		createSignal<StrokeStyle>("solid");
 	const [currentRoughness, setCurrentRoughness] = createSignal(1);
+	const [currentOpacity, setCurrentOpacity] = createSignal(100);
+
 	const [elements, setElements] = createSignal<Element[]>([]);
 
 	const strokeStyles: StrokeStyle[] = ["solid", "dashed", "dotted"];
@@ -613,6 +624,9 @@ export default function PresentationMarker() {
 				angle: 0,
 				strokeStyle: currentStrokeStyle(),
 				roughness: currentRoughness(),
+				backgroundColor: currentBackgroundColor(),
+				fillStyle: currentFillStyle(),
+				opacity: currentOpacity(),
 			};
 		}
 	};
@@ -999,7 +1013,13 @@ export default function PresentationMarker() {
 				setElements(
 					elements().map((el) =>
 						el.id === id
-							? { ...el, points: [{ ...pos }], text, color: currentColor() }
+							? {
+									...el,
+									points: [{ ...pos }],
+									text,
+									color: currentColor(),
+									opacity: currentOpacity(),
+								}
 							: el,
 					),
 				);
@@ -1009,10 +1029,11 @@ export default function PresentationMarker() {
 					type: "text",
 					points: [{ ...pos }],
 					color: currentColor(),
-					width: CONSTANTS.MARKER_WIDTH,
+					width: currentWidth(),
 					seed: Math.floor(Math.random() * 2 ** 31),
 					text,
 					angle: 0,
+					opacity: currentOpacity(),
 				};
 				setElements([...elements(), newElement]);
 			}
@@ -1154,7 +1175,7 @@ export default function PresentationMarker() {
 		ctx.save();
 
 		const isSelected = selectedElementIds().has(el.id);
-		ctx.globalAlpha = isPending ? 0.2 : 1.0;
+		ctx.globalAlpha = (isPending ? 0.2 : 1.0) * ((el.opacity ?? 100) / 100);
 
 		const bounds = getElementBounds(el);
 		const cx = (bounds.minX + bounds.maxX) / 2;
@@ -1184,7 +1205,7 @@ export default function PresentationMarker() {
 			}
 		} else if (el.type === "text" && el.text) {
 			const [p] = el.points;
-			const fontSize = el.width * 6;
+			const fontSize = el.width * CONSTANTS.FONT_SIZE_MULTIPLIER;
 			const lineHeight = fontSize * CONSTANTS.LINE_HEIGHT;
 
 			ctx.font = `${fontSize}px "Excalifont", "Xiaolai", sans-serif`;
@@ -1203,17 +1224,25 @@ export default function PresentationMarker() {
 			});
 		} else if (el.points.length >= 2) {
 			const [p1, p2] = el.points;
+			const strokeLineDash =
+				el.strokeStyle === "dashed"
+					? [10, 10]
+					: el.strokeStyle === "dotted"
+						? [3, 6]
+						: undefined;
 			const options = {
 				stroke: el.color,
 				strokeWidth: el.width,
 				roughness: el.roughness ?? 1.5,
 				seed: el.seed,
-				strokeLineDash:
-					el.strokeStyle === "dashed"
-						? [10, 10]
-						: el.strokeStyle === "dotted"
-							? [3, 6]
-							: undefined,
+				strokeLineDash,
+				fill:
+					el.backgroundColor && el.backgroundColor !== "transparent"
+						? el.backgroundColor
+						: undefined,
+				fillStyle: el.fillStyle ?? "hachure",
+				fillWeight: el.width / 2, // Make fill weight proportional to stroke width
+				hachureGap: el.width * 4, // Make gap proportional
 			};
 			const y1 = p1.y - scrollY;
 			const y2 = p2.y - scrollY;
@@ -1622,41 +1651,170 @@ export default function PresentationMarker() {
 					</div>
 					<div class="w-px h-6 bg-white/10" />
 					<div class="flex gap-2 px-2">
-						<For
-							each={[
-								"#ff4444",
-								"#44ff44",
-								"#4444ff",
-								"#00f2ff",
-								"#ffff44",
-								"#ffffff",
-							]}
-						>
-							{(color) => (
+						<div class="flex flex-col gap-1">
+							<div class="flex gap-1">
+								<For
+									each={["#ff4444", "#44ff44", "#4444ff", "#00f2ff", "#ffff44"]}
+								>
+									{(color) => (
+										<button
+											type="button"
+											onClick={() => {
+												setCurrentColor(color);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, color }
+																: el,
+														),
+													);
+													redraw();
+												} else if (
+													currentTool() === "eraser" ||
+													currentTool() === "select"
+												)
+													setCurrentTool("marker");
+											}}
+											class={`w-4 h-4 rounded-full border transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
+											style={{ "background-color": color }}
+										/>
+									)}
+								</For>
+							</div>
+							<div class="flex gap-1">
+								<For
+									each={["#ff00ff", "#000000", "#ffffff", "#808080", "#ffa500"]}
+								>
+									{(color) => (
+										<button
+											type="button"
+											onClick={() => {
+												setCurrentColor(color);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, color }
+																: el,
+														),
+													);
+													redraw();
+												} else if (
+													currentTool() === "eraser" ||
+													currentTool() === "select"
+												)
+													setCurrentTool("marker");
+											}}
+											class={`w-4 h-4 rounded-full border transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
+											style={{ "background-color": color }}
+										/>
+									)}
+								</For>
+							</div>
+						</div>
+						<div class="flex items-center">
+							<input
+								type="color"
+								value={currentColor()}
+								onInput={(e) => {
+									const color = e.currentTarget.value;
+									setCurrentColor(color);
+									if (selectedElementIds().size > 0) {
+										setElements(
+											elements().map((el) =>
+												selectedElementIds().has(el.id) ? { ...el, color } : el,
+											),
+										);
+										redraw();
+									}
+								}}
+								class="w-6 h-6 rounded cursor-pointer border-none p-0"
+								title="Custom Color"
+							/>
+						</div>
+					</div>
+					<div class="w-px h-6 bg-white/10" />
+					<div class="flex flex-col gap-2">
+						<div class="flex items-center gap-2">
+							<span class="text-[8px] text-zinc-500 uppercase w-8">Bg</span>
+							<div class="flex gap-1">
 								<button
 									type="button"
 									onClick={() => {
-										setCurrentColor(color);
+										setCurrentBackgroundColor("transparent");
 										if (selectedElementIds().size > 0) {
 											setElements(
 												elements().map((el) =>
 													selectedElementIds().has(el.id)
-														? { ...el, color }
+														? { ...el, backgroundColor: "transparent" }
 														: el,
 												),
 											);
 											redraw();
-										} else if (
-											currentTool() === "eraser" ||
-											currentTool() === "select"
-										)
-											setCurrentTool("marker");
+										}
 									}}
-									class={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
-									style={{ "background-color": color }}
+									class={`w-4 h-4 rounded border ${currentBackgroundColor() === "transparent" ? "border-white" : "border-zinc-700"} relative overflow-hidden`}
+									title="Transparent"
+								>
+									<div class="absolute inset-0 bg-red-500 rotate-45 w-px h-[150%] top-[-25%] left-[50%]" />
+								</button>
+								<input
+									type="color"
+									value={
+										currentBackgroundColor() === "transparent"
+											? "#ffffff"
+											: currentBackgroundColor()
+									}
+									onInput={(e) => {
+										const val = e.currentTarget.value;
+										setCurrentBackgroundColor(val);
+										if (selectedElementIds().size > 0) {
+											setElements(
+												elements().map((el) =>
+													selectedElementIds().has(el.id)
+														? { ...el, backgroundColor: val }
+														: el,
+												),
+											);
+											redraw();
+										}
+									}}
+									class="w-4 h-4 rounded cursor-pointer border-none p-0"
+									title="Background Color"
 								/>
-							)}
-						</For>
+							</div>
+						</div>
+						<div class="flex items-center gap-2">
+							<span class="text-[8px] text-zinc-500 uppercase w-8">Fill</span>
+							<select
+								value={currentFillStyle()}
+								onChange={(e) => {
+									const val = e.currentTarget
+										.value as (typeof FILL_STYLES)[number];
+									setCurrentFillStyle(val);
+									if (selectedElementIds().size > 0) {
+										setElements(
+											elements().map((el) =>
+												selectedElementIds().has(el.id)
+													? { ...el, fillStyle: val }
+													: el,
+											),
+										);
+										redraw();
+									}
+								}}
+								class="w-16 h-4 text-[8px] bg-white/10 text-white rounded border-none outline-none"
+							>
+								<For each={FILL_STYLES}>
+									{(style) => (
+										<option value={style} class="text-black bg-white">
+											{style}
+										</option>
+									)}
+								</For>
+							</select>
+						</div>
 					</div>
 					<div class="w-px h-6 bg-white/10" />
 					<div class="flex flex-col gap-2">
@@ -1700,6 +1858,31 @@ export default function PresentationMarker() {
 											elements().map((el) =>
 												selectedElementIds().has(el.id)
 													? { ...el, roughness: val }
+													: el,
+											),
+										);
+										redraw();
+									}
+								}}
+								class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+							/>
+						</div>
+						<div class="flex items-center gap-2">
+							<span class="text-[8px] text-zinc-500 uppercase w-8">Opac</span>
+							<input
+								type="range"
+								min="10"
+								max="100"
+								step="10"
+								value={currentOpacity()}
+								onInput={(e) => {
+									const val = Number(e.currentTarget.value);
+									setCurrentOpacity(val);
+									if (selectedElementIds().size > 0) {
+										setElements(
+											elements().map((el) =>
+												selectedElementIds().has(el.id)
+													? { ...el, opacity: val }
 													: el,
 											),
 										);
