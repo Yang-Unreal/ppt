@@ -14,58 +14,52 @@ interface BrandCardProps {
 export default function BrandCard({ brand, tier }: BrandCardProps) {
 	if (tier === 1) {
 		return (
-			<div class="glass-card border border-[#222] hover:border-[#14F195] transition-all duration-500 group relative">
-				{/* Decoration */}
-				<div class="absolute top-0 right-0 w-32 h-32 bg-[#14F195] opacity-5 rounded-full blur-2xl pointer-events-none group-hover:opacity-10 transition-opacity"></div>
-
-				<div class="flex flex-col lg:flex-row">
+			<div class="border border-zinc-900 bg-black hover:border-zinc-700 transition-all duration-300 group overflow-hidden">
+				<div class="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-zinc-900 font-display">
 					{/* Logo Section */}
-					<div class="lg:w-1/3 p-12 flex items-center justify-center border-b lg:border-b-0 lg:border-r border-[#222] bg-[#0a0a0a]">
+					<div class="lg:w-1/3 p-12 flex items-center justify-center bg-white group-hover:bg-zinc-50 transition-colors">
 						{brand.logo ? (
 							<img
 								src={brand.logo}
 								alt={brand.name}
-								class="h-24 w-auto max-w-full object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
+								class="h-24 w-auto max-w-full object-contain"
 							/>
 						) : (
-							<h3 class="text-5xl font-bold text-white tracking-tighter">
+							<h3 class="text-4xl font-bold text-black tracking-tighter">
 								{brand.name}
 							</h3>
 						)}
 					</div>
 
 					{/* Content Section */}
-					<div class="lg:w-2/3 p-10 flex flex-col justify-between">
-						<div>
-							<div class="flex items-center gap-4 mb-6">
-								<h3 class="text-4xl font-bold text-white tracking-tight">
-									{brand.name}
-								</h3>
-								<div class="h-px bg-[#333] flex-1"></div>
-								<div class="text-[#14F195] text-xs font-mono border border-[#14F195]/30 px-3 py-1 rounded bg-[#14F195]/10">
-									LEADER
-								</div>
+					<div class="lg:w-2/3 p-12">
+						<div class="mb-12">
+							<div class="inline-block text-[10px] font-mono tracking-widest text-zinc-500 uppercase mb-4">
+								Market Leader / Tier 01
 							</div>
-							<p class="text-lg text-[#9e9e9e] leading-relaxed mb-8 max-w-2xl">
+							<h3 class="text-5xl font-bold text-white tracking-tighter mb-6 decoration-zinc-800">
+								{brand.name}
+							</h3>
+							<p class="text-zinc-400 leading-relaxed font-light text-xl max-w-2x pt-5">
 								{brand.desc}
 							</p>
 						</div>
 
 						{/* Metrics */}
-						<div class="grid grid-cols-2 gap-8 pt-8 border-t border-[#222]">
+						<div class="grid grid-cols-2 gap-12 pt-12 border-t border-zinc-900">
 							<div>
-								<div class="text-[10px] text-gray-500 uppercase tracking-widest mb-2 font-mono">
+								<div class="text-[10px] text-zinc-600 uppercase tracking-widest mb-3 font-mono">
 									2025 Yield
 								</div>
-								<div class="text-3xl font-mono font-bold text-white">
+								<div class="text-4xl font-mono font-bold text-white tracking-tighter">
 									{brand.yield2025}
 								</div>
 							</div>
 							<div>
-								<div class="text-[10px] text-gray-500 uppercase tracking-widest mb-2 font-mono">
-									2026 Plan
+								<div class="text-[10px] text-zinc-600 uppercase tracking-widest mb-3 font-mono">
+									2026 Target
 								</div>
-								<div class="text-3xl font-mono font-bold text-[#14F195]">
+								<div class="text-4xl font-mono font-bold text-white tracking-tighter">
 									{brand.plan2026}
 								</div>
 							</div>
@@ -78,39 +72,43 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 
 	if (tier === 2) {
 		return (
-			<div class="glass-card flex flex-col hover:border-[#9945FF] group h-full">
-				<div class="h-32 w-full p-6 flex items-center justify-center border-b border-[#222] bg-[#0a0a0a] relative overflow-hidden">
-					{/* Hover Gradient */}
-					<div class="absolute inset-0 bg-linear-to-tr from-[#9945FF]/0 to-[#9945FF]/0 group-hover:from-[#9945FF]/5 group-hover:to-transparent transition-all duration-500"></div>
-
+			<div class="flex flex-col border border-zinc-900 bg-black group hover:border-zinc-700 transition-all duration-300">
+				<div class="h-40 w-full p-8 flex items-center justify-center border-b border-zinc-900 bg-white">
 					{brand.logo ? (
 						<img
 							src={brand.logo}
 							alt={brand.name}
-							class="h-16 w-auto max-w-full object-contain filter grayscale group-hover:grayscale-0 transition-all duration-500 relative z-10"
+							class="h-16 w-auto max-w-full object-contain"
 						/>
 					) : (
-						<span class="text-gray-700 font-bold text-xl relative z-10">
+						<span class="text-zinc-700 font-bold text-lg font-mono">
 							NO LOGO
 						</span>
 					)}
 				</div>
 
-				<div class="p-8 flex-1 flex flex-col">
-					<div class="flex justify-between items-start mb-4">
-						<h3 class="text-2xl font-bold text-white">{brand.name}</h3>
+				<div class="p-10 flex-1 flex flex-col">
+					<div class="mb-8">
+						<header class="flex justify-between items-baseline mb-4">
+							<h3 class="text-2xl font-bold text-white tracking-tight">
+								{brand.name}
+							</h3>
+							<span class="text-[10px] font-mono text-zinc-600 tracking-widest">
+								T2
+							</span>
+						</header>
+						<p class="text-sm text-zinc-500 leading-relaxed font-light">
+							{brand.desc}
+						</p>
 					</div>
 
-					<p class="text-sm text-[#9e9e9e] leading-relaxed mb-6 flex-1">
-						{brand.desc}
-					</p>
-
-					<div class="flex items-center justify-between text-xs font-mono pt-4 border-t border-[#222]">
-						<div class="text-gray-500">Growth Target</div>
-						<div class="flex items-center gap-2">
-							<span class="text-white">{brand.yield2025}</span>
-							<span class="text-[#9945FF]">→</span>
-							<span class="text-[#9945FF] font-bold">{brand.plan2026}</span>
+					<div class="mt-auto pt-8 border-t border-zinc-900 flex items-center justify-between font-mono">
+						<div class="text-zinc-700 text-[10px] uppercase tracking-widest">
+							Expansion
+						</div>
+						<div class="text-white font-bold text-sm tracking-tighter">
+							{brand.yield2025} <span class="mx-2 text-zinc-800">/</span>{" "}
+							{brand.plan2026}
 						</div>
 					</div>
 				</div>
@@ -120,36 +118,42 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 
 	if (tier === 3) {
 		return (
-			<div class="glass-card flex flex-col hover:border-white group h-full">
-				<div class="h-24 w-full p-4 flex items-center justify-center border-b border-[#222] bg-[#0a0a0a]">
-					{brand.logo ? (
-						<img
-							src={brand.logo}
-							alt={brand.name}
-							class="h-12 w-auto max-w-full object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
-						/>
-					) : (
-						<span class="text-gray-800 font-bold text-lg">NO LOGO</span>
-					)}
+			<div class="flex flex-col border border-zinc-900 bg-black p-8 hover:bg-zinc-950 hover:border-zinc-800 transition-all duration-300 h-full">
+				<div class="flex items-center gap-6 mb-8">
+					<div class="w-16 h-16 bg-white p-3 flex items-center justify-center shrink-0 border border-zinc-900">
+						{brand.logo ? (
+							<img
+								src={brand.logo}
+								alt={brand.name}
+								class="max-w-full max-h-full object-contain"
+							/>
+						) : (
+							<span class="text-zinc-800 font-bold text-[10px] font-mono leading-none">
+								{brand.name.substring(0, 3)}
+							</span>
+						)}
+					</div>
+					<div class="overflow-hidden">
+						<h4 class="font-bold text-xl text-white tracking-tighter truncate">
+							{brand.name}
+						</h4>
+						<span class="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
+							Growth Sector
+						</span>
+					</div>
 				</div>
 
-				<div class="p-6 flex-1 flex flex-col">
-					<div class="flex justify-between items-center mb-4">
-						<h4 class="font-bold text-lg text-white truncate">{brand.name}</h4>
-						<span class="text-[10px] font-mono text-gray-500 border border-[#333] px-2 py-px rounded">
-							{brand.yield2025}
-						</span>
-					</div>
+				<p class="text-xs text-zinc-500 mb-8 line-clamp-3 leading-relaxed flex-1 font-light italic">
+					{brand.desc}
+				</p>
 
-					<p class="text-xs text-gray-500 mb-4 line-clamp-3 leading-relaxed flex-1">
-						{brand.desc}
-					</p>
-
-					<div class="mt-auto text-right">
-						<span class="text-white font-mono font-bold text-xs group-hover:text-[#14F195] transition-colors">
-							EXP: {brand.plan2026}
-						</span>
-					</div>
+				<div class="pt-6 border-t border-zinc-900 flex justify-between items-center">
+					<span class="text-[10px] font-mono text-zinc-700 uppercase tracking-widest">
+						Est Yield
+					</span>
+					<span class="text-white font-mono font-bold text-xs">
+						{brand.yield2025}
+					</span>
 				</div>
 			</div>
 		);

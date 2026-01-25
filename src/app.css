@@ -19,20 +19,15 @@
 :root {
 	--bg-color: #000000;
 	--text-primary: #ffffff;
-	--text-secondary: #9e9e9e;
+	--text-secondary: #999999;
 
-	/* Solana Brand Colors */
+	/* Solana Brand Colors (Used sparingly) */
 	--solana-green: #14f195;
 	--solana-purple: #9945ff;
-	--solana-dark: #121212;
 
-	/* Semantic Colors */
-	--accent-color: var(--solana-green);
-	--accent-secondary: var(--solana-purple);
-
-	/* Glassmorphism */
-	--glass-bg: #111111;
-	--glass-border: #333333;
+	/* Minimalist Borders */
+	--border-light: rgba(255, 255, 255, 0.1);
+	--border-muted: rgba(255, 255, 255, 0.05);
 }
 
 body {
@@ -45,6 +40,7 @@ body {
 	margin: 0;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	line-height: 1.6;
 }
 
 h1,
@@ -54,51 +50,35 @@ h4,
 h5,
 h6 {
 	font-weight: 700;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.04em;
 	color: white;
+	margin: 0;
 }
 
 /* Typography Utilities */
 .font-display {
 	font-family: "Inter", sans-serif;
-	letter-spacing: -0.04em;
+	letter-spacing: -0.05em;
 }
 
-/* Gradient Text */
-.text-gradient {
-	background: linear-gradient(135deg, #fff 0%, #a5a5a5 100%);
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	color: transparent;
+.font-mono {
+	font-family:
+		ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+		"Courier New", monospace;
+	letter-spacing: -0.02em;
 }
 
-.text-gradient-solana {
-	background: linear-gradient(
-		90deg,
-		var(--solana-green) 0%,
-		var(--solana-purple) 100%
-	);
-	background-clip: text;
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	color: transparent;
-}
-
-/* Glass Card */
+/* Classic Card Style */
 .glass-card {
-	background: #111111;
-	border: 1px solid #222;
-	border-radius: 12px;
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	position: relative;
-	overflow: hidden;
+	background: #000000;
+	border: 1px solid var(--border-light);
+	border-radius: 4px; /* Classic sharp/minimal corners */
+	padding: 2.5rem;
+	transition: border-color 0.2s ease;
 }
 
 .glass-card:hover {
-	border-color: var(--solana-green);
-	box-shadow: 0 0 20px rgba(20, 241, 149, 0.2);
-	transform: translateY(-2px);
+	border-color: rgba(255, 255, 255, 0.3);
 }
 
 .section-container {
@@ -108,32 +88,32 @@ h6 {
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-	padding: 6rem 2rem;
+	padding: 8rem 2rem;
 	position: relative;
 	box-sizing: border-box;
 }
 
+/* Layout lines */
+.grid-line {
+	position: absolute;
+	background: var(--border-muted);
+}
+
 /* Scrollbar customization */
 ::-webkit-scrollbar {
-	width: 8px;
+	width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-	background: var(--bg-color);
+	background: #000;
 }
 
 ::-webkit-scrollbar-thumb {
-	background: #333;
-	border-radius: 4px;
+	background: #222;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background: #555;
-}
-
-/* Animations utilities */
-.reveal-text {
-	clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+	background: #333;
 }
 
 /* Drawing Text Tool Styles */
@@ -144,9 +124,6 @@ h6 {
 	outline: none;
 	padding: 0;
 	margin: 0;
-	text-indent: 0;
-	appearance: none;
-	-webkit-appearance: none;
 	resize: none;
 	overflow: visible;
 	white-space: pre-wrap;
@@ -155,16 +132,5 @@ h6 {
 	color: inherit;
 	font-family: "Excalifont", "Xiaolai", sans-serif;
 	z-index: 8003;
-	letter-spacing: normal;
-	word-spacing: normal;
 	text-rendering: geometricPrecision;
-	-webkit-font-smoothing: antialiased;
-}
-
-/* Solana Specific Glows */
-.glow-text-green {
-	text-shadow: 0 0 20px rgba(20, 241, 149, 0.6);
-}
-.glow-text-purple {
-	text-shadow: 0 0 20px rgba(153, 69, 255, 0.6);
 }

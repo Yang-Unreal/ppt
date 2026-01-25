@@ -180,7 +180,7 @@ export const reportData = {
 					value:
 						"规模大，注塑强，可配全套散件。擅长快速仿制 (买VinFast车回国仿)。",
 				},
-				{ label: "吴旺", value: "专注车架，雅迪深度绑定。" },
+				{ label: "昊旺", value: "专注车架，雅迪深度绑定。" },
 				{ label: "成本分析", value: "越南本地烤漆成本比中国贵 70-90 RMB。" },
 			],
 		},

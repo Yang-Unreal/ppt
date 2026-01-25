@@ -29,188 +29,159 @@ export default function Report() {
 
 		sections.forEach((ref) => {
 			if (!ref) return;
-			// Solana-style reveal: larger upward movement, smoother ease
 			gsap.from(ref.children, {
 				scrollTrigger: {
 					trigger: ref,
-					start: "top 85%",
+					start: "top 90%",
 				},
-				y: 60,
+				y: 20,
 				opacity: 0,
-				duration: 1.2,
-				stagger: 0.15,
-				ease: "power3.out",
+				duration: 0.8,
+				stagger: 0.1,
+				ease: "power2.out",
 			});
 		});
 	});
 
 	return (
-		<main class="w-full min-h-screen bg-black text-white selection:bg-[#14F195] selection:text-black">
+		<main class="w-full min-h-screen bg-black text-white selection:bg-white selection:text-black">
 			<Title>{reportData.meta.title}</Title>
 
 			{/* Hero Section */}
 			<section
 				ref={heroRef}
-				class="section-container min-h-screen flex flex-col justify-center items-center text-center relative overflow-hidden pt-32"
+				class="section-container min-h-screen flex flex-col justify-center items-center text-center relative pt-20"
 			>
-				{/* Aurora Background Effect */}
-				<div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
-					<div class="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] bg-[#9945FF] rounded-full mix-blend-screen opacity-20 blur-[120px] animate-pulse"></div>
-					<div class="absolute top-[10%] -right-[10%] w-[60vw] h-[60vw] bg-[#14F195] rounded-full mix-blend-screen opacity-20 blur-[120px] animate-pulse delay-1000"></div>
-					<div class="absolute bottom-0 left-[20%] w-[80vw] h-[40vw] bg-blue-900 rounded-full mix-blend-screen opacity-20 blur-[100px]"></div>
+				{/* Minimalist Grid Line Background */}
+				<div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+					<div class="absolute left-1/2 top-0 bottom-0 w-px bg-white/10 -translate-x-1/2"></div>
+					<div class="absolute top-1/2 left-0 right-0 h-px bg-white/10 -translate-y-1/2"></div>
 				</div>
 
-				<div class="max-w-[1400px] px-6 relative z-10">
-					<div class="inline-block mb-6 px-4 py-1.5 rounded-full border border-[#333] bg-[#111] text-[#14F195] text-xs font-mono tracking-widest uppercase backdrop-blur-md">
-						{reportData.meta.subtitle}
-					</div>
-
-					<h1 class="text-7xl md:text-9xl font-display font-bold tracking-tighter text-white mb-8 leading-[0.9]">
-						2025<span class="text-[#333]">-</span>2026
-						<br />
-						<span class="text-transparent bg-clip-text bg-linear-to-r from-[#9945FF] to-[#14F195]">
-							越南电动车
+				<div class="max-w-[1400px] px-6 relative z-10 w-full">
+					<div class="mb-12">
+						<span class="text-[10px] md:text-xs font-mono tracking-[0.4em] uppercase text-zinc-500 mb-4 block">
+							{reportData.meta.subtitle}
 						</span>
-					</h1>
+						<h1 class="text-7xl md:text-[10rem] font-display font-bold tracking-tighter text-white mb-8 leading-none">
+							2025<span class="text-zinc-800">-</span>2026
+						</h1>
+						<h2 class="text-4xl md:text-6xl font-bold tracking-tight text-white/90">
+							越南电动车市场调研
+						</h2>
+					</div>
 
-					<div class="flex flex-col md:flex-row items-center justify-center gap-8 mt-12 text-[#9e9e9e] font-mono text-sm">
-						<div class="flex items-center gap-2">
-							<div class="w-2 h-2 rounded-full bg-[#14F195] shadow-[0_0_10px_#14F195]"></div>
-							<span>LIVE DATA • {reportData.meta.date}</span>
+					<div class="flex flex-col md:flex-row items-center justify-center gap-12 mt-20 text-zinc-500 font-mono text-[10px] tracking-widest uppercase">
+						<div class="flex items-center gap-3">
+							<span class="w-1 h-1 bg-white"></span>
+							<span>日期: {reportData.meta.date}</span>
 						</div>
-						<div class="hidden md:block w-px h-4 bg-[#333]"></div>
-						<div>AUTHOR: {reportData.meta.author}</div>
+						<div class="flex items-center gap-3">
+							<span class="w-1 h-1 bg-white"></span>
+							<span>作者: {reportData.meta.author}</span>
+						</div>
 					</div>
 				</div>
 
-				{/* Scroll Indicator */}
-				<div class="absolute bottom-12 left-1/2 -translate-x-1/2 text-[#333] animate-bounce">
-					<svg
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<title>Scroll down indicator</title>
-						<path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
-					</svg>
+				<div class="absolute bottom-20 left-1/2 -translate-x-1/2 opacity-30">
+					<div class="w-px h-12 bg-linear-to-b from-white to-transparent"></div>
 				</div>
 			</section>
 
-			{/* Macro Overview - Grid Layout */}
-			<section ref={overviewRef} class="section-container relative z-10 py-32">
-				<div class="max-w-[1200px] w-full px-6">
-					<div class="flex flex-col md:flex-row justify-between items-end mb-20 border-b border-[#222] pb-8">
-						<div>
-							<h2 class="text-4xl md:text-5xl font-bold mb-4 font-display">
+			{/* Macro Overview */}
+			<section
+				ref={overviewRef}
+				class="section-container border-t border-zinc-900 py-32"
+			>
+				<div class="max-w-7xl w-full px-6">
+					<div class="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24 items-start">
+						<div class="lg:col-span-5">
+							<h2 class="text-5xl font-bold tracking-tighter mb-8 font-display">
 								市场宏观概况
 							</h2>
-							<div class="h-1 w-20 bg-linear-to-r from-[#14F195] to-[#9945FF]"></div>
+							<p class="text-2xl text-zinc-400 font-light leading-snug pt-10">
+								{reportData.marketOverview.status}
+							</p>
 						</div>
-						<p class="text-xl text-[#9e9e9e] max-w-xl md:text-right mt-6 md:mt-0 leading-relaxed">
-							{reportData.marketOverview.status}
-						</p>
-					</div>
 
-					<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-						{/* Card 1 */}
-						<div class="glass-card p-10 flex flex-col justify-between h-[300px] group">
-							<div>
-								<span class="text-[#14F195] font-mono text-xs uppercase tracking-wider mb-2 block">
-									Total Holdings
+						<div class="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-px bg-zinc-900 border border-zinc-900 rounded-sm overflow-hidden">
+							<div class="bg-black p-12">
+								<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mb-6">
+									总体保有量
 								</span>
-								<span class="text-gray-400 text-sm">社会保有量</span>
-							</div>
-							<div>
-								<span class="text-6xl font-bold text-white block mb-2 tracking-tighter group-hover:scale-105 transition-transform duration-300 origin-left">
+								<span class="text-6xl font-bold text-white tracking-tighter block mb-2">
 									{reportData.marketOverview.totalHolding}
 								</span>
-								<div class="w-full bg-[#222] h-1 mt-4 overflow-hidden rounded-full">
-									<div class="bg-[#14F195] h-full w-[85%]"></div>
-								</div>
-								<span class="text-xs text-gray-500 mt-2 block">
-									东南亚最高之一
-								</span>
+								<p class="text-xs text-zinc-600">
+									越南社会机动车保有量基数庞大
+								</p>
 							</div>
-						</div>
-
-						{/* Card 2 */}
-						<div class="glass-card p-10 flex flex-col justify-between h-[300px] group">
-							<div>
-								<span class="text-[#9945FF] font-mono text-xs uppercase tracking-wider mb-2 block">
-									Annual Production
+							<div class="bg-black p-12">
+								<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mb-6">
+									年产量
 								</span>
-								<span class="text-gray-400 text-sm">年总产量</span>
-							</div>
-							<div>
-								<span class="text-6xl font-bold text-white block mb-2 tracking-tighter group-hover:scale-105 transition-transform duration-300 origin-left">
+								<span class="text-6xl font-bold text-white tracking-tighter block mb-2">
 									{reportData.marketOverview.annualProduction}
 								</span>
-								<div class="w-full bg-[#222] h-1 mt-4 overflow-hidden rounded-full">
-									<div class="bg-[#9945FF] h-full w-[60%]"></div>
-								</div>
-								<span class="text-xs text-gray-500 mt-2 block">
-									目前产能保持稳定
-								</span>
+								<p class="text-xs text-zinc-600">本地制造链持续成熟</p>
 							</div>
 						</div>
+					</div>
 
-						{/* Card 3 */}
-						<div class="glass-card p-10 flex flex-col justify-between h-[300px] group">
-							<div>
-								<span class="text-white font-mono text-xs uppercase tracking-wider mb-2 block">
-									Dominance
-								</span>
-								<span class="text-gray-400 text-sm">主要竞争</span>
-							</div>
-							<div>
-								<span class="text-6xl font-bold text-white block mb-2 tracking-tighter group-hover:scale-105 transition-transform duration-300 origin-left">
-									70%
-								</span>
-								<div class="w-full bg-[#222] h-1 mt-4 overflow-hidden rounded-full">
-									<div class="bg-white h-full w-[70%]"></div>
-								</div>
-								<span class="text-xs text-gray-500 mt-2 block">
-									{reportData.marketOverview.dominantPlayer}
-								</span>
-							</div>
+					<div class="glass-card flex flex-col md:flex-row justify-between items-center group">
+						<header>
+							<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mb-2">
+								主导玩家
+							</span>
+							<h3 class="text-3xl font-bold text-white tracking-tight">
+								Honda
+							</h3>
+						</header>
+						<div class="mt-8 md:mt-0 text-right">
+							<span class="text-7xl font-bold text-white tracking-tighter">
+								{reportData.marketOverview.dominantPlayer.match(/\d+%/)?.[0] ||
+									"70%"}
+							</span>
+							<p class="text-[10px] text-zinc-500 font-mono mt-2">
+								{reportData.marketOverview.dominantPlayer}
+							</p>
 						</div>
 					</div>
 				</div>
 			</section>
 
 			{/* Geographic Clusters */}
-			<section ref={clustersRef} class="section-container bg-[#080808] py-32">
-				<div class="max-w-[1200px] w-full px-6">
-					<h3 class="text-2xl text-[#14F195] font-mono mb-12 flex items-center gap-4">
-						<span class="w-8 h-px bg-[#14F195]"></span>
-						产业布局地理分布
-					</h3>
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+			<section
+				ref={clustersRef}
+				class="section-container bg-[#080808] border-t border-zinc-900 py-32"
+			>
+				<div class="max-w-7xl w-full px-6">
+					<div class="flex items-center gap-8 mb-20">
+						<h3 class="text-xl text-white font-bold tracking-tight shrink-0 uppercase">
+							地域产业布局
+						</h3>
+					</div>
+
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-px bg-zinc-900 border border-zinc-900 rounded-sm overflow-hidden">
 						<For each={reportData.marketOverview.clusters}>
 							{(cluster) => (
-								<div class="glass-card p-8 group">
-									<div class="flex justify-between items-start mb-6">
-										<h4 class="text-3xl font-bold">{cluster.name}</h4>
-										<div class="px-3 py-1 rounded-full border border-[#333] text-xs text-gray-400">
-											CLUSTER
-										</div>
-									</div>
-									<p class="text-gray-400 mb-8 leading-relaxed h-12">
+								<div class="bg-black p-12 hover:bg-zinc-950 transition-colors duration-300">
+									<h4 class="text-3xl font-bold mb-4 tracking-tight">
+										{cluster.name}
+									</h4>
+									<p class="text-zinc-500 mb-12 leading-relaxed text-sm h-10 pt-5">
 										{cluster.desc}
 									</p>
 
-									<div class="space-y-6">
+									<div class="space-y-10">
 										<div>
-											<span class="text-[10px] text-[#9945FF] uppercase block mb-3 font-bold tracking-widest">
-												主要整车厂
+											<span class="text-[10px] text-white/30 uppercase block mb-4 font-bold tracking-widest">
+												主要制造商
 											</span>
-											<div class="flex flex-wrap gap-2">
+											<div class="grid grid-cols-2 gap-3">
 												<For each={cluster.brands}>
 													{(brand) => (
-														<span class="bg-[#111] border border-[#333] px-3 py-1.5 rounded-md text-sm text-gray-300 hover:border-white transition-colors cursor-default">
+														<span class="text-sm text-zinc-400 border-l border-zinc-800 pl-3">
 															{brand}
 														</span>
 													)}
@@ -219,13 +190,13 @@ export default function Report() {
 										</div>
 										{cluster.suppliers && (
 											<div>
-												<span class="text-[10px] text-[#14F195] uppercase block mb-3 font-bold tracking-widest">
-													关键配套
+												<span class="text-[10px] text-white/30 uppercase block mb-4 font-bold tracking-widest">
+													主要供应商
 												</span>
-												<div class="flex flex-wrap gap-2">
+												<div class="grid grid-cols-2 gap-3">
 													<For each={cluster.suppliers}>
 														{(supplier) => (
-															<span class="bg-[#111] border border-[#333] px-3 py-1.5 rounded-md text-sm text-gray-300 hover:border-white transition-colors cursor-default">
+															<span class="text-sm text-zinc-500 border-l border-zinc-800 pl-3 italic">
 																{supplier}
 															</span>
 														)}
@@ -241,161 +212,164 @@ export default function Report() {
 				</div>
 			</section>
 
-			{/* Competition */}
-			<section ref={competitionRef} class="section-container py-32">
-				<div class="max-w-[1200px] w-full px-6">
-					<h2 class="text-5xl md:text-7xl font-display font-bold mb-20 text-center tracking-tighter">
-						竞争格局全景
+			{/* Competition Panorama */}
+			<section
+				ref={competitionRef}
+				class="section-container border-t border-zinc-900 py-32"
+			>
+				<div class="max-w-7xl w-full px-6">
+					<h2 class="text-7xl font-bold mb-32 tracking-tighter text-center font-display">
+						竞争格局
 					</h2>
 
-					<div class="space-y-20">
-						{/* Tier 1 */}
-						<div class="relative">
-							{/* Decoration line */}
-							<div class="absolute -left-6 top-0 bottom-0 w-1 bg-linear-to-b from-[#14F195] to-transparent hidden md:block"></div>
-							<div class="text-2xl font-bold text-white mb-8 pl-0 md:pl-6">
-								Tier 1{" "}
-								<span class="text-[#9e9e9e] font-normal text-lg ml-2">
-									绝对统领
-								</span>
+					<div class="space-y-32">
+						{/* Tiers with simple numbering */}
+						{reportData.competition.tiers.map((tier, idx) => (
+							<div class="relative">
+								<div class="flex items-end gap-6 mb-12 border-b border-zinc-900 pb-12">
+									<span class="text-6xl font-bold text-zinc-800 leading-none">
+										0{idx + 1}
+									</span>
+									<div class="flex-1">
+										<h3 class="text-2xl font-bold text-white uppercase tracking-tight">
+											{tier.name.split("：")[0]}
+										</h3>
+										<p class="text-zinc-500 text-sm mt-1">
+											{tier.name.split("：")[1]}
+										</p>
+									</div>
+								</div>
+								<div
+									class={
+										idx === 2
+											? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+											: idx === 1
+												? "grid grid-cols-1 md:grid-cols-2 gap-8"
+												: "space-y-8"
+									}
+								>
+									<For each={tier.brands}>
+										{(brand) => (
+											<BrandCard brand={brand} tier={(idx + 1) as 1 | 2 | 3} />
+										)}
+									</For>
+								</div>
 							</div>
-							<For each={reportData.competition.tiers[0].brands}>
-								{(brand) => <BrandCard brand={brand} tier={1} />}
-							</For>
-						</div>
-
-						{/* Tier 2 */}
-						<div class="relative">
-							<div class="absolute -left-6 top-0 bottom-0 w-1 bg-linear-to-b from-[#9945FF] to-transparent hidden md:block"></div>
-							<div class="text-2xl font-bold text-white mb-8 pl-0 md:pl-6">
-								Tier 2{" "}
-								<span class="text-[#9e9e9e] font-normal text-lg ml-2">
-									强势竞对
-								</span>
-							</div>
-							<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-								<For each={reportData.competition.tiers[1].brands}>
-									{(brand) => <BrandCard brand={brand} tier={2} />}
-								</For>
-							</div>
-						</div>
-
-						{/* Tier 3 */}
-						<div class="relative">
-							<div class="absolute -left-6 top-0 bottom-0 w-1 bg-linear-to-b from-white to-transparent hidden md:block"></div>
-							<div class="text-2xl font-bold text-white mb-8 pl-0 md:pl-6">
-								Tier 3{" "}
-								<span class="text-[#9e9e9e] font-normal text-lg ml-2">
-									潜力增长
-								</span>
-							</div>
-							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-								<For each={reportData.competition.tiers[2].brands}>
-									{(brand) => <BrandCard brand={brand} tier={3} />}
-								</For>
-							</div>
-						</div>
+						))}
 					</div>
 				</div>
 			</section>
 
-			{/* Segments */}
-			<section ref={segmentsRef} class="section-container bg-[#050505] py-32">
-				<div class="max-w-[1200px] w-full px-6">
-					<h2 class="text-4xl md:text-5xl font-bold mb-16 text-center font-display">
-						细分市场深度洞察
-					</h2>
-					<div class="space-y-6">
-						<SegmentCard segment={reportData.segments[0]} color="yellow" />
-						<SegmentCard segment={reportData.segments[1]} color="blue" />
-						<SegmentCard segment={reportData.segments[2]} color="green" />
+			{/* Market Segments */}
+			<section
+				ref={segmentsRef}
+				class="section-container bg-[#050505] border-t border-zinc-900 py-32"
+			>
+				<div class="max-w-7xl w-full px-6">
+					<div class="text-center mb-20">
+						<h2 class="text-5xl font-bold tracking-tight mb-4">细分市场洞察</h2>
+						<p class="text-zinc-500 uppercase tracking-[0.3em] text-[10px]">
+							Strategic Deep Dive
+						</p>
+					</div>
+					<div class="space-y-px bg-zinc-900 border border-zinc-900 rounded-sm overflow-hidden">
+						<SegmentCard segment={reportData.segments[0]} />
+						<SegmentCard segment={reportData.segments[1]} />
+						<SegmentCard segment={reportData.segments[2]} />
 					</div>
 				</div>
 			</section>
 
-			{/* Supply Chain */}
-			<section ref={supplyRef} class="section-container py-32">
-				<div class="max-w-[1200px] w-full px-6 grid grid-cols-1 lg:grid-cols-2 gap-16">
-					<div class="space-y-12">
+			{/* Supply Chain / Ops */}
+			<section
+				ref={supplyRef}
+				class="section-container py-32 border-t border-zinc-900"
+			>
+				<div class="max-w-7xl w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-20">
+					<div class="lg:col-span-7 space-y-20">
 						<div>
-							<h2 class="text-3xl font-bold mb-6 text-[#14F195]">
-								{reportData.infrastructure.supplyChain.title}
-							</h2>
-							<ul class="space-y-2">
+							<h3 class="text-[10px] font-mono uppercase tracking-[0.4em] text-zinc-500 mb-8">
+								Supply Chain Localization
+							</h3>
+							<div class="space-y-px bg-zinc-900 border border-zinc-900">
 								<For each={reportData.infrastructure.supplyChain.details}>
 									{(detail) => (
-										<li class="group flex items-center justify-between p-4 border-b border-[#222] hover:border-[#14F195] transition-colors">
-											<span class="text-gray-400 group-hover:text-white transition-colors">
+										<div class="bg-black p-8 flex justify-between items-center group hover:bg-zinc-950 transition-colors">
+											<span class="text-zinc-400 font-bold group-hover:text-white transition-colors">
 												{detail.label}
 											</span>
-											<span class="text-white font-mono">{detail.value}</span>
-										</li>
+											<span class="text-white font-mono text-sm">
+												{detail.value}
+											</span>
+										</div>
 									)}
 								</For>
-							</ul>
+							</div>
 						</div>
 
 						<div>
-							<h2 class="text-3xl font-bold mb-6 text-[#9945FF]">
-								{reportData.infrastructure.operations.title}
-							</h2>
-							<ul class="space-y-2">
+							<h3 class="text-[10px] font-mono uppercase tracking-[0.4em] text-zinc-500 mb-8">
+								Operations & Painpoints
+							</h3>
+							<div class="space-y-px bg-zinc-900 border border-zinc-900">
 								<For each={reportData.infrastructure.operations.details}>
 									{(detail) => (
-										<li class="group flex items-center justify-between p-4 border-b border-[#222] hover:border-[#9945FF] transition-colors">
-											<span class="text-gray-400 group-hover:text-white transition-colors">
+										<div class="bg-black p-8 flex justify-between items-center group hover:bg-zinc-950 transition-colors">
+											<span class="text-zinc-400 font-bold group-hover:text-white transition-colors">
 												{detail.label}
 											</span>
-											<span class="text-white font-mono">{detail.value}</span>
-										</li>
+											<span class="text-white font-mono text-sm">
+												{detail.value}
+											</span>
+										</div>
 									)}
 								</For>
-							</ul>
+							</div>
 						</div>
 					</div>
 
-					{/* Risks Card */}
+					{/* Risks Column */}
 					<div
 						ref={risksRef}
-						class="glass-card p-12 flex flex-col justify-between min-h-[500px] bg-linear-to-br from-[#111] to-black"
+						class="lg:col-span-5 bg-zinc-950 border border-zinc-900 p-12 flex flex-col justify-between"
 					>
 						<div>
-							<h3 class="text-4xl font-bold mb-12 bg-clip-text text-transparent bg-linear-to-r from-white to-gray-500">
-								风险与挑战
+							<h3 class="text-5xl font-bold mb-16 tracking-tighter">
+								风险挑战
 							</h3>
-
-							<div class="mb-10">
-								<h4 class="text-xl font-bold mb-4 text-[#14F195]">
-									{reportData.risks.protective.title}
-								</h4>
-								<p class="text-gray-400 leading-relaxed text-sm">
-									{reportData.risks.protective.desc}
-								</p>
-							</div>
-
-							<div class="mb-10">
-								<h4 class="text-xl font-bold mb-4 text-[#9945FF]">
-									{reportData.risks.ip.title}
-								</h4>
-								<p class="text-gray-400 leading-relaxed text-sm">
-									{reportData.risks.ip.desc}
-								</p>
+							<div class="space-y-12">
+								<div>
+									<h4 class="text-xs font-mono uppercase tracking-widest text-white border-b border-zinc-900 pb-4 mb-4">
+										Protectionism
+									</h4>
+									<p class="text-zinc-500 text-sm leading-relaxed">
+										{reportData.risks.protective.desc}
+									</p>
+								</div>
+								<div>
+									<h4 class="text-xs font-mono uppercase tracking-widest text-white border-b border-zinc-900 pb-4 mb-4">
+										Intellectual Property
+									</h4>
+									<p class="text-zinc-500 text-sm leading-relaxed">
+										{reportData.risks.ip.desc}
+									</p>
+								</div>
 							</div>
 						</div>
 
-						<div class="border-t border-[#333] pt-8 flex justify-between items-end">
-							<div class="text-sm font-bold uppercase tracking-widest text-gray-500">
-								Vietnam Market Outlook
+						<footer class="pt-20 border-t border-zinc-900 text-right">
+							<div class="text-[10px] font-mono tracking-widest text-zinc-700 uppercase">
+								Outlook 2026
 							</div>
-							<div class="text-6xl font-black text-[#222]">2026</div>
-						</div>
+							<div class="text-3xl font-bold text-zinc-900">VIETNAM_EV</div>
+						</footer>
 					</div>
 				</div>
 			</section>
 
-			{/* Footer */}
-			<footer class="py-20 text-center text-gray-800 text-sm font-mono border-t border-[#111]">
-				<p>EV INSIGHTS | COPYRIGHT 2025</p>
+			{/* Simple Footer */}
+			<footer class="py-16 text-center text-zinc-800 text-[10px] tracking-[0.5em] font-mono">
+				EV INSIGHTS REPT 2025
 			</footer>
 		</main>
 	);

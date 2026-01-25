@@ -1577,11 +1577,11 @@ export default function PresentationMarker() {
 				/>
 			</Show>
 
-			<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-9000 flex items-center gap-4 bg-[#111111]/90 backdrop-blur-2xl border border-white/10 p-2 rounded-2xl shadow-[0_0_30px_-10px_rgba(0,0,0,0.8)]">
+			<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-9000 flex items-center gap-6 bg-black border border-white/10 p-3 rounded-sm shadow-2xl">
 				<button
 					type="button"
 					onClick={() => setIsDrawingMode(!isDrawingMode())}
-					class={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${isDrawingMode() ? "bg-[#14F195] text-black shadow-[0_0_20px_rgba(20,241,149,0.3)]" : "text-zinc-400 hover:text-white"}`}
+					class={`px-4 py-2 text-xs font-bold tracking-widest uppercase transition-all ${isDrawingMode() ? "bg-white text-black" : "text-zinc-600 hover:text-white"}`}
 				>
 					{isDrawingMode() ? "Mode: Drawing" : "Mode: Viewing"}
 				</button>
