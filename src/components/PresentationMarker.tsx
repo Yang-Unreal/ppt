@@ -53,7 +53,7 @@ export default function PresentationMarker() {
 	let markerCursorRef: HTMLDivElement | undefined;
 
 	const [isDrawingMode, setIsDrawingMode] = createSignal(false);
-	const [currentTool, setCurrentTool] = createSignal<ElementType>("marker");
+	const [currentTool, setCurrentTool] = createSignal<ElementType>("select");
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
 	const [currentBackgroundColor, setCurrentBackgroundColor] =
 		createSignal("transparent");
