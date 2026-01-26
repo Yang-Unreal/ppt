@@ -50,101 +50,177 @@ export default function Report() {
 			{/* Hero Section */}
 			<section
 				ref={heroRef}
-				class="section-container min-h-screen flex flex-col justify-center items-center text-center relative pt-20"
+				class="section-container min-h-screen flex items-center relative overflow-hidden"
 			>
-				{/* Minimalist Grid Line Background */}
-				<div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-					<div class="absolute left-1/2 top-0 bottom-0 w-px bg-white/10 -translate-x-1/2"></div>
-					<div class="absolute top-1/2 left-0 right-0 h-px bg-white/10 -translate-y-1/2"></div>
+				{/* Industrial Background with Geometric Patterns */}
+				<div class="absolute inset-0 bg-linear-to-br from-zinc-900 via-black to-zinc-950">
+					{/* Metallic Grid Overlay */}
+					<div class="absolute inset-0 opacity-10">
+						<div
+							class="absolute inset-0"
+							style="background-image: linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,0.05) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.05) 75%), linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.05) 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;"
+						></div>
+					</div>
+					{/* Diagonal Accent */}
+					<div class="absolute top-0 right-0 w-1/2 h-full bg-linear-to-l from-zinc-800/20 to-transparent transform skew-x-12 translate-x-32"></div>
 				</div>
 
-				<div class="max-w-[1400px] px-6 relative z-10 w-full">
-					<div class="mb-12">
-						<span class="text-[10px] md:text-xs font-mono tracking-[0.4em] uppercase text-zinc-500 mb-4 block">
-							{reportData.meta.subtitle}
-						</span>
-						<h1 class="text-7xl md:text-[10rem] font-display font-bold tracking-tighter text-white mb-8 leading-none">
-							2025<span class="text-zinc-800">-</span>2026
-						</h1>
-						<h2 class="text-4xl md:text-6xl font-bold tracking-tight text-white/90">
-							越南电动车市场调研
-						</h2>
+				<div class="max-w-7xl w-full px-6 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-center">
+					{/* Main Title Block */}
+					<div class="lg:col-span-8">
+						<div class="mb-8">
+							<span class="text-xs font-mono tracking-[0.4em] uppercase text-zinc-400 mb-6 block">
+								{reportData.meta.subtitle}
+							</span>
+							<h1 class="text-6xl md:text-8xl lg:text-[12rem] font-display font-bold tracking-tighter text-white mb-4 leading-none">
+								2025<span class="text-zinc-600">-</span>2026
+							</h1>
+							<h2
+								class="text-3xl md:text-5xl lg:text-7xl font-bold tracking-tight text-white/90"
+								style="font-family: 'Xiaolai', serif;"
+							>
+								越南电动车市场调研
+							</h2>
+						</div>
 					</div>
 
-					<div class="flex flex-col md:flex-row items-center justify-center gap-12 mt-20 text-zinc-500 font-mono text-[10px] tracking-widest uppercase">
-						<div class="flex items-center gap-3">
-							<span class="w-1 h-1 bg-white"></span>
-							<span>日期: {reportData.meta.date}</span>
-						</div>
-						<div class="flex items-center gap-3">
-							<span class="w-1 h-1 bg-white"></span>
-							<span>作者: {reportData.meta.author}</span>
+					{/* Meta Information */}
+					<div class="lg:col-span-4 lg:text-right">
+						<div class="space-y-6">
+							<div class="flex items-center justify-end gap-4 text-zinc-400 font-mono text-sm tracking-wider uppercase">
+								<span>日期</span>
+								<span class="w-8 h-px bg-zinc-600"></span>
+								<span>{reportData.meta.date}</span>
+							</div>
+							<div class="flex items-center justify-end gap-4 text-zinc-400 font-mono text-sm tracking-wider uppercase">
+								<span>作者</span>
+								<span class="w-8 h-px bg-zinc-600"></span>
+								<span>{reportData.meta.author}</span>
+							</div>
 						</div>
 					</div>
 				</div>
 
-				<div class="absolute bottom-20 left-1/2 -translate-x-1/2 opacity-30">
-					<div class="w-px h-12 bg-linear-to-b from-white to-transparent"></div>
+				{/* Scroll Indicator */}
+				<div class="absolute bottom-12 left-1/2 -translate-x-1/2">
+					<div class="w-px h-16 bg-linear-to-b from-white/50 to-transparent"></div>
+					<div class="text-xs text-zinc-500 font-mono uppercase tracking-widest mt-2 text-center">
+						Scroll
+					</div>
 				</div>
 			</section>
 
 			{/* Macro Overview */}
 			<section
 				ref={overviewRef}
-				class="section-container border-t border-zinc-900 py-32"
+				class="section-container border-t border-zinc-800 py-32 lg:py-48 relative bg-linear-to-b from-black to-zinc-950"
 			>
-				<div class="max-w-7xl w-full px-6">
-					<div class="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24 items-start">
+				{/* Industrial Background Elements */}
+				<div class="absolute inset-0 overflow-hidden pointer-events-none">
+					<div class="absolute top-20 right-10 w-96 h-96 border border-zinc-800/30 rounded-full"></div>
+					<div class="absolute bottom-20 left-10 w-64 h-64 bg-zinc-900/10 transform rotate-45"></div>
+				</div>
+
+				<div class="max-w-7xl w-full px-6 relative z-10">
+					<div class="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 mb-24 lg:mb-32 items-start">
 						<div class="lg:col-span-5">
-							<h2 class="text-5xl font-bold tracking-tighter mb-8 font-display">
-								市场宏观概况
+							<div class="flex items-center gap-4 mb-8">
+								<span class="w-16 h-px bg-linear-to-r from-zinc-600 to-zinc-400"></span>
+								<span class="text-xs font-mono text-zinc-400 uppercase tracking-[0.4em]">
+									Section 01
+								</span>
+							</div>
+							<h2
+								class="text-4xl lg:text-6xl font-bold tracking-tighter mb-8 font-display leading-[0.9]"
+								style="font-family: 'Xiaolai', serif;"
+							>
+								市场宏观
+								<br />
+								<span class="text-zinc-500">概况与窗口</span>
 							</h2>
-							<p class="text-2xl text-zinc-400 font-light leading-snug pt-10">
+							<p class="text-lg lg:text-xl text-zinc-300 font-light leading-relaxed max-w-lg">
 								{reportData.marketOverview.status}
 							</p>
-						</div>
 
-						<div class="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-px bg-zinc-900 border border-zinc-900 rounded-sm overflow-hidden">
-							<div class="bg-black p-12">
-								<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mb-6">
-									总体保有量
+							{/* Policy Driver Highlight */}
+							<div class="mt-12 bg-linear-to-r from-zinc-900 to-zinc-800 border border-zinc-700 p-8 rounded-lg shadow-2xl">
+								<span class="text-xs font-mono text-zinc-500 uppercase tracking-widest block mb-4">
+									政策核心驱动力
 								</span>
-								<span class="text-6xl font-bold text-white tracking-tighter block mb-2">
-									{reportData.marketOverview.totalHolding}
-								</span>
-								<p class="text-xs text-zinc-600">
-									越南社会机动车保有量基数庞大
+								<p
+									class="text-white font-bold text-lg leading-tight"
+									style="font-family: 'Xiaolai', serif;"
+								>
+									{reportData.marketOverview.banPusher}
+								</p>
+								<p class="text-zinc-400 text-sm mt-4 italic font-light">
+									作为本地工业巨头，其游说力量是"油改电"进程的核心变量。
 								</p>
 							</div>
-							<div class="bg-black p-12">
-								<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mb-6">
-									年产量
-								</span>
-								<span class="text-6xl font-bold text-white tracking-tighter block mb-2">
-									{reportData.marketOverview.annualProduction}
-								</span>
-								<p class="text-xs text-zinc-600">本地制造链持续成熟</p>
-							</div>
 						</div>
-					</div>
 
-					<div class="glass-card flex flex-col md:flex-row justify-between items-center group">
-						<header>
-							<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mb-2">
-								主导玩家
-							</span>
-							<h3 class="text-3xl font-bold text-white tracking-tight">
-								Honda
-							</h3>
-						</header>
-						<div class="mt-8 md:mt-0 text-right">
-							<span class="text-7xl font-bold text-white tracking-tighter">
-								{reportData.marketOverview.dominantPlayer.match(/\d+%/)?.[0] ||
-									"70%"}
-							</span>
-							<p class="text-[10px] text-zinc-500 font-mono mt-2">
-								{reportData.marketOverview.dominantPlayer}
-							</p>
+						<div class="lg:col-span-7 space-y-8">
+							{/* Stats Grid */}
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div class="bg-linear-to-br from-zinc-900 to-zinc-800 border border-zinc-700 p-8 lg:p-12 group hover:border-zinc-600 transition-all duration-300 shadow-xl">
+									<span class="text-xs font-mono text-zinc-400 uppercase tracking-widest block mb-6 group-hover:text-zinc-300 transition-colors">
+										社会保有量
+									</span>
+									<span class="text-5xl lg:text-7xl font-bold text-white tracking-tighter block mb-4 group-hover:scale-105 transition-transform origin-left">
+										{reportData.marketOverview.totalHolding}
+									</span>
+									<p class="text-xs text-zinc-500 font-mono tracking-tight uppercase">
+										Units in circulation
+									</p>
+									<div class="mt-4 h-1 bg-zinc-700 rounded-full overflow-hidden">
+										<div class="h-full bg-linear-to-r from-zinc-400 to-zinc-300 w-3/4 transition-all duration-500 group-hover:w-full"></div>
+									</div>
+								</div>
+								<div class="bg-linear-to-br from-zinc-900 to-zinc-800 border border-zinc-700 p-8 lg:p-12 group hover:border-zinc-600 transition-all duration-300 shadow-xl">
+									<span class="text-xs font-mono text-zinc-400 uppercase tracking-widest block mb-6 group-hover:text-zinc-300 transition-colors">
+										年均产量
+									</span>
+									<span class="text-5xl lg:text-7xl font-bold text-white tracking-tighter block mb-4 group-hover:scale-105 transition-transform origin-left">
+										{reportData.marketOverview.annualProduction}
+									</span>
+									<p class="text-xs text-zinc-500 font-mono tracking-tight uppercase">
+										Annual manufacturing capacity
+									</p>
+									<div class="mt-4 h-1 bg-zinc-700 rounded-full overflow-hidden">
+										<div class="h-full bg-linear-to-r from-zinc-400 to-zinc-300 w-2/3 transition-all duration-500 group-hover:w-5/6"></div>
+									</div>
+								</div>
+							</div>
+
+							{/* Dominant Player Card */}
+							<div class="bg-linear-to-r from-zinc-800 to-zinc-900 border border-zinc-700 p-8 lg:p-12 shadow-2xl group hover:border-zinc-600 transition-all duration-300">
+								<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+									<div>
+										<span class="text-xs font-mono text-zinc-400 uppercase tracking-widest block mb-3">
+											燃油车霸主 (现存挑战)
+										</span>
+										<h3
+											class="text-3xl lg:text-4xl font-bold text-white tracking-tighter"
+											style="font-family: 'Xiaolai', serif;"
+										>
+											Honda Motor
+										</h3>
+									</div>
+									<div class="text-right">
+										<span class="text-5xl lg:text-7xl font-bold text-white tracking-tighter group-hover:text-zinc-200 transition-colors">
+											{reportData.marketOverview.dominantPlayer.match(
+												/\d+%/,
+											)?.[0] || "70%"}
+										</span>
+										<p class="text-xs text-zinc-500 font-mono uppercase tracking-widest mt-2">
+											Market Share Dominance
+										</p>
+									</div>
+								</div>
+								<div class="mt-6 h-2 bg-zinc-700 rounded-full overflow-hidden">
+									<div class="h-full bg-linear-to-r from-red-600 to-red-400 w-3/4 transition-all duration-700 group-hover:w-4/5"></div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -153,50 +229,95 @@ export default function Report() {
 			{/* Geographic Clusters */}
 			<section
 				ref={clustersRef}
-				class="section-container bg-[#080808] border-t border-zinc-900 py-32"
+				class="section-container bg-linear-to-b from-zinc-950 to-black border-t border-zinc-800 py-24 lg:py-48 relative"
 			>
-				<div class="max-w-7xl w-full px-6">
-					<div class="flex items-center gap-8 mb-20">
-						<h3 class="text-xl text-white font-bold tracking-tight shrink-0 uppercase">
-							地域产业布局
-						</h3>
+				{/* Background Industrial Elements */}
+				<div class="absolute inset-0 overflow-hidden pointer-events-none">
+					<div class="absolute top-1/4 right-1/4 w-32 h-32 border-2 border-zinc-800/20 transform rotate-45"></div>
+					<div class="absolute bottom-1/4 left-1/4 w-24 h-24 bg-zinc-900/10 rounded-full"></div>
+				</div>
+
+				<div class="max-w-7xl w-full px-6 relative z-10">
+					<div class="flex flex-col md:flex-row md:items-end justify-between gap-8 lg:gap-12 mb-20 lg:mb-32">
+						<div class="max-w-2xl">
+							<h3
+								class="text-4xl lg:text-5xl font-bold text-white tracking-tighter mb-6 font-display"
+								style="font-family: 'Xiaolai', serif;"
+							>
+								地域产业集群
+								<br />
+								<span class="text-zinc-600">Geographic Industrial Density</span>
+							</h3>
+							<p class="text-zinc-300 text-base lg:text-lg font-light leading-relaxed">
+								越南两轮车产业呈现极强的"北重南轻"特征，兴安与北宁/北江省构成了完整的供应链闭环。
+							</p>
+						</div>
+						<div class="md:text-right">
+							<span class="text-xs font-mono text-zinc-500 tracking-[0.4em] uppercase border-b border-zinc-700 pb-4">
+								Locality & Infrastructure
+							</span>
+						</div>
 					</div>
 
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-px bg-zinc-900 border border-zinc-900 rounded-sm overflow-hidden">
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl">
 						<For each={reportData.marketOverview.clusters}>
 							{(cluster) => (
-								<div class="bg-black p-12 hover:bg-zinc-950 transition-colors duration-300">
-									<h4 class="text-3xl font-bold mb-4 tracking-tight">
+								<div class="bg-linear-to-br from-zinc-900 to-zinc-950 p-8 lg:p-12 hover:from-zinc-800 hover:to-zinc-900 transition-all duration-500 group relative overflow-hidden border-r border-zinc-800 last:border-r-0">
+									{/* Metallic Accent */}
+									<div class="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-zinc-600 to-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+									{/* Background Province Name */}
+									<div
+										class="absolute -bottom-4 -right-4 text-8xl lg:text-[12rem] font-bold text-zinc-800/10 select-none pointer-events-none group-hover:text-zinc-700/20 transition-colors"
+										style="font-family: 'Xiaolai', serif;"
+									>
+										{cluster.name.split(" ")[0]}
+									</div>
+
+									<h4
+										class="text-2xl lg:text-3xl font-bold mb-4 tracking-tighter text-white group-hover:translate-x-2 transition-transform"
+										style="font-family: 'Xiaolai', serif;"
+									>
 										{cluster.name}
 									</h4>
-									<p class="text-zinc-500 mb-12 leading-relaxed text-sm h-10 pt-5">
-										{cluster.desc}
-									</p>
+									<div class="inline-block bg-zinc-800 border border-zinc-600 px-4 py-2 rounded-lg mb-8">
+										<p class="text-zinc-400 text-xs font-mono uppercase tracking-widest">
+											{cluster.desc}
+										</p>
+									</div>
 
-									<div class="space-y-10">
-										<div>
-											<span class="text-[10px] text-white/30 uppercase block mb-4 font-bold tracking-widest">
-												主要制造商
-											</span>
-											<div class="grid grid-cols-2 gap-3">
+									<div class="grid grid-cols-1 gap-8 relative z-10">
+										<div class="space-y-4">
+											<div class="flex items-center gap-4">
+												<span class="text-xs text-zinc-500 uppercase font-bold tracking-widest">
+													Top Tier Brands
+												</span>
+												<span class="flex-1 h-px bg-linear-to-r from-zinc-700 to-zinc-600"></span>
+											</div>
+											<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
 												<For each={cluster.brands}>
 													{(brand) => (
-														<span class="text-sm text-zinc-400 border-l border-zinc-800 pl-3">
-															{brand}
+														<span class="text-sm text-zinc-400 font-light hover:text-white transition-colors flex items-center gap-2 truncate group-hover:scale-105">
+															<span class="w-1.5 h-1.5 bg-zinc-600 rounded-full shrink-0 group-hover:bg-zinc-400"></span>
+															<span class="truncate">{brand}</span>
 														</span>
 													)}
 												</For>
 											</div>
 										</div>
+
 										{cluster.suppliers && (
-											<div>
-												<span class="text-[10px] text-white/30 uppercase block mb-4 font-bold tracking-widest">
-													主要供应商
-												</span>
+											<div class="space-y-4 pt-8 border-t border-zinc-800">
+												<div class="flex items-center gap-4">
+													<span class="text-xs text-zinc-500 uppercase font-bold tracking-widest">
+														Strategic Suppliers
+													</span>
+													<span class="flex-1 h-px bg-linear-to-r from-zinc-700 to-zinc-600"></span>
+												</div>
 												<div class="grid grid-cols-2 gap-3">
 													<For each={cluster.suppliers}>
 														{(supplier) => (
-															<span class="text-sm text-zinc-500 border-l border-zinc-800 pl-3 italic">
+															<span class="text-xs text-zinc-500 font-mono tracking-tight group-hover:text-zinc-300 transition-colors truncate">
 																{supplier}
 															</span>
 														)}
@@ -215,38 +336,56 @@ export default function Report() {
 			{/* Competition Panorama */}
 			<section
 				ref={competitionRef}
-				class="section-container border-t border-zinc-900 py-32"
+				class="section-container border-t border-zinc-800 py-24 lg:py-48 bg-linear-to-b from-black to-zinc-950 relative"
 			>
-				<div class="max-w-7xl w-full px-6">
-					<h2 class="text-7xl font-bold mb-32 tracking-tighter text-center font-display">
-						竞争格局
-					</h2>
+				{/* Industrial Background */}
+				<div class="absolute inset-0 overflow-hidden pointer-events-none">
+					<div class="absolute top-1/3 left-1/3 w-64 h-64 border border-zinc-800/20 transform -rotate-12"></div>
+					<div class="absolute bottom-1/3 right-1/3 w-48 h-48 bg-zinc-900/5 rounded-full"></div>
+				</div>
 
-					<div class="space-y-32">
-						{/* Tiers with simple numbering */}
+				<div class="max-w-7xl w-full px-6 relative z-10">
+					<div class="text-center mb-24 lg:mb-48">
+						<span class="text-xs font-mono text-zinc-500 uppercase tracking-[0.6em] mb-8 block">
+							Competitive Landscape
+						</span>
+						<h2
+							class="text-5xl lg:text-8xl font-bold tracking-tighter font-display mb-8"
+							style="font-family: 'Xiaolai', serif;"
+						>
+							竞争格局与<span class="text-zinc-600">内幕</span>
+						</h2>
+						<p class="text-zinc-400 text-lg lg:text-xl font-light max-w-3xl mx-auto leading-relaxed italic px-4">
+							"不计成本的本土龙头 vs 快速扩张的中国品牌 vs 优胜劣汰的腰部玩家"
+						</p>
+					</div>
+
+					<div class="space-y-32 lg:space-y-48">
 						<For each={reportData.competition.tiers}>
 							{(tier, idx) => (
 								<div class="relative">
-									<div class="flex items-end gap-6 mb-12 border-b border-zinc-900 pb-12">
-										<span class="text-6xl font-bold text-zinc-800 leading-none">
-											0{idx() + 1}
+									<div class="flex items-baseline gap-8 mb-16">
+										<span class="text-6xl lg:text-8xl font-bold text-zinc-800 leading-none select-none absolute -top-6 -left-6">
+											{idx() + 1}
 										</span>
-										<div class="flex-1">
-											<h3 class="text-2xl font-bold text-white uppercase tracking-tight">
+										<div class="relative z-10 pl-6 border-l-4 border-gradient-to-b from-zinc-600 to-zinc-400">
+											<h3
+												class="text-2xl lg:text-3xl font-bold text-white uppercase tracking-tighter"
+												style="font-family: 'Xiaolai', serif;"
+											>
 												{tier.name.split("：")[0]}
 											</h3>
-											<p class="text-zinc-500 text-sm mt-1">
+											<p class="text-zinc-500 font-mono text-sm tracking-widest mt-2 uppercase">
 												{tier.name.split("：")[1]}
 											</p>
 										</div>
 									</div>
+
 									<div
 										class={
 											idx() === 2
-												? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-												: idx() === 1
-													? "grid grid-cols-1 md:grid-cols-2 gap-8"
-													: "space-y-8"
+												? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl"
+												: "space-y-4 bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl"
 										}
 									>
 										<For each={tier.brands}>
@@ -268,16 +407,27 @@ export default function Report() {
 			{/* Market Segments */}
 			<section
 				ref={segmentsRef}
-				class="section-container bg-[#050505] border-t border-zinc-900 py-32"
+				class="section-container bg-linear-to-b from-zinc-950 to-black border-t border-zinc-800 py-24 lg:py-48 relative"
 			>
-				<div class="max-w-7xl w-full px-6">
-					<div class="text-center mb-20">
-						<h2 class="text-5xl font-bold tracking-tight mb-4">细分市场洞察</h2>
-						<p class="text-zinc-500 uppercase tracking-[0.3em] text-[10px]">
-							Strategic Deep Dive
+				{/* Background Elements */}
+				<div class="absolute inset-0 overflow-hidden pointer-events-none">
+					<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-zinc-800/10 rounded-full"></div>
+				</div>
+
+				<div class="max-w-7xl w-full px-6 relative z-10">
+					<div class="flex flex-col md:flex-row items-center gap-8 lg:gap-12 mb-20 lg:mb-32 overflow-hidden">
+						<h2
+							class="text-4xl lg:text-6xl font-bold tracking-tighter shrink-0 font-display"
+							style="font-family: 'Xiaolai', serif;"
+						>
+							细分市场洞察
+						</h2>
+						<div class="hidden md:block h-px bg-linear-to-r from-zinc-700 to-zinc-600 flex-1"></div>
+						<p class="text-zinc-500 uppercase tracking-[0.3em] text-xs shrink-0 font-mono font-bold">
+							Strategic Segmentation 2026
 						</p>
 					</div>
-					<div class="space-y-px bg-zinc-900 border border-zinc-900 rounded-sm overflow-hidden">
+					<div class="space-y-6 bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl">
 						<SegmentCard segment={reportData.segments[0]} />
 						<SegmentCard segment={reportData.segments[1]} />
 						<SegmentCard segment={reportData.segments[2]} />
@@ -288,22 +438,36 @@ export default function Report() {
 			{/* Supply Chain / Ops */}
 			<section
 				ref={supplyRef}
-				class="section-container py-32 border-t border-zinc-900"
+				class="section-container py-24 lg:py-48 border-t border-zinc-800 bg-linear-to-b from-black to-zinc-950 overflow-hidden relative"
 			>
-				<div class="max-w-7xl w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-20">
-					<div class="lg:col-span-7 space-y-20">
-						<div>
-							<h3 class="text-[10px] font-mono uppercase tracking-[0.4em] text-zinc-500 mb-8">
-								Supply Chain Localization
-							</h3>
-							<div class="space-y-px bg-zinc-900 border border-zinc-900">
+				{/* Industrial Background */}
+				<div class="absolute inset-0 overflow-hidden pointer-events-none">
+					<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border-2 border-zinc-800/20 rounded-full"></div>
+					<div class="absolute top-1/4 right-1/4 w-32 h-32 bg-zinc-900/10 transform rotate-45"></div>
+				</div>
+
+				<div class="max-w-7xl w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 relative z-10">
+					<div class="lg:col-span-7 space-y-24 lg:space-y-32">
+						<div class="group/supply">
+							<div class="flex items-center gap-6 mb-12">
+								<h3 class="text-sm font-mono uppercase tracking-[0.5em] text-zinc-500 group-hover/supply:text-zinc-300 transition-colors">
+									Manufacturing Infrastructure
+								</h3>
+								<div class="flex-1 h-px bg-linear-to-r from-zinc-700 to-zinc-600 group-hover/supply:from-zinc-600 group-hover/supply:to-zinc-500 transition-colors"></div>
+							</div>
+
+							<div class="grid grid-cols-1 gap-4 bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl">
 								<For each={reportData.infrastructure.supplyChain.details}>
 									{(detail) => (
-										<div class="bg-black p-8 flex justify-between items-center group hover:bg-zinc-950 transition-colors">
-											<span class="text-zinc-400 font-bold group-hover:text-white transition-colors">
+										<div class="bg-linear-to-r from-zinc-900 to-zinc-950 p-8 lg:p-12 flex flex-col sm:flex-row justify-between items-start sm:items-center group/item hover:from-zinc-800 hover:to-zinc-900 transition-all relative overflow-hidden gap-4 border-b border-zinc-800 last:border-b-0">
+											<div class="absolute left-0 top-0 h-full w-0 group-hover/item:w-1 bg-linear-to-b from-zinc-400 to-zinc-600 transition-all duration-500"></div>
+											<span
+												class="text-zinc-300 font-bold tracking-tight text-lg lg:text-xl group-hover/item:text-white transition-colors"
+												style="font-family: 'Xiaolai', serif;"
+											>
 												{detail.label}
 											</span>
-											<span class="text-white font-mono text-sm">
+											<span class="text-zinc-400 font-mono text-sm max-w-full sm:max-w-[50%] sm:text-right leading-relaxed italic group-hover/item:text-zinc-200 transition-colors">
 												{detail.value}
 											</span>
 										</div>
@@ -312,18 +476,26 @@ export default function Report() {
 							</div>
 						</div>
 
-						<div>
-							<h3 class="text-[10px] font-mono uppercase tracking-[0.4em] text-zinc-500 mb-8">
-								Operations & Painpoints
-							</h3>
-							<div class="space-y-px bg-zinc-900 border border-zinc-900">
+						<div class="group/ops">
+							<div class="flex items-center gap-6 mb-12">
+								<h3 class="text-sm font-mono uppercase tracking-[0.5em] text-zinc-500 group-hover/ops:text-zinc-300 transition-colors">
+									Operational Logic & Barriers
+								</h3>
+								<div class="flex-1 h-px bg-linear-to-r from-zinc-700 to-zinc-600 group-hover/ops:from-zinc-600 group-hover/ops:to-zinc-500 transition-colors"></div>
+							</div>
+
+							<div class="grid grid-cols-1 gap-4 bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl">
 								<For each={reportData.infrastructure.operations.details}>
 									{(detail) => (
-										<div class="bg-black p-8 flex justify-between items-center group hover:bg-zinc-950 transition-colors">
-											<span class="text-zinc-400 font-bold group-hover:text-white transition-colors">
+										<div class="bg-linear-to-r from-zinc-900 to-zinc-950 p-8 lg:p-12 flex flex-col sm:flex-row justify-between items-start sm:items-center group/item hover:from-zinc-800 hover:to-zinc-900 transition-all relative overflow-hidden gap-4 border-b border-zinc-800 last:border-b-0">
+											<div class="absolute left-0 top-0 h-full w-0 group-hover/item:w-1 bg-linear-to-b from-zinc-500 to-zinc-700 transition-all duration-500"></div>
+											<span
+												class="text-zinc-300 font-bold tracking-tight text-lg lg:text-xl group-hover/item:text-white transition-colors"
+												style="font-family: 'Xiaolai', serif;"
+											>
 												{detail.label}
 											</span>
-											<span class="text-white font-mono text-sm">
+											<span class="text-zinc-400 font-mono text-sm max-w-full sm:max-w-[50%] sm:text-right leading-relaxed italic group-hover/item:text-zinc-200 transition-colors">
 												{detail.value}
 											</span>
 										</div>
@@ -336,45 +508,79 @@ export default function Report() {
 					{/* Risks Column */}
 					<div
 						ref={risksRef}
-						class="lg:col-span-5 bg-zinc-950 border border-zinc-900 p-12 flex flex-col justify-between"
+						class="lg:col-span-5 bg-linear-to-b from-zinc-900 to-zinc-950 border border-zinc-700 p-10 lg:p-16 flex flex-col justify-between relative shadow-2xl min-h-[600px] rounded-lg"
 					>
+						{/* Metallic Accent */}
+						<div class="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-zinc-600 to-zinc-400"></div>
+
 						<div>
-							<h3 class="text-5xl font-bold mb-16 tracking-tighter">
-								风险挑战
-							</h3>
-							<div class="space-y-12">
-								<div>
-									<h4 class="text-xs font-mono uppercase tracking-widest text-white border-b border-zinc-900 pb-4 mb-4">
-										Protectionism
+							<div class="mb-16">
+								<span class="text-xs font-mono text-zinc-500 uppercase tracking-[0.5em] block mb-6">
+									Strategic Warning
+								</span>
+								<h3
+									class="text-4xl lg:text-6xl font-bold mb-6 tracking-tighter text-white font-display leading-[0.8]"
+									style="font-family: 'Xiaolai', serif;"
+								>
+									风险与
+									<br />
+									<span class="text-zinc-600">挑战</span>
+								</h3>
+							</div>
+
+							<div class="space-y-16 relative">
+								<div class="group/risk">
+									<h4 class="text-sm font-mono uppercase tracking-[0.3em] text-zinc-400 border-b border-zinc-700 pb-6 mb-8 flex items-center justify-between group-hover/risk:text-white transition-colors">
+										<span>Protectionism</span>
+										<span class="w-2 h-2 bg-zinc-600 rounded-full group-hover:bg-red-600 transition-colors"></span>
 									</h4>
-									<p class="text-zinc-500 text-sm leading-relaxed">
+									<p class="text-zinc-400 text-lg leading-relaxed font-light group-hover:text-zinc-300 transition-colors">
 										{reportData.risks.protective.desc}
 									</p>
 								</div>
-								<div>
-									<h4 class="text-xs font-mono uppercase tracking-widest text-white border-b border-zinc-900 pb-4 mb-4">
-										Intellectual Property
+								<div class="group/risk">
+									<h4 class="text-sm font-mono uppercase tracking-[0.3em] text-zinc-400 border-b border-zinc-700 pb-6 mb-8 flex items-center justify-between group-hover/risk:text-white transition-colors">
+										<span>Intellectual Property</span>
+										<span class="w-2 h-2 bg-zinc-600 rounded-full group-hover:bg-red-600 transition-colors"></span>
 									</h4>
-									<p class="text-zinc-500 text-sm leading-relaxed">
+									<p class="text-zinc-400 text-lg leading-relaxed font-light group-hover:text-zinc-300 transition-colors">
 										{reportData.risks.ip.desc}
 									</p>
 								</div>
 							</div>
 						</div>
 
-						<footer class="pt-20 border-t border-zinc-900 text-right">
-							<div class="text-[10px] font-mono tracking-widest text-zinc-700 uppercase">
-								Outlook 2026
+						<footer class="pt-24 mt-24 border-t border-zinc-700 text-right">
+							<div class="text-xs font-mono tracking-[0.6em] text-zinc-600 uppercase mb-4">
+								Internal Intelligence
 							</div>
-							<div class="text-3xl font-bold text-zinc-900">VIETNAM_EV</div>
+							<div
+								class="text-3xl lg:text-4xl font-bold text-zinc-800 font-display tracking-tighter"
+								style="font-family: 'Xiaolai', serif;"
+							>
+								VIETNAM_EV_REPORT
+							</div>
 						</footer>
 					</div>
 				</div>
 			</section>
 
-			{/* Simple Footer */}
-			<footer class="py-16 text-center text-zinc-800 text-[10px] tracking-[0.5em] font-mono">
-				EV INSIGHTS REPT 2025
+			{/* Footer */}
+			<footer class="py-24 text-center bg-linear-to-t from-zinc-950 to-black border-t border-zinc-800 relative">
+				<div class="absolute inset-0 overflow-hidden pointer-events-none">
+					<div class="absolute top-0 left-1/2 -translate-x-1/2 w-px h-12 bg-linear-to-b from-zinc-600 to-transparent"></div>
+				</div>
+				<div class="relative z-10">
+					<div class="text-zinc-600 text-xs tracking-[0.6em] font-mono uppercase mb-4">
+						EV Insights
+					</div>
+					<div
+						class="text-zinc-500 text-lg font-bold tracking-tighter"
+						style="font-family: 'Xiaolai', serif;"
+					>
+						REPORT 2025
+					</div>
+				</div>
 			</footer>
 		</main>
 	);
