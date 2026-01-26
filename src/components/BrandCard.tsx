@@ -12,179 +12,111 @@ interface BrandCardProps {
 }
 
 export default function BrandCard({ brand, tier }: BrandCardProps) {
+	// Tier 1: Dominant / Full Width Bento
 	if (tier === 1) {
 		return (
-			<div class="border border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg transition-all duration-300 group overflow-hidden relative rounded-xl">
-				{/* Background accent */}
-				<div class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-gray-100 transition-all"></div>
-
-				<div class="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100 font-display relative z-10">
-					{/* Logo Section */}
-					<div class="lg:w-1/3 p-12 flex items-center justify-center bg-gray-50 group-hover:bg-gray-100 transition-colors">
+			<div class="col-span-1 md:col-span-2 lg:col-span-3 swiss-card swiss-card-shadow p-8 flex flex-col md:flex-row gap-8 items-start group hover:border-gray-400 transition-colors duration-300">
+				<div class="flex-shrink-0 w-full md:w-64 h-full flex flex-col justify-between">
+					<div class="w-16 h-16 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center mb-6">
 						{brand.logo ? (
 							<img
 								src={brand.logo}
 								alt={brand.name}
-								class="h-24 w-auto max-w-full object-contain filter grayscale group-hover:grayscale-0 transition-all"
+								class="h-8 w-auto object-contain mix-blend-multiply opacity-80"
 							/>
 						) : (
-							<h3 class="text-4xl font-bold text-gray-900 tracking-tighter">
-								{brand.name}
-							</h3>
+							<span class="text-xl font-bold tracking-tighter">
+								{brand.name.charAt(0)}
+							</span>
 						)}
 					</div>
+					<div>
+						<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-1 block">
+							Entity
+						</span>
+						<h3 class="text-2xl font-semibold tracking-tight text-gray-900">
+							{brand.name}
+						</h3>
+					</div>
+				</div>
 
-					{/* Content Section */}
-					<div class="lg:w-2/3 p-8 lg:p-12">
-						<div class="mb-10">
-							<div class="flex items-center gap-4 mb-4">
-								<span class="text-[10px] font-mono tracking-[0.3em] text-gray-500 uppercase">
-									Market Dominant / T1
-								</span>
-								<span class="w-8 h-px bg-gray-200"></span>
-							</div>
-							<h3 class="text-4xl lg:text-5xl font-bold text-gray-900 tracking-tighter mb-6 group-hover:translate-x-1 transition-transform">
-								{brand.name}
-							</h3>
-							<div class="space-y-4">
-								<p class="text-gray-600 leading-relaxed font-light text-lg lg:text-xl max-w-2xl">
-									{brand.desc.split("。")[0]}。
-								</p>
-								<div class="bg-gray-50 border-l-2 border-gray-200 p-4 lg:p-6">
-									<p class="text-gray-500 text-sm italic font-light leading-relaxed">
-										{brand.desc.split("。").slice(1).join("。")}
-									</p>
-								</div>
-							</div>
+				<div class="flex-1 flex flex-col justify-between h-full pt-2">
+					<p class="text-gray-500 text-lg font-normal leading-relaxed max-w-2xl mb-8">
+						{brand.desc}
+					</p>
+
+					<div class="flex items-center gap-12 border-t border-gray-100 pt-6 mt-auto">
+						<div>
+							<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 block mb-1">
+								Current Yield
+							</span>
+							<span class="text-xl font-mono font-medium text-gray-900">
+								{brand.yield2025}
+							</span>
 						</div>
-
-						{/* Metrics */}
-						<div class="grid grid-cols-2 gap-8 lg:gap-12 pt-8 lg:pt-12 border-t border-gray-100">
-							<div class="group/metric">
-								<div class="text-[10px] text-gray-400 uppercase tracking-widest mb-2 font-mono group-hover/metric:text-gray-600 transition-colors">
-									2025 Current
-								</div>
-								<div class="text-3xl lg:text-4xl font-mono font-bold text-gray-900 tracking-tighter flex items-baseline gap-2">
-									{brand.yield2025}
-									<span class="text-[9px] text-gray-300 font-normal">
-										UNITS
-									</span>
-								</div>
-							</div>
-							<div class="group/metric">
-								<div class="text-[10px] text-gray-400 uppercase tracking-widest mb-2 font-mono group-hover/metric:text-gray-600 transition-colors">
-									2026 Target
-								</div>
-								<div class="text-3xl lg:text-4xl font-mono font-bold text-gray-900 tracking-tighter flex items-baseline gap-2">
-									{brand.plan2026}
-									<span class="text-[9px] text-gray-300 font-normal">PLAN</span>
-								</div>
-							</div>
+						<div>
+							<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 block mb-1">
+								2026 Target
+							</span>
+							<span class="text-xl font-mono font-medium text-gray-900">
+								{brand.plan2026}
+							</span>
 						</div>
 					</div>
+				</div>
+
+				{/* Decorative ID */}
+				<div class="absolute top-4 right-4 text-[9px] font-mono text-gray-300">
+					T1.01
 				</div>
 			</div>
 		);
 	}
 
+	// Tier 2: Vertical Card
 	if (tier === 2) {
 		return (
-			<div class="flex flex-col border border-gray-200 bg-white group hover:border-gray-300 hover:shadow-lg transition-all duration-300 relative overflow-hidden rounded-xl">
-				<div class="h-40 w-full p-8 flex items-center justify-center border-b border-gray-100 bg-gray-50 group-hover:bg-gray-100 transition-colors">
-					{brand.logo ? (
-						<img
-							src={brand.logo}
-							alt={brand.name}
-							class="h-16 w-auto max-w-full object-contain filter grayscale group-hover:grayscale-0 transition-all"
-						/>
-					) : (
-						<span class="text-gray-600 font-bold text-base font-mono tracking-widest">
-							{brand.name}
-						</span>
-					)}
-				</div>
-
-				<div class="p-6 lg:p-8 flex-1 flex flex-col relative z-10">
-					<div class="mb-8">
-						<header class="flex justify-between items-center mb-4">
-							<h3 class="text-2xl font-bold text-gray-900 tracking-tighter group-hover:text-gray-700 transition-colors truncate mr-2">
-								{brand.name}
-							</h3>
-							<span class="text-[9px] font-mono text-gray-500 bg-gray-100 px-2 py-0.5 border border-gray-200 uppercase tracking-widest shrink-0 rounded">
-								Tier 02
+			<div class="swiss-card p-6 flex flex-col h-full hover:shadow-md transition-all duration-300">
+				<div class="flex justify-between items-start mb-6">
+					<div class="w-10 h-10 bg-gray-50 rounded-md border border-gray-100 flex items-center justify-center">
+						{brand.logo ? (
+							<img
+								src={brand.logo}
+								alt={brand.name}
+								class="h-4 w-auto object-contain opacity-80"
+							/>
+						) : (
+							<span class="text-sm font-bold">
+								{brand.name.substring(0, 2)}
 							</span>
-						</header>
-						<p class="text-gray-500 leading-relaxed font-light text-sm italic line-clamp-3">
-							"{brand.desc}"
-						</p>
+						)}
 					</div>
-
-					<div class="mt-auto">
-						<div class="h-1 w-full bg-gray-100 mb-4 overflow-hidden rounded-full">
-							<div class="h-full bg-gray-400 w-1/2 group-hover:w-2/3 transition-all duration-1000"></div>
-						</div>
-						<div class="flex items-center justify-between font-mono gap-2">
-							<div class="text-gray-400 text-[9px] uppercase tracking-widest truncate">
-								Growth Velocity
-							</div>
-							<div class="text-gray-900 font-bold text-xs tracking-tighter shrink-0">
-								{brand.yield2025} <span class="mx-1 text-gray-300">→</span>{" "}
-								{brand.plan2026}
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
-	if (tier === 3) {
-		return (
-			<div class="flex flex-col border border-gray-200 bg-white p-6 lg:p-8 hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 h-full group rounded-xl">
-				<div class="flex items-start justify-between mb-8">
-					<div class="flex items-center gap-4">
-						<div class="w-12 h-12 bg-gray-50 p-2 flex items-center justify-center shrink-0 border border-gray-200 group-hover:scale-105 transition-transform rounded-lg">
-							{brand.logo ? (
-								<img
-									src={brand.logo}
-									alt={brand.name}
-									class="max-w-full max-h-full object-contain grayscale group-hover:grayscale-0"
-								/>
-							) : (
-								<span class="text-gray-500 font-bold text-[10px] font-mono">
-									{brand.name.substring(0, 3).toUpperCase()}
-								</span>
-							)}
-						</div>
-						<div class="overflow-hidden">
-							<h4 class="font-bold text-lg text-gray-900 tracking-tighter group-hover:translate-x-1 transition-transform truncate">
-								{brand.name}
-							</h4>
-							<span class="text-[9px] font-mono text-gray-500 uppercase tracking-widest block">
-								Dynamic Player
-							</span>
-						</div>
-					</div>
+					<span class="px-2 py-1 bg-gray-50 border border-gray-100 rounded text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+						Challenger
+					</span>
 				</div>
 
-				<p class="text-sm text-gray-500 mb-8 leading-relaxed font-light line-clamp-3 group-hover:text-gray-600 transition-colors">
+				<h3 class="text-lg font-semibold tracking-tight text-gray-900 mb-2">
+					{brand.name}
+				</h3>
+				<p class="text-sm text-gray-500 leading-relaxed mb-6 line-clamp-3">
 					{brand.desc}
 				</p>
 
-				<div class="pt-6 border-t border-gray-100 flex justify-between items-end mt-auto gap-2">
-					<div class="overflow-hidden">
-						<span class="text-[8px] font-mono text-gray-400 uppercase tracking-widest block mb-1 truncate">
-							Current Volume
+				<div class="mt-auto pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+					<div>
+						<span class="text-[9px] font-mono uppercase tracking-widest text-gray-400 block mb-1">
+							Vol
 						</span>
-						<span class="text-gray-900 font-mono font-bold text-base truncate block">
+						<span class="text-sm font-mono font-medium text-gray-900">
 							{brand.yield2025}
 						</span>
 					</div>
-					<div class="text-right overflow-hidden">
-						<span class="text-[8px] font-mono text-gray-400 uppercase tracking-widest block mb-1 truncate">
-							2026 Plan
+					<div class="text-right">
+						<span class="text-[9px] font-mono uppercase tracking-widest text-gray-400 block mb-1">
+							Plan
 						</span>
-						<span class="text-gray-600 font-mono font-bold text-base truncate block">
+						<span class="text-sm font-mono font-medium text-gray-900">
 							{brand.plan2026}
 						</span>
 					</div>
@@ -193,5 +125,25 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 		);
 	}
 
-	return null;
+	// Tier 3: Compact Row / Tile
+	return (
+		<div class="swiss-card p-5 flex items-center justify-between group hover:bg-gray-50/50 transition-colors">
+			<div class="flex items-center gap-4">
+				<div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400">
+					{brand.name.substring(0, 1)}
+				</div>
+				<div>
+					<h4 class="text-sm font-semibold text-gray-900">{brand.name}</h4>
+					<span class="text-[10px] text-gray-400 font-mono">
+						Dynamic Player
+					</span>
+				</div>
+			</div>
+			<div class="text-right">
+				<span class="block text-sm font-mono font-medium text-gray-900">
+					{brand.yield2025}
+				</span>
+			</div>
+		</div>
+	);
 }

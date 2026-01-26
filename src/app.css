@@ -1,139 +1,106 @@
 @import "tailwindcss";
 
 @font-face {
-	font-family: "Excalifont";
-	src: url("/fonts/Excalifont-Regular.woff2") format("woff2");
-	font-weight: normal;
+	font-family: "Inter";
 	font-style: normal;
+	font-weight: 100 900;
 	font-display: swap;
+	src: url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
 }
 
 @font-face {
-	font-family: "Xiaolai";
-	src: url("/fonts/Xiaolai-Regular.ttf") format("truetype");
-	font-weight: normal;
+	font-family: "Geist Mono";
 	font-style: normal;
+	font-weight: 400 700;
 	font-display: swap;
+	src: url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap");
+	/* Using JetBrains Mono as a stand-in for Geist if not available locally, or standard monospace */
 }
 
 :root {
-	--bg-color: #ffffff;
-	--text-primary: #0a0a0a;
-	--text-secondary: #6b7280;
+	--bg-page: #f9f9fb;
+	--bg-card: #ffffff;
+	--bg-subtle: #f3f4f6;
 
-	/* Accent Colors (Used sparingly) */
-	--accent-primary: #0a0a0a;
-	--accent-secondary: #6366f1;
+	--text-primary: #171717;
+	--text-secondary: #525252;
+	--text-tertiary: #a3a3a3;
 
-	/* Light Theme Borders */
-	--border-light: rgba(0, 0, 0, 0.08);
-	--border-muted: rgba(0, 0, 0, 0.04);
+	--border-light: #e5e5e5;
+	--border-medium: #d4d4d4;
+	--border-dark: #171717;
 }
 
 body {
-	background-color: var(--bg-color);
+	background-color: var(--bg-page);
 	color: var(--text-primary);
-	font-family:
-		"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-		"Helvetica Neue", Arial, sans-serif;
-	overflow-x: hidden;
-	margin: 0;
+	font-family: "Inter", system-ui, -apple-system, sans-serif;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
-	line-height: 1.6;
+	line-height: 1.5;
 }
 
+/* Typography Overrides */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-	font-weight: 700;
-	letter-spacing: -0.04em;
-	color: #0a0a0a;
-	margin: 0;
-}
-
-/* Typography Utilities */
-.font-display {
-	font-family: "Inter", sans-serif;
-	letter-spacing: -0.05em;
+	color: var(--text-primary);
+	letter-spacing: -0.025em; /* Tight tracking for modern feel */
 }
 
 .font-mono {
 	font-family:
-		ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-		"Courier New", monospace;
-	letter-spacing: -0.02em;
+		"Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+	letter-spacing: -0.01em;
 }
 
-/* Classic Card Style */
-.glass-card {
-	background: #ffffff;
+/* Utility: Bento Grid Lines */
+.bento-grid {
+	display: grid;
+	gap: 1rem;
+}
+
+/* Utility: Swiss Card */
+.swiss-card {
+	background: var(--bg-card);
 	border: 1px solid var(--border-light);
-	border-radius: 8px;
-	padding: 2.5rem;
-	transition: all 0.2s ease;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-.glass-card:hover {
-	border-color: rgba(0, 0, 0, 0.15);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-
-.section-container {
-	min-height: 100vh;
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	padding: 8rem 2rem;
+	border-radius: 12px;
+	transition:
+		border-color 0.2s ease,
+		transform 0.2s ease;
 	position: relative;
-	box-sizing: border-box;
+	overflow: hidden;
 }
 
-/* Layout lines */
-.grid-line {
-	position: absolute;
-	background: var(--border-muted);
+.swiss-card:hover {
+	border-color: var(--border-medium);
 }
 
-/* Scrollbar customization */
+.swiss-card-shadow {
+	box-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.02),
+		0 4px 8px rgba(0, 0, 0, 0.02);
+}
+
+/* Subtle pattern for Hero */
+.bg-grid-pattern {
+	background-size: 40px 40px;
+	background-image:
+		linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
 	width: 6px;
 }
-
 ::-webkit-scrollbar-track {
-	background: #fafafa;
-}
-
-::-webkit-scrollbar-thumb {
-	background: #d1d5db;
-	border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-	background: #9ca3af;
-}
-
-/* Drawing Text Tool Styles */
-.drawing-text-area {
-	display: block;
 	background: transparent;
-	border: none;
-	outline: none;
-	padding: 0;
-	margin: 0;
-	resize: none;
-	overflow: visible;
-	white-space: pre-wrap;
-	word-wrap: break-word;
-	line-height: 1.25;
-	color: inherit;
-	font-family: "Excalifont", "Xiaolai", sans-serif;
-	z-index: 8003;
-	text-rendering: geometricPrecision;
+}
+::-webkit-scrollbar-thumb {
+	background: #d4d4d4;
+	border-radius: 3px;
 }

@@ -17,49 +17,39 @@ interface Segment {
 
 export default function SegmentCard({ segment }: { segment: Segment }) {
 	return (
-		<div class="bg-white p-8 lg:p-12 grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-16 group hover:bg-gray-50 transition-all duration-500 relative overflow-hidden border-b border-gray-100 last:border-b-0">
-			{/* Decorative background number or icon could go here */}
-			<div class="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:opacity-[0.06] transition-opacity">
-				<h4 class="text-[8rem] lg:text-[12rem] font-bold leading-none tracking-tighter select-none text-gray-900">
-					{segment.title.substring(0, 1)}
-				</h4>
-			</div>
-
-			{/* Left Column: Header & Features */}
-			<div class="md:col-span-5 flex flex-col relative z-10">
-				<div class="mb-8">
-					<div class="flex items-center gap-3 mb-4">
-						<span class="w-2 h-2 bg-gray-200 rounded-full group-hover:bg-gray-900 transition-colors duration-500"></span>
-						<h3 class="text-3xl lg:text-4xl font-bold text-gray-900 tracking-tighter">
-							{segment.title}
-						</h3>
-					</div>
-					<div class="flex flex-wrap gap-2">
+		<div class="swiss-card p-0 grid grid-cols-1 lg:grid-cols-12 min-h-[320px]">
+			{/* Header Column */}
+			<div class="lg:col-span-4 p-8 border-b lg:border-b-0 lg:border-r border-gray-100 bg-gray-50/30 flex flex-col">
+				<div class="mb-6">
+					<div class="flex flex-wrap gap-2 mb-4">
 						<For each={segment.tags}>
 							{(tag) => (
-								<span class="text-[8px] lg:text-[9px] font-mono uppercase tracking-widest border border-gray-200 bg-gray-50 text-gray-500 px-3 py-1 group-hover:border-gray-300 group-hover:text-gray-700 transition-colors rounded">
+								<span class="text-[9px] font-mono uppercase tracking-widest border border-gray-200 text-gray-500 px-2 py-1 rounded-full bg-white">
 									{tag}
 								</span>
 							)}
 						</For>
 					</div>
+					<h3 class="text-3xl font-semibold tracking-tight text-gray-900 leading-tight">
+						{segment.title}
+					</h3>
 				</div>
-				<p class="text-gray-500 text-base lg:text-lg leading-relaxed font-light italic border-l-2 border-gray-200 pl-6 py-1 lg:pl-8 lg:py-2 group-hover:border-gray-400 transition-colors">
+				<p class="text-sm text-gray-600 leading-relaxed mt-auto border-l border-gray-200 pl-4">
 					{segment.features}
 				</p>
 			</div>
 
-			{/* Right Column: Data & Insights */}
-			<div class="md:col-span-7 pt-8 md:pt-0 relative z-10">
+			{/* Content Area - Modular */}
+			<div class="lg:col-span-8 p-8 flex flex-col justify-center">
 				{segment.details ? (
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gray-100 border border-gray-200 shadow-sm rounded-xl overflow-hidden">
+					<div class="grid grid-cols-2 gap-4">
 						<For each={segment.details}>
 							{(detail) => (
-								<div class="bg-white p-6 lg:p-8 group/item hover:bg-gray-50 transition-colors">
-									<div class="text-[9px] lg:text-[10px] text-gray-400 mb-4 uppercase tracking-[0.2em] font-mono font-bold group-hover/item:text-gray-600">
+								<div class="bg-gray-50 rounded-lg p-5 border border-gray-100">
+									<div class="text-[10px] text-gray-400 uppercase tracking-widest font-mono mb-2">
 										{detail.label}
 									</div>
-									<div class="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight group-hover/item:translate-x-1 transition-transform">
+									<div class="text-2xl font-medium tracking-tight text-gray-900">
 										{detail.value}
 									</div>
 								</div>
@@ -67,80 +57,50 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 						</For>
 					</div>
 				) : segment.insight ? (
-					<div class="h-full flex flex-col justify-center">
-						<div class="bg-gray-50 border border-gray-200 p-8 lg:p-10 relative group/insight rounded-xl">
-							<div class="absolute -top-3 -left-3 w-10 h-10 border-t-2 border-l-2 border-gray-200 group-hover/insight:border-gray-900 transition-colors duration-700 rounded-tl-lg"></div>
-
-							<h4 class="text-gray-400 text-[9px] font-bold uppercase mb-6 tracking-[0.4em] font-mono">
-								Core Strategic Insight
-							</h4>
-							<p class="text-gray-700 text-lg lg:text-xl leading-snug mb-8 font-display">
-								"{segment.insight}"
+					<div class="relative pl-8">
+						<div class="absolute left-0 top-0 bottom-0 w-px bg-gray-200"></div>
+						<div class="mb-6">
+							<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-2 block">
+								Core Insight
+							</span>
+							<p class="text-xl text-gray-900 font-light leading-relaxed">
+								{segment.insight}
 							</p>
-
-							<div class="flex flex-col gap-1 pt-8 border-t border-gray-200">
-								<span class="text-[8px] text-gray-400 font-mono uppercase tracking-widest">
-									Deployment Strategy
-								</span>
-								<span class="text-gray-900 text-xs lg:text-sm font-mono tracking-tight">
-									{segment.strategy}
-								</span>
-							</div>
+						</div>
+						<div class="bg-gray-900 text-white p-4 rounded-lg inline-block">
+							<span class="text-[10px] font-mono uppercase tracking-widest opacity-60 block mb-1">
+								Strategy
+							</span>
+							<span class="text-sm font-medium tracking-tight">
+								{segment.strategy}
+							</span>
 						</div>
 					</div>
 				) : segment.costComparison ? (
-					<div class="flex flex-col h-full justify-center">
-						<div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-4 lg:gap-6 mb-8 lg:mb-10">
-							<div class="sm:col-span-5 bg-gray-50 p-6 lg:p-8 border border-gray-200 text-center relative overflow-hidden group/cost rounded-xl">
-								<div class="text-[8px] lg:text-[9px] text-gray-400 mb-3 uppercase tracking-[0.2em] font-mono font-bold">
+					<div class="w-full">
+						<div class="flex items-end justify-between mb-8 pb-8 border-b border-gray-100">
+							<div>
+								<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-1 block">
 									ICE Operational
-								</div>
-								<div class="text-xl lg:text-2xl font-bold text-gray-500 font-mono tracking-tighter">
-									{segment.costComparison.ice}
-								</div>
-								<div class="absolute bottom-0 left-0 w-full h-0.5 bg-gray-200"></div>
-							</div>
-
-							<div class="sm:col-span-2 text-center py-2 sm:py-0">
-								<div class="w-8 h-8 lg:w-10 lg:h-10 border border-gray-200 rounded-full flex items-center justify-center mx-auto bg-white shadow-sm">
-									<span class="text-[8px] lg:text-[9px] font-bold text-gray-400 font-mono">
-										VS
-									</span>
-								</div>
-							</div>
-
-							<div class="sm:col-span-5 bg-white border border-gray-300 p-6 lg:p-8 text-center shadow-md group/cost relative rounded-xl">
-								<div class="text-[8px] lg:text-[9px] text-gray-500 mb-3 uppercase tracking-[0.2em] font-mono font-bold">
-									EV Operational
-								</div>
-								<div class="text-2xl lg:text-3xl font-bold text-gray-900 font-mono tracking-tighter">
-									{segment.costComparison.ev}
-								</div>
-								<div class="absolute bottom-0 left-0 w-full h-1 bg-gray-900 scale-x-75 group-hover:scale-x-100 transition-transform duration-700 rounded-b-xl"></div>
-							</div>
-						</div>
-
-						<div class="bg-gray-50 p-6 lg:p-8 border border-gray-200 flex items-center justify-between rounded-xl">
-							<div class="flex flex-col gap-1">
-								<span class="text-[8px] lg:text-[9px] font-mono text-gray-400 tracking-[0.3em] uppercase font-bold">
-									Efficiency Index
 								</span>
-								<p class="text-[9px] text-gray-400 font-mono">
-									Operational cost reduction factor
-								</p>
+								<span class="text-2xl font-mono text-gray-300 line-through decoration-gray-300">
+									{segment.costComparison.ice}
+								</span>
 							</div>
-							<div class="text-3xl lg:text-4xl font-bold text-gray-900 font-mono tracking-tighter">
-								{segment.costComparison.ratio}
+							<div class="text-right">
+								<span class="text-[10px] font-mono uppercase tracking-widest text-green-600 mb-1 block">
+									EV Optimized
+								</span>
+								<span class="text-4xl font-mono font-medium text-gray-900">
+									{segment.costComparison.ev}
+								</span>
 							</div>
 						</div>
-
-						<div class="mt-8 text-right">
-							<p class="text-[10px] lg:text-xs text-gray-500 italic font-light tracking-wide inline-block border-b border-gray-200 pb-1 lg:pb-2">
-								"
-								{segment.conclusion ||
-									"Significant economic shift in logistics sector."}
-								"
-							</p>
+						<div class="flex justify-between items-center">
+							<span class="text-xs text-gray-500">{segment.conclusion}</span>
+							<span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-mono font-bold text-gray-900">
+								{segment.costComparison.ratio} Ratio
+							</span>
 						</div>
 					</div>
 				) : null}
