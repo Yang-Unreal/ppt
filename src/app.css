@@ -17,17 +17,17 @@
 }
 
 :root {
-	--bg-color: #000000;
-	--text-primary: #ffffff;
-	--text-secondary: #999999;
+	--bg-color: #ffffff;
+	--text-primary: #0a0a0a;
+	--text-secondary: #6b7280;
 
-	/* Solana Brand Colors (Used sparingly) */
-	--solana-green: #14f195;
-	--solana-purple: #9945ff;
+	/* Accent Colors (Used sparingly) */
+	--accent-primary: #0a0a0a;
+	--accent-secondary: #6366f1;
 
-	/* Minimalist Borders */
-	--border-light: rgba(255, 255, 255, 0.1);
-	--border-muted: rgba(255, 255, 255, 0.05);
+	/* Light Theme Borders */
+	--border-light: rgba(0, 0, 0, 0.08);
+	--border-muted: rgba(0, 0, 0, 0.04);
 }
 
 body {
@@ -51,7 +51,7 @@ h5,
 h6 {
 	font-weight: 700;
 	letter-spacing: -0.04em;
-	color: white;
+	color: #0a0a0a;
 	margin: 0;
 }
 
@@ -70,15 +70,17 @@ h6 {
 
 /* Classic Card Style */
 .glass-card {
-	background: #000000;
+	background: #ffffff;
 	border: 1px solid var(--border-light);
-	border-radius: 4px; /* Classic sharp/minimal corners */
+	border-radius: 8px;
 	padding: 2.5rem;
-	transition: border-color 0.2s ease;
+	transition: all 0.2s ease;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .glass-card:hover {
-	border-color: rgba(255, 255, 255, 0.3);
+	border-color: rgba(0, 0, 0, 0.15);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .section-container {
@@ -105,15 +107,16 @@ h6 {
 }
 
 ::-webkit-scrollbar-track {
-	background: #000;
+	background: #fafafa;
 }
 
 ::-webkit-scrollbar-thumb {
-	background: #222;
+	background: #d1d5db;
+	border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background: #333;
+	background: #9ca3af;
 }
 
 /* Drawing Text Tool Styles */
