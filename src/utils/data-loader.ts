@@ -461,7 +461,7 @@ export const reportData = {
 		{
 			title: "B2B / 外卖配送",
 			tags: ["经济性", "高端化潜力"],
-			features: "运营成本仅为油车的 1/8。",
+			features: "运营成本大幅优于燃油车。",
 			details: [
 				{ label: "爆款潜力", value: "72V 90Ah 大电池" },
 				{ label: "设计需求", value: "长坐垫、大脚踏板、高续航" },
