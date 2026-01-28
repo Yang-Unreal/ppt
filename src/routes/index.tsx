@@ -33,8 +33,8 @@ export default function Report() {
 			<section class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-[#d3fd50] uppercase tracking-widest block mb-3">
-							01. MACRO CONTEXT
+						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
+							01.
 						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
 							宏观背景
@@ -182,8 +182,8 @@ export default function Report() {
 			<section class="w-full py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-[#d3fd50] uppercase tracking-widest block mb-3">
-							02. COMPETITION
+						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
+							02.
 						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black mb-6">
 							竞争格局
@@ -232,8 +232,8 @@ export default function Report() {
 			<section class="w-full bg-[#f9f9fb] border-t border-gray-200 py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-[#d3fd50] uppercase tracking-widest block mb-3">
-							03. STRATEGY
+						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
+							03.
 						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
 							细分市场
@@ -252,8 +252,8 @@ export default function Report() {
 			<section class="w-full py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-[#d3fd50] uppercase tracking-widest block mb-3">
-							04. INFRASTRUCTURE
+						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
+							04.
 						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
 							供应链与制造痛点
@@ -306,8 +306,8 @@ export default function Report() {
 			<section class="w-full py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-[#d3fd50] uppercase tracking-widest block mb-3">
-							05. RISKS
+						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
+							05.
 						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
 							政策环境与风险提示
