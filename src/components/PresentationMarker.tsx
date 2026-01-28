@@ -70,6 +70,9 @@ export default function PresentationMarker() {
 	const [previewElements, setPreviewElements] = createSignal<Element[]>([]);
 	const [lastArrowKey, setLastArrowKey] = createSignal<string | null>(null);
 	const [arrowKeyPressCount, setArrowKeyPressCount] = createSignal<number>(0);
+	const [activeMenu, setActiveMenu] = createSignal<"colors" | "style" | null>(
+		null,
+	);
 
 	const strokeStyles: StrokeStyle[] = ["solid", "dashed", "dotted"];
 
@@ -2013,11 +2016,492 @@ export default function PresentationMarker() {
 				</Show>
 
 				<Show when={isDrawingMode()}>
-					<div class="flex items-center gap-4 bg-black border border-white/10 p-3 rounded-lg shadow-2xl">
+					<div class="flex items-center gap-2 bg-black border border-white/10 px-3 h-12 rounded-full shadow-2xl relative">
+						{/* --- Popovers --- */}
+						<Show when={activeMenu() === "colors"}>
+							<div class="absolute bottom-14 right-0 bg-black border border-white/10 p-4 rounded-xl shadow-xl min-w-[200px] flex flex-col gap-4 z-50">
+								{/* Color Selection */}
+								<div class="flex flex-col gap-2">
+									<span class="text-[10px] text-zinc-500 uppercase font-bold">
+										Stroke Color
+									</span>
+									<div class="flex flex-col gap-1">
+										<div class="flex gap-1">
+											<For
+												each={[
+													"#ff4444",
+													"#44ff44",
+													"#4444ff",
+													"#00f2ff",
+													"#ffff44",
+												]}
+											>
+												{(color) => (
+													<button
+														type="button"
+														onClick={() => {
+															setCurrentColor(color);
+															if (selectedElementIds().size > 0) {
+																setElements(
+																	elements().map((el) =>
+																		selectedElementIds().has(el.id)
+																			? { ...el, color }
+																			: el,
+																	),
+																);
+																redraw();
+															}
+														}}
+														class={`w-6 h-6 rounded-full border transition-transform hover:scale-110 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
+														style={{ "background-color": color }}
+													/>
+												)}
+											</For>
+										</div>
+										<div class="flex gap-1">
+											<For
+												each={[
+													"#ff00ff",
+													"#000000",
+													"#ffffff",
+													"#808080",
+													"#ffa500",
+												]}
+											>
+												{(color) => (
+													<button
+														type="button"
+														onClick={() => {
+															setCurrentColor(color);
+															if (selectedElementIds().size > 0) {
+																setElements(
+																	elements().map((el) =>
+																		selectedElementIds().has(el.id)
+																			? { ...el, color }
+																			: el,
+																	),
+																);
+																redraw();
+															}
+														}}
+														class={`w-6 h-6 rounded-full border transition-transform hover:scale-110 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
+														style={{ "background-color": color }}
+													/>
+												)}
+											</For>
+										</div>
+									</div>
+									<input
+										type="color"
+										value={currentColor()}
+										onInput={(e) => {
+											const color = e.currentTarget.value;
+											setCurrentColor(color);
+											if (selectedElementIds().size > 0) {
+												setElements(
+													elements().map((el) =>
+														selectedElementIds().has(el.id)
+															? { ...el, color }
+															: el,
+													),
+												);
+												redraw();
+											}
+										}}
+										class="w-full h-8 rounded cursor-pointer border-none p-0 mt-1"
+										title="Custom Color"
+									/>
+								</div>
+
+								<div class="w-full h-px bg-white/10" />
+
+								{/* Background Color */}
+								<div class="flex flex-col gap-2">
+									<span class="text-[10px] text-zinc-500 uppercase font-bold">
+										Background
+									</span>
+									<div class="flex items-center gap-2">
+										<button
+											type="button"
+											onClick={() => {
+												setCurrentBackgroundColor("transparent");
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, backgroundColor: "transparent" }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class={`w-8 h-8 rounded border ${currentBackgroundColor() === "transparent" ? "border-white" : "border-zinc-700"} relative overflow-hidden`}
+											title="Transparent"
+										>
+											<div class="absolute inset-0 bg-red-500 rotate-45 w-px h-[150%] top-[-25%] left-[50%]" />
+										</button>
+										<input
+											type="color"
+											value={
+												currentBackgroundColor() === "transparent"
+													? "#ffffff"
+													: currentBackgroundColor()
+											}
+											onInput={(e) => {
+												const val = e.currentTarget.value;
+												setCurrentBackgroundColor(val);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, backgroundColor: val }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class="flex-1 h-8 rounded cursor-pointer border-none p-0"
+											title="Background Color"
+										/>
+									</div>
+								</div>
+							</div>
+							<button
+								type="button"
+								class="fixed inset-0 z-40 cursor-default w-full h-full border-none bg-transparent"
+								onClick={() => setActiveMenu(null)}
+								aria-label="Close menu"
+							/>
+						</Show>
+
+						<Show when={activeMenu() === "style"}>
+							<div class="absolute bottom-14 right-0 bg-black border border-white/10 p-4 rounded-xl shadow-xl min-w-[240px] flex flex-col gap-4 z-50">
+								{/* Fill Style */}
+								<div class="flex flex-col gap-2">
+									<span class="text-[10px] text-zinc-500 uppercase font-bold">
+										Fill Style
+									</span>
+									<select
+										value={currentFillStyle()}
+										onChange={(e) => {
+											const val = e.currentTarget
+												.value as (typeof FILL_STYLES)[number];
+											setCurrentFillStyle(val);
+											if (selectedElementIds().size > 0) {
+												setElements(
+													elements().map((el) =>
+														selectedElementIds().has(el.id)
+															? { ...el, fillStyle: val }
+															: el,
+													),
+												);
+												redraw();
+											}
+										}}
+										class="w-full h-8 px-2 text-xs bg-white/10 text-white rounded border border-white/10 outline-none focus:border-white/30"
+									>
+										<For each={FILL_STYLES}>
+											{(style) => (
+												<option value={style} class="text-black bg-white">
+													{style}
+												</option>
+											)}
+										</For>
+									</select>
+								</div>
+
+								<div class="w-full h-px bg-white/10" />
+
+								{/* Stroke Style */}
+								<div class="flex flex-col gap-2">
+									<span class="text-[10px] text-zinc-500 uppercase font-bold">
+										Stroke Style
+									</span>
+									<div class="flex bg-white/10 rounded-lg p-1">
+										<For each={strokeStyles}>
+											{(style) => (
+												<button
+													type="button"
+													onClick={() => {
+														setCurrentStrokeStyle(style);
+														if (selectedElementIds().size > 0) {
+															setElements(
+																elements().map((el) =>
+																	selectedElementIds().has(el.id)
+																		? { ...el, strokeStyle: style }
+																		: el,
+																),
+															);
+															redraw();
+														}
+													}}
+													class={`flex-1 py-1 text-[10px] uppercase rounded ${
+														currentStrokeStyle() === style
+															? "bg-white text-black font-bold shadow-sm"
+															: "text-zinc-400 hover:text-white"
+													}`}
+												>
+													{style}
+												</button>
+											)}
+										</For>
+									</div>
+								</div>
+
+								<div class="w-full h-px bg-white/10" />
+
+								{/* Sliders */}
+								<div class="flex flex-col gap-3">
+									<div class="flex flex-col gap-1">
+										<div class="flex justify-between">
+											<span class="text-[10px] text-zinc-500 uppercase font-bold">
+												Width
+											</span>
+											<span class="text-[10px] text-zinc-400">
+												{currentWidth()}
+											</span>
+										</div>
+										<input
+											type="range"
+											min="1"
+											max="20"
+											value={currentWidth()}
+											onInput={(e) => {
+												const val = Number(e.currentTarget.value);
+												setCurrentWidth(val);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, width: val }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+										/>
+									</div>
+
+									<div class="flex flex-col gap-1">
+										<div class="flex justify-between">
+											<span class="text-[10px] text-zinc-500 uppercase font-bold">
+												Roughness
+											</span>
+											<span class="text-[10px] text-zinc-400">
+												{currentRoughness()}
+											</span>
+										</div>
+										<input
+											type="range"
+											min="0"
+											max="3"
+											step="0.5"
+											value={currentRoughness()}
+											onInput={(e) => {
+												const val = Number(e.currentTarget.value);
+												setCurrentRoughness(val);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, roughness: val }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+										/>
+									</div>
+
+									<div class="flex flex-col gap-1">
+										<div class="flex justify-between">
+											<span class="text-[10px] text-zinc-500 uppercase font-bold">
+												Opacity
+											</span>
+											<span class="text-[10px] text-zinc-400">
+												{currentOpacity()}%
+											</span>
+										</div>
+										<input
+											type="range"
+											min="10"
+											max="100"
+											step="10"
+											value={currentOpacity()}
+											onInput={(e) => {
+												const val = Number(e.currentTarget.value);
+												setCurrentOpacity(val);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, opacity: val }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+										/>
+									</div>
+								</div>
+							</div>
+							<button
+								type="button"
+								class="fixed inset-0 z-40 cursor-default w-full h-full border-none bg-transparent"
+								onClick={() => setActiveMenu(null)}
+								aria-label="Close menu"
+							/>
+						</Show>
+
+						{/* --- Main Toolbar --- */}
+
+						<div class="flex gap-0.5 bg-white/5 p-1 rounded-full">
+							<For each={tools}>
+								{(tool) => (
+									<button
+										type="button"
+										onClick={() => {
+											setCurrentTool(tool);
+											if (
+												(tool === "eraser" || tool === "select") &&
+												selectedElementIds().size > 0
+											) {
+												// keep selection
+											}
+										}}
+										class={`px-3 py-1.5 rounded-full text-[10px] uppercase font-bold transition-all ${
+											currentTool() === tool
+												? "bg-white text-black shadow-sm"
+												: "text-zinc-500 hover:text-white hover:bg-white/10"
+										}`}
+									>
+										{tool}
+									</button>
+								)}
+							</For>
+						</div>
+
+						<div class="w-px h-6 bg-white/10" />
+
+						<div class="flex gap-1">
+							{/* Colors Menu Toggle */}
+							<button
+								type="button"
+								onClick={() =>
+									setActiveMenu(activeMenu() === "colors" ? null : "colors")
+								}
+								class={`w-8 h-8 flex items-center justify-center rounded-full border transition-all ${
+									activeMenu() === "colors"
+										? "border-white bg-white/10"
+										: "border-transparent hover:bg-white/5"
+								}`}
+								title="Colors"
+							>
+								<div
+									class="w-4 h-4 rounded-full border border-white/20"
+									style={{ "background-color": currentColor() }}
+								/>
+							</button>
+
+							{/* Style Menu Toggle */}
+							<button
+								type="button"
+								onClick={() =>
+									setActiveMenu(activeMenu() === "style" ? null : "style")
+								}
+								class={`w-8 h-8 flex items-center justify-center rounded-full border transition-all text-zinc-400 ${
+									activeMenu() === "style"
+										? "border-white bg-white/10 text-white"
+										: "border-transparent hover:bg-white/5 hover:text-white"
+								}`}
+								title="Style & Properties"
+							>
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<title>Style Settings</title>
+									<path d="M4 21v-7" />
+									<path d="M4 10V3" />
+									<path d="M12 21v-9" />
+									<path d="M12 8V3" />
+									<path d="M20 21v-5" />
+									<path d="M20 12V3" />
+									<path d="M1 14h6" />
+									<path d="M9 8h6" />
+									<path d="M17 16h6" />
+								</svg>
+							</button>
+						</div>
+
+						<div class="w-px h-6 bg-white/10" />
+
+						<div class="flex gap-1">
+							<button
+								type="button"
+								onClick={undo}
+								class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+								title="Undo"
+							>
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<title>Undo</title>
+									<path d="M3 7v6h6" />
+									<path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+								</svg>
+							</button>
+							<button
+								type="button"
+								onClick={clearCanvas}
+								class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+								title="Clear All"
+							>
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<title>Clear Canvas</title>
+									<path d="M3 6h18" />
+									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+								</svg>
+							</button>
+						</div>
+
+						<div class="w-px h-6 bg-white/10" />
+
 						<button
 							type="button"
 							onClick={() => setIsDrawingMode(false)}
-							class="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors"
+							class="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
 							title="Close Tools"
 						>
 							<svg
@@ -2035,329 +2519,6 @@ export default function PresentationMarker() {
 								<line x1="6" y1="6" x2="18" y2="18" />
 							</svg>
 						</button>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex gap-1 bg-black/40 p-1 rounded-xl">
-							<For each={tools}>
-								{(tool) => (
-									<button
-										type="button"
-										onClick={() => setCurrentTool(tool)}
-										class={`px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold transition-all ${currentTool() === tool ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}
-									>
-										{tool}
-									</button>
-								)}
-							</For>
-						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex gap-2 px-2">
-							<div class="flex flex-col gap-1">
-								<div class="flex gap-1">
-									<For
-										each={[
-											"#ff4444",
-											"#44ff44",
-											"#4444ff",
-											"#00f2ff",
-											"#ffff44",
-										]}
-									>
-										{(color) => (
-											<button
-												type="button"
-												onClick={() => {
-													setCurrentColor(color);
-													if (selectedElementIds().size > 0) {
-														setElements(
-															elements().map((el) =>
-																selectedElementIds().has(el.id)
-																	? { ...el, color }
-																	: el,
-															),
-														);
-														redraw();
-													} else if (
-														currentTool() === "eraser" ||
-														currentTool() === "select"
-													)
-														setCurrentTool("marker");
-												}}
-												class={`w-4 h-4 rounded-full border transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
-												style={{ "background-color": color }}
-											/>
-										)}
-									</For>
-								</div>
-								<div class="flex gap-1">
-									<For
-										each={[
-											"#ff00ff",
-											"#000000",
-											"#ffffff",
-											"#808080",
-											"#ffa500",
-										]}
-									>
-										{(color) => (
-											<button
-												type="button"
-												onClick={() => {
-													setCurrentColor(color);
-													if (selectedElementIds().size > 0) {
-														setElements(
-															elements().map((el) =>
-																selectedElementIds().has(el.id)
-																	? { ...el, color }
-																	: el,
-															),
-														);
-														redraw();
-													} else if (
-														currentTool() === "eraser" ||
-														currentTool() === "select"
-													)
-														setCurrentTool("marker");
-												}}
-												class={`w-4 h-4 rounded-full border transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
-												style={{ "background-color": color }}
-											/>
-										)}
-									</For>
-								</div>
-							</div>
-							<div class="flex items-center">
-								<input
-									type="color"
-									value={currentColor()}
-									onInput={(e) => {
-										const color = e.currentTarget.value;
-										setCurrentColor(color);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, color }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-6 h-6 rounded cursor-pointer border-none p-0"
-									title="Custom Color"
-								/>
-							</div>
-						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex flex-col gap-2">
-							<div class="flex items-center gap-2">
-								<span class="text-[8px] text-zinc-500 uppercase w-8">Bg</span>
-								<div class="flex gap-1">
-									<button
-										type="button"
-										onClick={() => {
-											setCurrentBackgroundColor("transparent");
-											if (selectedElementIds().size > 0) {
-												setElements(
-													elements().map((el) =>
-														selectedElementIds().has(el.id)
-															? { ...el, backgroundColor: "transparent" }
-															: el,
-													),
-												);
-												redraw();
-											}
-										}}
-										class={`w-4 h-4 rounded border ${currentBackgroundColor() === "transparent" ? "border-white" : "border-zinc-700"} relative overflow-hidden`}
-										title="Transparent"
-									>
-										<div class="absolute inset-0 bg-red-500 rotate-45 w-px h-[150%] top-[-25%] left-[50%]" />
-									</button>
-									<input
-										type="color"
-										value={
-											currentBackgroundColor() === "transparent"
-												? "#ffffff"
-												: currentBackgroundColor()
-										}
-										onInput={(e) => {
-											const val = e.currentTarget.value;
-											setCurrentBackgroundColor(val);
-											if (selectedElementIds().size > 0) {
-												setElements(
-													elements().map((el) =>
-														selectedElementIds().has(el.id)
-															? { ...el, backgroundColor: val }
-															: el,
-													),
-												);
-												redraw();
-											}
-										}}
-										class="w-4 h-4 rounded cursor-pointer border-none p-0"
-										title="Background Color"
-									/>
-								</div>
-							</div>
-							<div class="flex items-center gap-2">
-								<span class="text-[8px] text-zinc-500 uppercase w-8">Fill</span>
-								<select
-									value={currentFillStyle()}
-									onChange={(e) => {
-										const val = e.currentTarget
-											.value as (typeof FILL_STYLES)[number];
-										setCurrentFillStyle(val);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, fillStyle: val }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-16 h-4 text-[8px] bg-white/10 text-white rounded border-none outline-none"
-								>
-									<For each={FILL_STYLES}>
-										{(style) => (
-											<option value={style} class="text-black bg-white">
-												{style}
-											</option>
-										)}
-									</For>
-								</select>
-							</div>
-						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex flex-col gap-2">
-							<div class="flex items-center gap-2">
-								<span class="text-[8px] text-zinc-500 uppercase w-8">
-									Width
-								</span>
-								<input
-									type="range"
-									min="1"
-									max="20"
-									value={currentWidth()}
-									onInput={(e) => {
-										const val = Number(e.currentTarget.value);
-										setCurrentWidth(val);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, width: val }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-								/>
-							</div>
-							<div class="flex items-center gap-2">
-								<span class="text-[8px] text-zinc-500 uppercase w-8">
-									Rough
-								</span>
-								<input
-									type="range"
-									min="0"
-									max="3"
-									step="0.5"
-									value={currentRoughness()}
-									onInput={(e) => {
-										const val = Number(e.currentTarget.value);
-										setCurrentRoughness(val);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, roughness: val }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-								/>
-							</div>
-							<div class="flex items-center gap-2">
-								<span class="text-[8px] text-zinc-500 uppercase w-8">Opac</span>
-								<input
-									type="range"
-									min="10"
-									max="100"
-									step="10"
-									value={currentOpacity()}
-									onInput={(e) => {
-										const val = Number(e.currentTarget.value);
-										setCurrentOpacity(val);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, opacity: val }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-								/>
-							</div>
-						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex flex-col justify-center gap-1">
-							<For each={strokeStyles}>
-								{(style) => (
-									<button
-										type="button"
-										onClick={() => {
-											setCurrentStrokeStyle(style);
-											if (selectedElementIds().size > 0) {
-												setElements(
-													elements().map((el) =>
-														selectedElementIds().has(el.id)
-															? { ...el, strokeStyle: style }
-															: el,
-													),
-												);
-												redraw();
-											}
-										}}
-										class={`px-1.5 py-0.5 text-[8px] uppercase rounded border border-white/10 ${
-											currentStrokeStyle() === style
-												? "bg-white text-black"
-												: "text-zinc-500 hover:text-white"
-										}`}
-									>
-										{style}
-									</button>
-								)}
-							</For>
-						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex gap-1">
-							<button
-								type="button"
-								onClick={undo}
-								class="px-3 py-2 text-xs text-zinc-400 hover:text-white"
-							>
-								Undo
-							</button>
-							<button
-								type="button"
-								onClick={clearCanvas}
-								class="px-3 py-2 text-xs text-zinc-400 hover:text-red-400"
-							>
-								Clear
-							</button>
-						</div>
 					</div>
 				</Show>
 			</div>
