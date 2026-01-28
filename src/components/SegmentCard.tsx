@@ -25,7 +25,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 						<For each={segment.tags}>
 							{(tag) => (
 								/* Accent Usage: Tags */
-								<span class="text-[9px] font-bold uppercase tracking-widest bg-[#d3fd50] text-black px-2 py-1 rounded">
+								<span class="text-xs font-bold uppercase tracking-widest bg-[#d3fd50] text-black px-2 py-1 rounded">
 									{tag}
 								</span>
 							)}
@@ -35,7 +35,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 						{segment.title}
 					</h3>
 				</div>
-				<p class="text-sm text-gray-500 leading-relaxed mt-auto font-light">
+				<p class="text-base text-gray-500 leading-relaxed mt-auto font-light">
 					{segment.features}
 				</p>
 			</div>
@@ -47,7 +47,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 						<For each={segment.details}>
 							{(detail) => (
 								<div class="p-4 border-l border-gray-200 pl-6">
-									<div class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
+									<div class="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2">
 										{detail.label}
 									</div>
 									<div class="text-2xl font-medium tracking-tight text-black">
@@ -62,7 +62,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 				{segment.insight && (
 					<div class="relative pl-8 border-l-2 border-[#d3fd50]">
 						<div class="mb-8">
-							<span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3 block">
+							<span class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 block">
 								核心洞察
 							</span>
 							<p class="text-2xl text-black font-light leading-relaxed">
@@ -70,7 +70,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 							</p>
 						</div>
 						<div class="bg-black text-white px-5 py-3 rounded inline-block">
-							<span class="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-1">
+							<span class="text-xs font-bold uppercase tracking-widest opacity-60 block mb-1">
 								战略
 							</span>
 							<span class="text-sm font-medium tracking-wide">
@@ -84,7 +84,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 					<div class="w-full">
 						<div class="flex items-end justify-between mb-8 pb-8 border-b border-gray-100">
 							<div>
-								<span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">
+								<span class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 block">
 									油车运营
 								</span>
 								<span class="text-2xl font-mono text-gray-300 line-through decoration-gray-300">
@@ -92,7 +92,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 								</span>
 							</div>
 							<div class="text-right">
-								<span class="text-[10px] font-bold uppercase tracking-widest text-black mb-2 block">
+								<span class="text-xs font-bold uppercase tracking-widest text-black mb-2 block">
 									电车优化
 								</span>
 								{/* Accent Usage: Highlighted Cost */}
@@ -106,7 +106,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 								{segment.conclusion}
 							</span>
 							<div class="text-right">
-								<span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1">
+								<span class="text-xs font-bold uppercase tracking-widest text-gray-400 block mb-1">
 									成本比
 								</span>
 								<span class="px-3 py-1 bg-black text-white rounded-full text-xs font-bold tracking-wide">
