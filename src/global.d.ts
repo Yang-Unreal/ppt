@@ -1,23 +1,23 @@
-/// <reference types="@solidjs/start/env" />
+interface Model {
+	name: string;
+	price: string;
+	rmbPrice?: string;
+	spec: string;
+	speedRange: string;
+	image: string;
+	note?: string;
+}
 
-declare module "dom-to-pptx" {
-	export function exportToPptx(
-		element: HTMLElement,
-		options?: {
-			filename?: string;
-			slideSize?: string;
-			exclude?: string[];
-		},
-	): Promise<void>;
+interface Brand {
+	name: string;
+	logo?: string;
+	desc: string;
+	yield2025: string;
+	plan2026: string;
+	models?: Model[];
+}
 
-	// In case the default export is used in some versions:
-	const defaultExport: (
-		element: HTMLElement,
-		options?: {
-			filename?: string;
-			slideSize?: string;
-			exclude?: string[];
-		},
-	) => Promise<void>;
-	export default defaultExport;
+interface BrandCardProps {
+	brand: Brand;
+	tier: 1 | 2 | 3;
 }

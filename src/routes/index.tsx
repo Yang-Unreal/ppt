@@ -1,109 +1,58 @@
 import { Title } from "@solidjs/meta";
 import { For } from "solid-js";
 import BrandCard from "~/components/BrandCard";
+import BrandModels from "~/components/BrandModels";
 import SegmentCard from "~/components/SegmentCard";
 import { reportData } from "~/utils/data-loader";
 
 export default function Report() {
 	return (
-		<main class="w-full min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)]">
+		<main class="w-full min-h-screen bg-(--bg-page) text-(--text-primary) selection:bg-[#d3fd50] selection:text-black">
 			<Title>{reportData.meta.title}</Title>
 
 			{/* --- Section 01: Hero / Cover --- */}
-			{/* UPDATED: min-h-screen and flex structure to push content to edges */}
-			<section class="w-full border-b border-gray-200 bg-white relative min-h-screen flex flex-col">
-				{/* Background Grid */}
-				<div class="absolute inset-0 bg-grid-pattern opacity-60 pointer-events-none"></div>
+			<section class="w-full border-b border-gray-100 bg-white relative min-h-screen flex flex-col justify-center items-center">
+				<div class="absolute inset-0 bg-grid-pattern pointer-events-none opacity-50"></div>
 
-				{/* Inner Container: flex-1 ensures it fills the section height */}
-				<div class="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-12 py-8 lg:py-12 flex-1 flex flex-col justify-between w-full">
-					{/* Header */}
-					<header class="flex justify-between items-start">
-						<div class="flex flex-col gap-1">
-							<span class="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-500">
-								Internal Intelligence
-							</span>
-							<span class="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-900">
-								Ref: {reportData.meta.date}
-							</span>
-						</div>
-						<div class="text-right hidden md:block">
-							<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 border border-gray-200 px-2 py-1 rounded">
-								Confidential
-							</span>
-						</div>
-					</header>
+				<div class="relative z-10 w-full px-6 text-center">
+					<h1 class="text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-bold tracking-tighter text-black mb-8 leading-tight">
+						越南电动车市场调研
+						<span class="block text-[#d3fd50] mt-4">2025-26</span>
+					</h1>
 
-					{/* Main Title */}
-					<div class="max-w-5xl mt-20">
-						<h1 class="text-6xl md:text-8xl lg:text-9xl font-semibold tracking-tighter leading-[0.9] text-gray-900 mb-8">
-							Vietnam
-							<br />
-							<span class="text-gray-300">EV Market</span>
-							<br />
-							2025-26
-						</h1>
-						<p class="max-w-xl text-lg text-gray-500 leading-relaxed font-light">
-							A deep-dive analysis into the industrial shift from combustion to
-							electric mobility in Southeast Asia's fastest-growing
-							manufacturing hub.
-						</p>
-					</div>
-
-					{/* Footer Meta */}
-					<div class="grid grid-cols-2 md:grid-cols-4 gap-8 pt-12 border-t border-gray-100 mt-auto">
-						<div>
-							<span class="text-[10px] font-mono uppercase text-gray-400 block mb-1">
-								Author
-							</span>
-							<span class="text-sm font-medium">{reportData.meta.author}</span>
-						</div>
-						<div>
-							<span class="text-[10px] font-mono uppercase text-gray-400 block mb-1">
-								Sector
-							</span>
-							<span class="text-sm font-medium">Automotive / Logistics</span>
-						</div>
-						<div>
-							<span class="text-[10px] font-mono uppercase text-gray-400 block mb-1">
-								Focus
-							</span>
-							<span class="text-sm font-medium">Supply Chain & Policy</span>
-						</div>
-						<div class="text-right">
-							<div class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center ml-auto">
-								<span class="block w-2 h-2 bg-gray-900 rounded-full animate-pulse"></span>
-							</div>
-						</div>
+					<div class="mt-12 flex justify-center items-center gap-4">
+						<span class="px-4 py-2 bg-black text-white rounded-full text-sm font-bold tracking-widest uppercase">
+							作者
+						</span>
+						<span class="text-xl font-medium text-gray-900">翁树军、杨扬</span>
 					</div>
 				</div>
 			</section>
 
-			{/* --- Section 02: Macro Overview (Bento Grid) --- */}
-			{/* UPDATED: min-h-screen & vertical centering */}
+			{/* --- Section 02: Macro Overview --- */}
 			<section class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="mb-12 flex items-end gap-4">
-						<span class="text-4xl font-medium tracking-tighter text-gray-900">
-							01. Macro Context
+					<div class="mb-16 flex items-baseline gap-6">
+						<span class="text-5xl font-medium tracking-tighter text-black">
+							01.
 						</span>
-						<div class="h-px bg-gray-200 flex-1 mb-3"></div>
+						<span class="text-xl text-gray-400 font-light tracking-tight">
+							宏观背景
+						</span>
 					</div>
 
 					<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 						{/* Text Block */}
-						<div class="lg:col-span-6 swiss-card p-10 flex flex-col justify-center bg-white">
-							<h3 class="text-2xl font-medium mb-6 tracking-tight">
-								The Window of Opportunity
-							</h3>
-							<p class="text-gray-500 leading-relaxed mb-8">
+						<div class="lg:col-span-6 swiss-card p-12 flex flex-col justify-center bg-white">
+							<h3 class="text-3xl font-medium mb-8 tracking-tight">机会窗口</h3>
+							<p class="text-gray-500 text-lg leading-relaxed mb-12 font-light">
 								{reportData.marketOverview.status}
 							</p>
 							<div class="mt-auto pt-8 border-t border-gray-100">
-								<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-2 block">
-									Key Driver
+								<span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">
+									关键驱动力
 								</span>
-								<p class="text-gray-900 font-medium">
+								<p class="text-black text-xl font-medium">
 									"{reportData.marketOverview.banPusher}"
 								</p>
 							</div>
@@ -111,100 +60,95 @@ export default function Report() {
 
 						{/* Stats Column 1 */}
 						<div class="lg:col-span-3 flex flex-col gap-6">
-							<div class="swiss-card p-8 bg-white flex-1 flex flex-col justify-center group hover:border-gray-400">
-								<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-4">
-									Total Holding
+							<div class="swiss-card p-10 bg-white flex-1 flex flex-col justify-center hover:border-gray-300">
+								<span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+									市场保有量
 								</span>
-								<span class="text-5xl font-semibold tracking-tighter text-gray-900">
+								<span class="text-6xl font-medium tracking-tighter text-black">
 									{reportData.marketOverview.totalHolding.split("万")[0]}
-									<span class="text-2xl text-gray-400">M</span>
+									<span class="text-3xl text-gray-300 ml-1">万</span>
 								</span>
-								<span class="text-xs text-gray-400 mt-2">
-									Units in circulation
+								<span class="text-xs text-gray-400 mt-2 font-mono">
+									流通车辆
 								</span>
 							</div>
-							<div class="swiss-card p-8 bg-white flex-1 flex flex-col justify-center group hover:border-gray-400">
-								<span class="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-4">
-									Annual Output
+							<div class="swiss-card p-10 bg-white flex-1 flex flex-col justify-center hover:border-gray-300">
+								<span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+									年产量
 								</span>
-								<span class="text-5xl font-semibold tracking-tighter text-gray-900">
+								<span class="text-6xl font-medium tracking-tighter text-black">
 									{reportData.marketOverview.annualProduction.split("万")[0]}
-									<span class="text-2xl text-gray-400">M</span>
+									<span class="text-3xl text-gray-300 ml-1">万</span>
 								</span>
-								<span class="text-xs text-gray-400 mt-2">
-									Production capacity
+								<span class="text-xs text-gray-400 mt-2 font-mono">
+									生产能力
 								</span>
 							</div>
 						</div>
 
-						{/* Stats Column 2 (Dominance) */}
-						<div class="lg:col-span-3 swiss-card p-8 bg-[#171717] text-white flex flex-col justify-between relative overflow-hidden">
+						{/* Stats Column 2 (Dominance - Dark Card) */}
+						<div class="lg:col-span-3 swiss-card p-10 bg-[#0a0a0a] text-white flex flex-col justify-between relative overflow-hidden">
 							<div class="relative z-10">
-								<span class="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-2 block">
-									Dominant Force
+								<span class="text-[10px] font-bold uppercase tracking-widest text-[#555] mb-2 block">
+									主导力量
 								</span>
 								<h3 class="text-2xl font-bold mb-1">Honda</h3>
-								<p class="text-sm text-gray-400">Incumbent Resistance</p>
+								<p class="text-sm text-gray-500">守旧势力阻力</p>
 							</div>
 
 							<div class="relative z-10 text-right">
-								<span class="text-7xl font-bold tracking-tighter">
-									70<span class="text-3xl">%</span>
+								<span class="text-8xl font-medium tracking-tighter text-[#d3fd50]">
+									70<span class="text-4xl align-top">%</span>
 								</span>
-								<span class="block text-[10px] font-mono uppercase tracking-widest text-gray-500">
-									Market Share
+								<span class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">
+									市场份额
 								</span>
 							</div>
-
-							{/* Abstract Graphic */}
-							<div class="absolute -bottom-10 -left-10 w-40 h-40 bg-gray-800 rounded-full blur-2xl opacity-50"></div>
 						</div>
 					</div>
 				</div>
 			</section>
 
 			{/* --- Section 03: Geographic Clusters --- */}
-			{/* UPDATED: min-h-screen & vertical centering */}
-			<section class="w-full border-y border-gray-200 py-16 lg:py-24 min-h-screen flex flex-col justify-center">
+			<section class="w-full border-y border-gray-100 py-16 lg:py-24 min-h-screen flex flex-col justify-center bg-[#fcfcfc]">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="grid grid-cols-1 lg:grid-cols-3 gap-16">
+					<div class="grid grid-cols-1 lg:grid-cols-3 gap-20">
 						{/* Section Header */}
 						<div>
-							<span class="text-sm font-mono text-gray-400 uppercase mb-4 block">
-								02. Geography
+							<span class="text-xs font-bold font-mono text-gray-400 uppercase mb-4 block tracking-widest">
+								02. 地理分布
 							</span>
-							<h2 class="text-3xl font-medium tracking-tighter text-gray-900 mb-6">
-								Industrial Clusters
+							<h2 class="text-4xl font-medium tracking-tighter text-black mb-8">
+								产业集群
 							</h2>
-							<p class="text-gray-500 leading-relaxed">
-								Supply chain density is heavily concentrated in the North,
-								creating an efficient loop between raw materials and assembly.
+							<p class="text-gray-500 text-lg font-light leading-relaxed">
+								供应链高度集中在北部，形成了原材料与组装之间的高效闭环。
 							</p>
 						</div>
 
-						{/* Clusters List - Converted to Cards */}
+						{/* Clusters List */}
 						<div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
 							<For each={reportData.marketOverview.clusters}>
 								{(cluster) => (
-									<div class="swiss-card p-8 bg-white flex flex-col h-full hover:shadow-md transition-all">
-										<div class="mb-6">
-											<h3 class="text-xl font-medium text-gray-900 mb-2">
+									<div class="swiss-card p-8 bg-white flex flex-col h-full hover:-translate-y-1 transition-transform duration-300">
+										<div class="mb-8">
+											<h3 class="text-2xl font-medium text-black mb-3">
 												{cluster.name}
 											</h3>
-											<p class="text-xs font-mono text-gray-400 uppercase tracking-wider">
+											<p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">
 												{cluster.desc}
 											</p>
 										</div>
 
-										<div class="mt-auto space-y-6 pt-6 border-t border-gray-100">
+										<div class="mt-auto space-y-8 pt-8 border-t border-gray-100">
 											<div>
-												<span class="text-[10px] text-gray-400 font-bold uppercase block mb-2">
-													OEM Presence
+												<span class="text-[9px] text-gray-400 font-bold uppercase block mb-3 tracking-widest">
+													整车厂布局
 												</span>
 												<div class="flex flex-wrap gap-2">
 													<For each={cluster.brands}>
 														{(brand) => (
-															<span class="text-xs bg-gray-50 border border-gray-200 px-2 py-1 rounded text-gray-700">
+															<span class="text-xs font-medium bg-gray-50 border border-gray-100 px-3 py-1.5 rounded text-gray-900">
 																{brand}
 															</span>
 														)}
@@ -214,13 +158,13 @@ export default function Report() {
 
 											{cluster.suppliers && (
 												<div>
-													<span class="text-[10px] text-gray-400 font-bold uppercase block mb-2">
-														Supply Base
+													<span class="text-[9px] text-gray-400 font-bold uppercase block mb-3 tracking-widest">
+														供应基地
 													</span>
-													<div class="grid grid-cols-2 gap-y-1">
+													<div class="grid grid-cols-2 gap-y-2">
 														<For each={cluster.suppliers}>
 															{(supplier) => (
-																<span class="text-xs text-gray-500 truncate block border-l-2 border-transparent hover:border-gray-300 pl-2 transition-all">
+																<span class="text-xs text-gray-500 block">
 																	{supplier}
 																</span>
 															)}
@@ -238,35 +182,43 @@ export default function Report() {
 			</section>
 
 			{/* --- Section 04: Competition --- */}
-			{/* UPDATED: min-h-screen & vertical centering */}
 			<section class="w-full py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="mb-16">
-						<h2 class="text-4xl font-medium tracking-tighter text-gray-900">
-							Competitive Landscape
+					<div class="mb-20">
+						<h2 class="text-5xl md:text-7xl font-medium tracking-tighter text-black mb-4">
+							竞争格局
 						</h2>
+						<p class="text-xl text-gray-400 font-light">权力层级</p>
+						<p class="text-sm text-gray-500 mt-6 border-l-2 border-[#d3fd50] pl-4 italic max-w-2xl">
+							{reportData.competition.note}
+						</p>
 					</div>
 
-					<div class="space-y-16">
+					<div class="space-y-24">
 						<For each={reportData.competition.tiers}>
 							{(tier, idx) => (
 								<div>
-									<div class="flex items-baseline gap-4 mb-6 border-b border-gray-200 pb-2">
-										<span class="text-lg font-mono font-medium text-gray-900">
-											Tier 0{idx() + 1}
+									<div class="flex items-center gap-4 mb-12 border-b border-black pb-4">
+										<span class="text-xl font-mono font-medium text-black">
+											0{idx() + 1}
 										</span>
-										<span class="text-sm text-gray-400">{tier.name}</span>
+										<span class="text-sm font-bold uppercase tracking-widest text-gray-500">
+											{tier.name}
+										</span>
 									</div>
 
-									<div
-										class={`grid gap-6 ${idx() === 2 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" : "grid-cols-1 lg:grid-cols-3"}`}
-									>
+									<div class="space-y-16">
 										<For each={tier.brands}>
 											{(brand) => (
-												<BrandCard
-													brand={brand}
-													tier={(idx() + 1) as 1 | 2 | 3}
-												/>
+												<div class="flex flex-col">
+													<BrandCard
+														brand={brand}
+														tier={(idx() + 1) as 1 | 2 | 3}
+													/>
+													{brand.models && brand.models.length > 0 && (
+														<BrandModels models={brand.models} />
+													)}
+												</div>
 											)}
 										</For>
 									</div>
@@ -278,15 +230,14 @@ export default function Report() {
 			</section>
 
 			{/* --- Section 05: Segments --- */}
-			{/* UPDATED: min-h-screen & vertical centering */}
-			<section class="w-full bg-gray-50 border-t border-gray-200 py-24 min-h-screen flex flex-col justify-center">
+			<section class="w-full bg-[#f9f9fb] border-t border-gray-200 py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="mb-12">
-						<span class="text-xs font-mono text-gray-400 uppercase tracking-widest block mb-2">
-							04. Strategy
+					<div class="mb-16">
+						<span class="text-xs font-bold font-mono text-gray-400 uppercase tracking-widest block mb-2">
+							04. 战略
 						</span>
-						<h2 class="text-3xl font-medium tracking-tighter text-gray-900">
-							Market Segmentation
+						<h2 class="text-5xl font-medium tracking-tighter text-black">
+							细分市场
 						</h2>
 					</div>
 
@@ -299,25 +250,23 @@ export default function Report() {
 			</section>
 
 			{/* --- Section 06: Infrastructure & Risks --- */}
-			{/* UPDATED: min-h-screen & vertical centering */}
 			<section class="w-full py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-12">
-						{/* Column 1: Infrastructure List -> Converted to Cards */}
 						<div class="flex flex-col gap-6">
-							{/* Card 1: Supply Chain */}
-							<div class="swiss-card p-8 bg-white">
-								<h3 class="text-xl font-medium tracking-tight mb-8">
-									Supply Chain Dynamics
+							{/* Card 1 */}
+							<div class="swiss-card p-10 bg-white">
+								<h3 class="text-2xl font-medium tracking-tight mb-10">
+									供应链
 								</h3>
-								<div class="space-y-4">
+								<div class="space-y-6">
 									<For each={reportData.infrastructure.supplyChain.details}>
 										{(detail) => (
-											<div class="flex justify-between items-start py-4 border-b border-gray-100 last:border-0">
-												<span class="text-sm font-medium text-gray-900 w-1/3">
+											<div class="flex justify-between items-baseline border-b border-gray-100 pb-2">
+												<span class="text-sm font-bold uppercase tracking-widest text-gray-900 w-1/3">
 													{detail.label}
 												</span>
-												<span class="text-sm text-gray-500 w-2/3 text-right">
+												<span class="text-lg font-light text-gray-600 w-2/3 text-right">
 													{detail.value}
 												</span>
 											</div>
@@ -326,19 +275,19 @@ export default function Report() {
 								</div>
 							</div>
 
-							{/* Card 2: Operational Barriers */}
-							<div class="swiss-card p-8 bg-white">
-								<h3 class="text-xl font-medium tracking-tight mb-8">
-									Operational Barriers
+							{/* Card 2 */}
+							<div class="swiss-card p-10 bg-white">
+								<h3 class="text-2xl font-medium tracking-tight mb-10">
+									壁垒 / 痛点
 								</h3>
-								<div class="space-y-4">
+								<div class="space-y-6">
 									<For each={reportData.infrastructure.operations.details}>
 										{(detail) => (
-											<div class="flex justify-between items-start py-4 border-b border-gray-100 last:border-0">
-												<span class="text-sm font-medium text-gray-900 w-1/3">
+											<div class="flex justify-between items-baseline border-b border-gray-100 pb-2">
+												<span class="text-sm font-bold uppercase tracking-widest text-gray-900 w-1/3">
 													{detail.label}
 												</span>
-												<span class="text-sm text-gray-500 w-2/3 text-right">
+												<span class="text-lg font-light text-gray-600 w-2/3 text-right">
 													{detail.value}
 												</span>
 											</div>
@@ -348,36 +297,35 @@ export default function Report() {
 							</div>
 						</div>
 
-						{/* Column 2: Risks Card */}
-						<div class="bg-[#111111] text-white rounded-2xl p-10 lg:p-16 flex flex-col relative overflow-hidden h-full min-h-[500px]">
-							{/* Subtle Noise Texture */}
+						{/* Risks Card - Dark with Lime Accents */}
+						<div class="bg-[#0a0a0a] text-white rounded-lg p-10 lg:p-16 flex flex-col relative overflow-hidden h-full min-h-[500px]">
 							<div
-								class="absolute inset-0 opacity-10"
-								style="background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiMwMDAiLz4KPC9zdmc+');"
+								class="absolute inset-0 opacity-20"
+								style="background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjMmIyYjJiIi8+CjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiMwMDAiLz4KPC9zdmc+');"
 							></div>
 
 							<div class="relative z-10">
-								<span class="text-xs font-mono text-red-500 uppercase tracking-widest mb-6 block">
-									Critical Warning
+								<span class="text-xs font-bold font-mono text-[#d3fd50] uppercase tracking-widest mb-8 block">
+									严重警告
 								</span>
-								<h3 class="text-4xl font-semibold tracking-tighter mb-12">
-									Strategic Risks
+								<h3 class="text-5xl font-medium tracking-tighter mb-16 text-white">
+									战略风险
 								</h3>
 
-								<div class="space-y-12">
+								<div class="space-y-16">
 									<div>
-										<h4 class="text-lg font-medium mb-3 border-l-2 border-red-500 pl-4">
-											Protectionism
+										<h4 class="text-xl font-medium mb-4 border-l-2 border-[#d3fd50] pl-6">
+											保护主义
 										</h4>
-										<p class="text-gray-400 leading-relaxed font-light text-sm">
+										<p class="text-gray-400 leading-relaxed font-light pl-6">
 											{reportData.risks.protective.desc}
 										</p>
 									</div>
 									<div>
-										<h4 class="text-lg font-medium mb-3 border-l-2 border-white pl-4">
-											IP Security
+										<h4 class="text-xl font-medium mb-4 border-l-2 border-white pl-6">
+											知识产权
 										</h4>
-										<p class="text-gray-400 leading-relaxed font-light text-sm">
+										<p class="text-gray-400 leading-relaxed font-light pl-6">
 											{reportData.risks.ip.desc}
 										</p>
 									</div>
@@ -386,9 +334,9 @@ export default function Report() {
 
 							<div class="mt-auto pt-16 relative z-10">
 								<div class="w-full h-px bg-gray-800 mb-6"></div>
-								<div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-widest text-gray-500">
-									<span>Internal Use Only</span>
-									<span>End of Section</span>
+								<div class="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-500">
+									<span>仅限内部使用</span>
+									<span>本节结束</span>
 								</div>
 							</div>
 						</div>
@@ -397,12 +345,10 @@ export default function Report() {
 			</section>
 
 			{/* --- Footer --- */}
-			<footer class="bg-white border-t border-gray-200 py-12 text-center">
-				<span class="text-2xl font-bold tracking-tighter text-gray-900">
-					2026
-				</span>
-				<span class="block text-[10px] font-mono uppercase tracking-widest text-gray-400 mt-2">
-					Vietnam EV Research Report
+			<footer class="bg-white border-t border-gray-100 py-16 text-center">
+				<span class="text-4xl font-bold tracking-tighter text-black">2026</span>
+				<span class="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-4">
+					越南电动车调研报告
 				</span>
 			</footer>
 		</main>
