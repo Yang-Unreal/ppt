@@ -50,6 +50,18 @@ interface DragState {
 	globalAnchor?: Point;
 	dragStartWorldPos?: Point;
 	worldPointsAtStart?: Point[];
+	groupCenter?: Point;
+	initialSelectionBox?: SelectionBox;
+}
+
+interface SelectionBox {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+	angle: number;
+	cx: number;
+	cy: number;
 }
 
 const CONSTANTS = {
@@ -68,9 +80,9 @@ const CONSTANTS = {
 const distance = (a: Point, b: Point) =>
 	Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 
-const getElementBounds = (element: Element) => {
-	const xList = element.points.map((p) => p.x);
-	const yList = element.points.map((p) => p.y);
+const getBoundsFromPoints = (points: Point[]) => {
+	const xList = points.map((p) => p.x);
+	const yList = points.map((p) => p.y);
 	if (xList.length === 0) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 	return {
 		minX: Math.min(...xList),
@@ -79,6 +91,9 @@ const getElementBounds = (element: Element) => {
 		maxY: Math.max(...yList),
 	};
 };
+
+const getElementBounds = (element: Element) =>
+	getBoundsFromPoints(element.points);
 
 const hitTest = (pos: Point, elements: Element[]): string | null => {
 	for (let i = elements.length - 1; i >= 0; i--) {
@@ -94,6 +109,33 @@ const hitTest = (pos: Point, elements: Element[]): string | null => {
 		}
 	}
 	return null;
+};
+
+const getCollectiveBounds = (els: Element[]) => {
+	if (els.length === 0) return null;
+	let minX = Infinity,
+		minY = Infinity,
+		maxX = -Infinity,
+		maxY = -Infinity;
+	els.forEach((el) => {
+		const b = getElementBounds(el);
+		const cx = (b.minX + b.maxX) / 2;
+		const cy = (b.minY + b.maxY) / 2;
+		const corners = [
+			{ x: b.minX, y: b.minY },
+			{ x: b.maxX, y: b.minY },
+			{ x: b.minX, y: b.maxY },
+			{ x: b.maxX, y: b.maxY },
+		];
+		corners.forEach((p) => {
+			const r = rotatePoint(p, { x: cx, y: cy }, el.angle);
+			minX = Math.min(minX, r.x);
+			minY = Math.min(minY, r.y);
+			maxX = Math.max(maxX, r.x);
+			maxY = Math.max(maxY, r.y);
+		});
+	});
+	return { minX, minY, maxX, maxY };
 };
 
 const rotatePoint = (p: Point, center: Point, angle: number) => {
@@ -140,6 +182,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		"none" | "draw" | "move" | "resize" | "rotate" | "selection"
 	>("none");
 	const [selectionEnd, setSelectionEnd] = createSignal<Point | null>(null);
+	const [selectionRotation, setSelectionRotation] = createSignal(0);
 	const [resizeHandle, setResizeHandle] = createSignal<string | null>(null);
 
 	let activeElement: Element | null = null;
@@ -188,36 +231,96 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		redraw();
 	};
 
+	const getSelectionBox = (): SelectionBox | null => {
+		const selected = elements().filter((el) => selectedElementIds().has(el.id));
+		if (selected.length === 0) return null;
+
+		if (selected.length === 1) {
+			const el = selected[0];
+			const b = getElementBounds(el);
+			return {
+				minX: b.minX,
+				minY: b.minY,
+				maxX: b.maxX,
+				maxY: b.maxY,
+				angle: el.angle,
+				cx: (b.minX + b.maxX) / 2,
+				cy: (b.minY + b.maxY) / 2,
+			};
+		}
+
+		const angle = selectionRotation();
+		// STABLE CENTER: Centroid of all elements' centers
+		let cx = 0;
+		let cy = 0;
+		selected.forEach((el) => {
+			const b = getElementBounds(el);
+			cx += (b.minX + b.maxX) / 2;
+			cy += (b.minY + b.maxY) / 2;
+		});
+		cx /= selected.length;
+		cy /= selected.length;
+
+		let minX = Infinity;
+		let minY = Infinity;
+		let maxX = -Infinity;
+		let maxY = -Infinity;
+		selected.forEach((el) => {
+			const elBounds = getElementBounds(el);
+			const elCx = (elBounds.minX + elBounds.maxX) / 2;
+			const elCy = (elBounds.minY + elBounds.maxY) / 2;
+			const corners = [
+				{ x: elBounds.minX, y: elBounds.minY },
+				{ x: elBounds.maxX, y: elBounds.minY },
+				{ x: elBounds.minX, y: elBounds.maxY },
+				{ x: elBounds.maxX, y: elBounds.maxY },
+			].map((p) => rotatePoint(p, { x: elCx, y: elCy }, el.angle));
+
+			corners.forEach((p) => {
+				const lp = rotatePoint(p, { x: cx, y: cy }, -angle);
+				minX = Math.min(minX, lp.x);
+				minY = Math.min(minY, lp.y);
+				maxX = Math.max(maxX, lp.x);
+				maxY = Math.max(maxY, lp.y);
+			});
+		});
+
+		return {
+			minX,
+			minY,
+			maxX,
+			maxY,
+			angle,
+			cx,
+			cy,
+		};
+	};
+
 	const getHandleAtPosition = (
 		pos: Point,
-	): { id: string; handle: string } | null => {
+	): { handle: string; box: SelectionBox } | null => {
 		const v = view();
 		const pad = 10 / v.z;
-		for (const id of selectedElementIds()) {
-			const el = elements().find((e) => e.id === id);
-			if (!el) continue;
-			const b = getElementBounds(el);
-			const cx = (b.minX + b.maxX) / 2;
-			const cy = (b.minY + b.maxY) / 2;
+		const box = getSelectionBox();
+		if (!box) return null;
 
-			// Handles
-			const handles = [
-				{ x: b.minX, y: b.minY, name: "nw" },
-				{ x: b.maxX, y: b.minY, name: "ne" },
-				{ x: b.minX, y: b.maxY, name: "sw" },
-				{ x: b.maxX, y: b.maxY, name: "se" },
-				{
-					x: cx,
-					y: b.minY - CONSTANTS.ROTATION_HANDLE_OFFSET / v.z,
-					name: "rotate",
-				},
-			];
+		const { minX, minY, maxX, maxY, angle, cx, cy } = box;
+		const handles = [
+			{ x: minX, y: minY, name: "nw" },
+			{ x: maxX, y: minY, name: "ne" },
+			{ x: minX, y: maxY, name: "sw" },
+			{ x: maxX, y: maxY, name: "se" },
+			{
+				x: cx,
+				y: minY - CONSTANTS.ROTATION_HANDLE_OFFSET / v.z,
+				name: "rotate",
+			},
+		];
 
-			for (const h of handles) {
-				const rotatedH = rotatePoint(h, { x: cx, y: cy }, el.angle);
-				if (distance(pos, rotatedH) < pad) {
-					return { id, handle: h.name };
-				}
+		for (const h of handles) {
+			const rotatedH = rotatePoint(h, { x: cx, y: cy }, angle);
+			if (distance(pos, rotatedH) < pad) {
+				return { handle: h.name, box };
 			}
 		}
 		return null;
@@ -256,54 +359,51 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		if (currentTool() === "select") {
 			const handleHit = getHandleAtPosition(worldPos);
 			if (handleHit) {
-				setInteractionType(handleHit.handle === "rotate" ? "rotate" : "resize");
-				setResizeHandle(handleHit.handle);
-				const el = elements().find((e) => e.id === handleHit.id);
-				if (el) {
-					const b = getElementBounds(el);
-					const cx = (b.minX + b.maxX) / 2;
-					const cy = (b.minY + b.maxY) / 2;
-					let localAnchor = { x: 0, y: 0 };
-					const h = handleHit.handle;
-					if (h === "nw") localAnchor = { x: b.maxX, y: b.maxY };
-					if (h === "se") localAnchor = { x: b.minX, y: b.minY };
-					if (h === "ne") localAnchor = { x: b.minX, y: b.maxY };
-					if (h === "sw") localAnchor = { x: b.maxX, y: b.minY };
+				const { handle, box } = handleHit;
+				setInteractionType(handle === "rotate" ? "rotate" : "resize");
+				setResizeHandle(handle);
 
-					const globalAnchor = rotatePoint(
-						localAnchor,
-						{ x: cx, y: cy },
-						el.angle,
-					);
+				selectedElementIds().forEach((id) => {
+					const el = elements().find((e) => e.id === id);
+					if (el) {
+						const b = getElementBounds(el);
+						const cx_el = (b.minX + b.maxX) / 2;
+						const cy_el = (b.minY + b.maxY) / 2;
 
-					const handleRel = {
-						x: worldPos.x - globalAnchor.x,
-						y: worldPos.y - globalAnchor.y,
-					};
-					const _handleStartLocal = rotatePoint(
-						handleRel,
-						{ x: 0, y: 0 },
-						-el.angle,
-					);
+						let localAnchor = { x: 0, y: 0 };
+						if (handle === "nw") localAnchor = { x: box.maxX, y: box.maxY };
+						if (handle === "se") localAnchor = { x: box.minX, y: box.minY };
+						if (handle === "ne") localAnchor = { x: box.minX, y: box.maxY };
+						if (handle === "sw") localAnchor = { x: box.maxX, y: box.minY };
 
-					const worldPointsAtStart = el.points.map((p) =>
-						rotatePoint(p, { x: cx, y: cy }, el.angle),
-					);
+						const globalAnchor = rotatePoint(
+							localAnchor,
+							{ x: box.cx, y: box.cy },
+							box.angle,
+						);
 
-					dragInitialState.set(el.id, {
-						points: el.points.map((p) => ({ ...p })),
-						angle: el.angle,
-						globalAnchor,
-						dragStartWorldPos: worldPos,
-						worldPointsAtStart,
-					});
-				}
+						const worldPointsAtStart = el.points.map((p) =>
+							rotatePoint(p, { x: cx_el, y: cy_el }, el.angle),
+						);
+
+						dragInitialState.set(id, {
+							points: el.points.map((p) => ({ ...p })),
+							angle: el.angle,
+							globalAnchor, // group anchor
+							dragStartWorldPos: worldPos,
+							worldPointsAtStart,
+							groupCenter: { x: box.cx, y: box.cy },
+							initialSelectionBox: box,
+						});
+					}
+				});
 			} else {
 				const hitId = hitTest(worldPos, elements());
 				if (hitId) {
 					setInteractionType("move");
 					if (!selectedElementIds().has(hitId)) {
 						setSelectedElementIds(new Set([hitId]));
+						setSelectionRotation(0);
 					}
 					selectedElementIds().forEach((id) => {
 						const el = elements().find((e) => e.id === id);
@@ -316,6 +416,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 					});
 				} else {
 					setSelectedElementIds(new Set<string>());
+					setSelectionRotation(0);
 					setInteractionType("selection");
 					setSelectionEnd(worldPos);
 				}
@@ -419,99 +520,158 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				);
 				redraw();
 			} else if (interactionType() === "rotate" && dragStartPos) {
-				setElements(
-					elements().map((el) => {
-						const state = dragInitialState.get(el.id);
-						if (state) {
-							const bounds = getElementBounds(el);
-							const cx = (bounds.minX + bounds.maxX) / 2;
-							const cy = (bounds.minY + bounds.maxY) / 2;
-							const angle =
-								Math.atan2(worldPos.y - cy, worldPos.x - cx) + Math.PI / 2;
-							return { ...el, angle };
-						}
-						return el;
-					}),
-				);
+				const firstId = Array.from(selectedElementIds())[0];
+				const firstState = dragInitialState.get(firstId);
+				const box = firstState?.initialSelectionBox;
+
+				if (box) {
+					const startAngle = Math.atan2(
+						dragStartPos.y - box.cy,
+						dragStartPos.x - box.cx,
+					);
+					const currentAngle = Math.atan2(
+						worldPos.y - box.cy,
+						worldPos.x - box.cx,
+					);
+					const deltaAngle = currentAngle - startAngle;
+					const finalGroupAngle = box.angle + deltaAngle;
+
+					if (selectedElementIds().size > 1) {
+						setSelectionRotation(finalGroupAngle);
+					}
+
+					setElements(
+						elements().map((el) => {
+							const state = dragInitialState.get(el.id);
+							if (state && state.worldPointsAtStart && state.groupCenter) {
+								// 1. Rotate whole element world-points around the group center
+								const finalPointsWorld = state.worldPointsAtStart.map((p) =>
+									rotatePoint(p, state.groupCenter as Point, deltaAngle),
+								);
+
+								// 2. We need to store points back in the element's local model space (axis-aligned around its own center)
+								// The current angle is el.angle + deltaAngle.
+								const currentAngle = state.angle + deltaAngle;
+								const bUntilted = getBoundsFromPoints(
+									finalPointsWorld.map((p) =>
+										rotatePoint(p, { x: 0, y: 0 }, -currentAngle),
+									),
+								);
+								const cx_new = (bUntilted.minX + bUntilted.maxX) / 2;
+								const cy_new = (bUntilted.minY + bUntilted.maxY) / 2;
+								const center_new = rotatePoint(
+									{ x: cx_new, y: cy_new },
+									{ x: 0, y: 0 },
+									currentAngle,
+								);
+								const finalPoints = finalPointsWorld.map((p) =>
+									rotatePoint(p, center_new, -currentAngle),
+								);
+
+								return {
+									...el,
+									points: finalPoints,
+									angle: currentAngle,
+								};
+							}
+							return el;
+						}),
+					);
+				}
 				redraw();
 			} else if (
 				interactionType() === "resize" &&
 				dragStartPos &&
 				resizeHandle()
 			) {
-				setElements(
-					elements().map((el) => {
-						const state = dragInitialState.get(el.id);
-						if (
-							state?.globalAnchor &&
-							state.dragStartWorldPos &&
-							state.worldPointsAtStart
-						) {
-							const anchor = state.globalAnchor;
-							const angle = state.angle;
+				const firstId = Array.from(selectedElementIds())[0];
+				const firstState = dragInitialState.get(firstId);
+				const box = firstState?.initialSelectionBox;
 
-							// 1. Mouse relative to anchor
-							const mouseRel = {
-								x: worldPos.x - anchor.x,
-								y: worldPos.y - anchor.y,
-							};
-							const mouseLocal = rotatePoint(mouseRel, { x: 0, y: 0 }, -angle);
+				if (box) {
+					setElements(
+						elements().map((el) => {
+							const state = dragInitialState.get(el.id);
+							if (
+								state?.globalAnchor &&
+								state.dragStartWorldPos &&
+								state.worldPointsAtStart
+							) {
+								const anchor = state.globalAnchor;
+								const angle = box.angle;
 
-							// 2. Start handle relative to anchor in local space
-							const handleRel = {
-								x: state.dragStartWorldPos.x - anchor.x,
-								y: state.dragStartWorldPos.y - anchor.y,
-							};
-							const handleLocal = rotatePoint(
-								handleRel,
-								{ x: 0, y: 0 },
-								-angle,
-							);
+								// 1. Mouse relative to anchor
+								const mouseRel = {
+									x: worldPos.x - anchor.x,
+									y: worldPos.y - anchor.y,
+								};
+								const mouseLocal = rotatePoint(
+									mouseRel,
+									{ x: 0, y: 0 },
+									-angle,
+								);
 
-							// 3. Scale factors
-							const scaleX =
-								handleLocal.x === 0 ? 1 : mouseLocal.x / handleLocal.x;
-							const scaleY =
-								handleLocal.y === 0 ? 1 : mouseLocal.y / handleLocal.y;
+								// 2. Start handle relative to anchor in local space
+								const handleRel = {
+									x: state.dragStartWorldPos.x - anchor.x,
+									y: state.dragStartWorldPos.y - anchor.y,
+								};
+								const handleLocal = rotatePoint(
+									handleRel,
+									{ x: 0, y: 0 },
+									-angle,
+								);
 
-							// 4. Scale points relative to anchor (which is 0,0 in this space)
-							const scaledPointsWorld = state.worldPointsAtStart.map(
-								(p: Point) => {
-									const pRel = { x: p.x - anchor.x, y: p.y - anchor.y };
-									const pLocal = rotatePoint(pRel, { x: 0, y: 0 }, -angle);
-									const pScaled = {
-										x: pLocal.x * scaleX,
-										y: pLocal.y * scaleY,
-									};
-									const pRotated = rotatePoint(pScaled, { x: 0, y: 0 }, angle);
-									return { x: pRotated.x + anchor.x, y: pRotated.y + anchor.y };
-								},
-							);
+								// 3. Scale factors
+								const scaleX =
+									handleLocal.x === 0 ? 1 : mouseLocal.x / handleLocal.x;
+								const scaleY =
+									handleLocal.y === 0 ? 1 : mouseLocal.y / handleLocal.y;
 
-							// 5. Calculate the rotation center correctly even for irregular shapes
-							const untitltedPoints = scaledPointsWorld.map((p: Point) =>
-								rotatePoint(p, { x: 0, y: 0 }, -angle),
-							);
-							const xListUntilted = untitltedPoints.map((p: Point) => p.x);
-							const yListUntilted = untitltedPoints.map((p: Point) => p.y);
-							const cUntilted = {
-								x:
-									(Math.min(...xListUntilted) + Math.max(...xListUntilted)) / 2,
-								y:
-									(Math.min(...yListUntilted) + Math.max(...yListUntilted)) / 2,
-							};
-							const newCxCy = rotatePoint(cUntilted, { x: 0, y: 0 }, angle);
+								// 4. Scale points relative to anchor (which is 0,0 in this space)
+								const scaledPointsWorld = state.worldPointsAtStart.map(
+									(p: Point) => {
+										const pRel = { x: p.x - anchor.x, y: p.y - anchor.y };
+										const pLocal = rotatePoint(pRel, { x: 0, y: 0 }, -angle);
+										const pScaled = {
+											x: pLocal.x * scaleX,
+											y: pLocal.y * scaleY,
+										};
+										const pRotated = rotatePoint(
+											pScaled,
+											{ x: 0, y: 0 },
+											angle,
+										);
+										return {
+											x: pRotated.x + anchor.x,
+											y: pRotated.y + anchor.y,
+										};
+									},
+								);
 
-							// 6. Unrotate them around the new center to store as axis-aligned model
-							const finalPoints = scaledPointsWorld.map((p: Point) =>
-								rotatePoint(p, newCxCy, -angle),
-							);
+								// 5. Calculate new center in world space to revert to local model space
+								const bUntilted = getBoundsFromPoints(
+									scaledPointsWorld.map((p) =>
+										rotatePoint(p, { x: 0, y: 0 }, -state.angle),
+									),
+								);
+								const cx_new = (bUntilted.minX + bUntilted.maxX) / 2;
+								const cy_new = (bUntilted.minY + bUntilted.maxY) / 2;
+								const center_new = rotatePoint(
+									{ x: cx_new, y: cy_new },
+									{ x: 0, y: 0 },
+									state.angle,
+								);
+								const finalPoints = scaledPointsWorld.map((p) =>
+									rotatePoint(p, center_new, -state.angle),
+								);
 
-							return { ...el, points: finalPoints };
-						}
-						return el;
-					}),
-				);
+								return { ...el, points: finalPoints };
+							}
+							return el;
+						}),
+					);
+				}
 				redraw();
 			} else if (interactionType() === "draw" && activeElement) {
 				if (activeElement.type === "marker") {
@@ -626,52 +786,39 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		});
 
 		// Draw Selection UI
-		if (selectedElementIds().size > 0) {
+		const box = getSelectionBox();
+		if (box) {
+			const { minX, minY, maxX, maxY, angle, cx, cy } = box;
 			ctx.save();
-			elements().forEach((el) => {
-				if (selectedElementIds().has(el.id)) {
-					const b = getElementBounds(el);
-					const cx = (b.minX + b.maxX) / 2;
-					const cy = (b.minY + b.maxY) / 2;
+			ctx.translate(cx, cy);
+			ctx.rotate(angle);
+			ctx.translate(-cx, -cy);
 
-					ctx.save();
-					ctx.translate(cx, cy);
-					ctx.rotate(el.angle);
-					ctx.translate(-cx, -cy);
+			ctx.strokeStyle = "#3b82f6";
+			ctx.lineWidth = 2 / v.z;
+			ctx.setLineDash([5 / v.z, 5 / v.z]);
+			ctx.strokeRect(minX - 5, minY - 5, maxX - minX + 10, maxY - minY + 10);
 
-					ctx.strokeStyle = "#3b82f6";
-					ctx.lineWidth = 2 / v.z;
-					ctx.setLineDash([5 / v.z, 5 / v.z]);
-					ctx.strokeRect(
-						b.minX - 5,
-						b.minY - 5,
-						b.maxX - b.minX + 10,
-						b.maxY - b.minY + 10,
-					);
-
-					// Handles
-					ctx.setLineDash([]);
-					ctx.fillStyle = "white";
-					const s = CONSTANTS.HANDLE_SIZE / v.z;
-					const drawHandle = (x: number, y: number) => {
-						ctx.fillRect(x - s / 2, y - s / 2, s, s);
-						ctx.strokeRect(x - s / 2, y - s / 2, s, s);
-					};
-					drawHandle(b.minX, b.minY);
-					drawHandle(b.maxX, b.minY);
-					drawHandle(b.minX, b.maxY);
-					drawHandle(b.maxX, b.maxY);
-					// Rotation
-					const rx = cx;
-					const ry = b.minY - CONSTANTS.ROTATION_HANDLE_OFFSET / v.z;
-					ctx.beginPath();
-					ctx.moveTo(cx, b.minY);
-					ctx.lineTo(rx, ry);
-					ctx.stroke();
-					drawHandle(rx, ry);
-					ctx.restore();
-				}
-			});
+			// Handles
+			ctx.setLineDash([]);
+			ctx.fillStyle = "white";
+			const s = CONSTANTS.HANDLE_SIZE / v.z;
+			const drawHandle = (x: number, y: number) => {
+				ctx.fillRect(x - s / 2, y - s / 2, s, s);
+				ctx.strokeRect(x - s / 2, y - s / 2, s, s);
+			};
+			drawHandle(minX, minY);
+			drawHandle(maxX, minY);
+			drawHandle(minX, maxY);
+			drawHandle(maxX, maxY);
+			// Rotation
+			const rx = cx;
+			const ry = minY - CONSTANTS.ROTATION_HANDLE_OFFSET / v.z;
+			ctx.beginPath();
+			ctx.moveTo(cx, minY);
+			ctx.lineTo(rx, ry);
+			ctx.stroke();
+			drawHandle(rx, ry);
 			ctx.restore();
 		}
 
