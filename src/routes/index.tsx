@@ -324,13 +324,13 @@ export default function Report() {
 							<span class="text-sm font-bold font-mono text-[#d3fd50] uppercase tracking-widest mb-8 block">
 								严重警告
 							</span>
-							<h3 class="text-5xl font-medium tracking-tighter mb-16 !text-white">
+							<h3 class="text-5xl font-medium tracking-tighter mb-16 text-white!">
 								战略风险
 							</h3>
 
 							<div class="space-y-16">
 								<div>
-									<h4 class="text-xl font-medium mb-4 border-l-2 border-[#d3fd50] pl-6 !text-white">
+									<h4 class="text-xl font-medium mb-4 border-l-2 border-[#d3fd50] pl-6 text-white!">
 										保护主义
 									</h4>
 									<p class="text-base text-gray-400 leading-relaxed font-light pl-6">
@@ -338,7 +338,7 @@ export default function Report() {
 									</p>
 								</div>
 								<div>
-									<h4 class="text-xl font-medium mb-4 border-l-2 border-white pl-6 !text-white">
+									<h4 class="text-xl font-medium mb-4 border-l-2 border-white pl-6 text-white!">
 										知识产权
 									</h4>
 									<p class="text-base text-gray-400 leading-relaxed font-light pl-6">

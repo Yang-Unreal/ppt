@@ -96,7 +96,7 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 				<h3 class="text-xl font-medium tracking-tight text-black mb-3">
 					{brand.name}
 				</h3>
-				<p class="text-gray-500 text-base leading-relaxed mb-8 font-light line-clamp-3">
+				<p class="text-gray-500 text-base leading-relaxed mb-8 font-light">
 					{brand.desc}
 				</p>
 
@@ -122,7 +122,7 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 	return (
 		<div class="swiss-card p-6 flex items-center justify-between group hover:bg-gray-50 transition-colors">
 			<div class="flex items-center gap-6">
-				<div class="w-32 h-14 rounded bg-gray-100 flex items-center justify-start text-sm font-bold text-gray-400 overflow-hidden bg-white border border-gray-100 p-2">
+				<div class="w-32 h-14 rounded bg-gray-100 flex items-center justify-start text-sm font-bold text-gray-400 overflow-hidden border border-gray-100 p-2">
 					{brand.logo ? (
 						<img
 							src={brand.logo}
@@ -135,7 +135,7 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 				</div>
 				<div>
 					<h4 class="text-sm font-medium text-black">{brand.name}</h4>
-					<span class="text-xs text-gray-400 font-mono tracking-wide block max-w-[150px] truncate">
+					<span class="text-xs text-gray-400 font-mono tracking-wide block">
 						{brand.desc}
 					</span>
 				</div>

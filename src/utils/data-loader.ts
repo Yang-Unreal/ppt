@@ -45,7 +45,7 @@ export const reportData = {
 						logo: "/logos/Vinfast_logo.png",
 						yield2025: "40万辆",
 						plan2026: "150万辆",
-						desc: "单车最高亏损 5000 RMB。垄断级生态链与断档级福利，民族认同感极高。依靠政策话语权实施降维打击。",
+						desc: "依托温纳集团 (Vingroup) 背景，已投资3亿美金布局。采取极度激进的“亏损换份额”策略，单车最高亏损额达5000元人民币。拥有垄断级生态链，汽车级研发标准。依靠政策话语权实施降维打击。",
 						models: [
 							{
 								name: "Evo 200",
@@ -54,7 +54,7 @@ export const reportData = {
 								spec: "LFP 3.5kWh / 1500W",
 								speedRange: "70 km/h / 203 km",
 								image: "/model_images/Vinfast/Evo 200.webp",
-								note: "销量王。价格屠夫，两轮滴滴首选。",
+								note: "销量王、两轮滴滴",
 							},
 							{
 								name: "Feliz S",
@@ -111,7 +111,7 @@ export const reportData = {
 								spec: "60V 22Ah 石墨烯 / 600W",
 								speedRange: "46 km/h / 80 km",
 								image: "/model_images/Yadea/Odora S2.png",
-								note: "大龟款，走量。",
+								note: "走量。",
 							},
 							{
 								name: "Orla",
@@ -120,7 +120,7 @@ export const reportData = {
 								spec: "60V 22Ah 石墨烯 / 800W",
 								speedRange: "48 km/h / 65 km",
 								image: "/model_images/Yadea/Orla P.jpg",
-								note: "复古款，走量。",
+								note: "走量。",
 							},
 							{
 								name: "i8 (新133)",
@@ -224,7 +224,7 @@ export const reportData = {
 								spec: "72V 20Ah 铅酸 / 1500W",
 								speedRange: "43-47 km/h / 90 km",
 								image: "/model_images/JVC/ZH.png",
-								note: "仿SH款 (EX007)。高价低配。",
+								note: "EX007。高价低配。",
 							},
 						],
 					},
@@ -233,7 +233,7 @@ export const reportData = {
 						logo: "/logos/tailg_logo.webp",
 						yield2025: "5万辆",
 						plan2026: "15万辆",
-						desc: "受灵都(LD)套件质量问题困扰，明年重点转向 B2B 市场。",
+						desc: "明年重点布局B2B市场。",
 						models: [
 							{
 								name: "R52",
@@ -242,7 +242,7 @@ export const reportData = {
 								spec: "60V 23Ah 铅酸 / 800W",
 								speedRange: "49 km/h / 60 km",
 								image: "/model_images/Tailg/R52.png",
-								note: "特斯拉/Vespa款。锂电升级目标。",
+								note: "特斯拉/Vespa款。",
 							},
 							{
 								name: "T61",
@@ -251,7 +251,7 @@ export const reportData = {
 								spec: "72V 32Ah 铅酸 / 2000W",
 								speedRange: "60 km/h / 70 km",
 								image: "/model_images/Tailg/T61.jpg",
-								note: "EX007。车重痛点，需锂电减重。",
+								note: "EX007",
 							},
 							{
 								name: "X51",
@@ -314,7 +314,7 @@ export const reportData = {
 								spec: "60V 20Ah 铅酸 / 1000W",
 								speedRange: "49 km/h / 80 km",
 								image: "/model_images/Osakar/GOGO FIONA.png",
-								note: "高端GOGO。",
+								note: "GOGO。",
 							},
 						],
 					},
@@ -323,7 +323,7 @@ export const reportData = {
 						logo: "/logos/Dibao_logo.webp",
 						yield2025: "-",
 						plan2026: "-",
-						desc: "EX007与大功率铅酸为主。",
+						desc: "大功率铅酸为主。",
 						models: [
 							{
 								name: "LS 007",
@@ -367,7 +367,7 @@ export const reportData = {
 						logo: "/logos/Victoria_logo.jpg",
 						yield2025: "3万辆",
 						plan2026: "8万辆",
-						desc: "油改电转型中，11月订货售罄，看好 EX008 锂电版。",
+						desc: "油改电转型中，11月订货售罄，看好 EX008。",
 						models: [
 							{
 								name: "Royal",
