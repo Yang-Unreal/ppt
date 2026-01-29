@@ -1,7 +1,6 @@
 import { getStroke } from "perfect-freehand";
 import rough from "roughjs";
 import {
-	createEffect,
 	createSignal,
 	For,
 	type JSX,
@@ -43,6 +42,14 @@ interface Element {
 	opacity?: number;
 	startBinding?: { elementId: string; focus: number; gap: number };
 	endBinding?: { elementId: string; focus: number; gap: number };
+}
+
+interface DragState {
+	points: Point[];
+	angle: number;
+	globalAnchor?: Point;
+	dragStartWorldPos?: Point;
+	worldPointsAtStart?: Point[];
 }
 
 const CONSTANTS = {
@@ -137,7 +144,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
 	let lastMousePos: Point | null = null;
-	const dragInitialState = new Map<string, any>();
+	const dragInitialState = new Map<string, DragState>();
 
 	// --- Infinite Canvas Logic ---
 
@@ -216,7 +223,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	};
 
 	const handleMouseDown = (e: MouseEvent | TouchEvent) => {
-		let clientX, clientY;
+		let clientX: number, clientY: number;
 		if ("touches" in e) {
 			clientX = e.touches[0].clientX;
 			clientY = e.touches[0].clientY;
@@ -272,7 +279,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 						x: worldPos.x - globalAnchor.x,
 						y: worldPos.y - globalAnchor.y,
 					};
-					const handleStartLocal = rotatePoint(
+					const _handleStartLocal = rotatePoint(
 						handleRel,
 						{ x: 0, y: 0 },
 						-el.angle,
@@ -353,7 +360,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	};
 
 	const handleMouseMove = (e: MouseEvent | TouchEvent) => {
-		let clientX, clientY;
+		let clientX: number, clientY: number;
 		if ("touches" in e) {
 			clientX = e.touches[0].clientX;
 			clientY = e.touches[0].clientY;
@@ -433,7 +440,11 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				setElements(
 					elements().map((el) => {
 						const state = dragInitialState.get(el.id);
-						if (state && state.globalAnchor) {
+						if (
+							state?.globalAnchor &&
+							state.dragStartWorldPos &&
+							state.worldPointsAtStart
+						) {
 							const anchor = state.globalAnchor;
 							const angle = state.angle;
 
@@ -520,7 +531,22 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 
 		if (isCurrentlyDrawing()) {
 			if (interactionType() === "draw" && activeElement) {
-				setElements([...elements(), activeElement]);
+				const el = activeElement;
+				let isValid = false;
+				if (el.type === "marker") {
+					const startPoint = el.points[0];
+					isValid =
+						el.points.length > 1 &&
+						el.points.some((p) => distance(p, startPoint) > 2);
+				} else if (["rectangle", "ellipse", "arrow"].includes(el.type)) {
+					const p1 = el.points[0];
+					const p2 = el.points[1];
+					isValid = distance(p1, p2) > 3;
+				}
+
+				if (isValid) {
+					setElements([...elements(), el]);
+				}
 				activeElement = null;
 			}
 			if (tempCanvasRef) {
@@ -551,7 +577,9 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		ctx.translate(v.x, v.y);
 		ctx.scale(v.z, v.z);
 
-		elements().forEach((el) => renderElement(ctx, rc, el));
+		elements().forEach((el) => {
+			renderElement(ctx, rc, el);
+		});
 
 		// Draw Selection UI
 		if (selectedElementIds().size > 0) {
@@ -626,7 +654,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 
 	const renderElement = (
 		ctx: CanvasRenderingContext2D,
-		rc: any,
+		rc: ReturnType<typeof rough.canvas>,
 		el: Element,
 	) => {
 		ctx.save();
@@ -772,6 +800,8 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		<div
 			ref={containerRef}
 			class="fixed inset-0 overflow-hidden bg-white select-none"
+			tabindex="0"
+			role="application"
 			onWheel={handleWheel}
 			onMouseDown={handleMouseDown}
 			onMouseMove={handleMouseMove}
@@ -800,7 +830,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				class="fixed inset-0 pointer-events-none z-11"
 			/>
 
-			<div
+			<fieldset
 				class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2"
 				onMouseDown={(e) => e.stopPropagation()}
 				onWheel={(e) => e.stopPropagation()}
@@ -830,6 +860,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 							stroke-linecap="round"
 							stroke-linejoin="round"
 						>
+							<title>Open Presentation Tools</title>
 							<line x1="3" y1="12" x2="21" y2="12" />
 							<line x1="3" y1="6" x2="21" y2="6" />
 							<line x1="3" y1="18" x2="21" y2="18" />
@@ -855,6 +886,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 								stroke-linecap="round"
 								stroke-linejoin="round"
 							>
+								<title>Close Tools</title>
 								<line x1="18" y1="6" x2="6" y2="18" />
 								<line x1="6" y1="6" x2="18" y2="18" />
 							</svg>
@@ -1100,7 +1132,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 						</div>
 					</div>
 				</Show>
-			</div>
+			</fieldset>
 		</div>
 	);
 }
