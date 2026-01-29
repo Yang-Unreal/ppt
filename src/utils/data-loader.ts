@@ -1,51 +1,119 @@
 export const reportData = {
 	meta: {
-		title: "2025-2026年越南电动两轮车市场",
+		title: "2025-2026年越南电动两轮车制造业供应链拓展报告",
 		subtitle: "越南电动两轮车市场调研",
-		date: "2025年1月",
+		date: "2026年1月",
 		author: "翁树军、杨扬",
 	},
 	marketOverview: {
 		totalHolding: "8,000万",
 		annualProduction: "350万",
-		dominantPlayer: "Honda (占70%以上份额)",
-		status: "从燃油车向电动车快速切换的早中期阶段",
-		banPusher: "VinFast (温纳集团) 是禁摩令的主要推动者",
+		dominantPlayer: "Honda (本田) 目前仍占据燃油车市场70%以上份额",
+		status: "市场正处于“油改电”的关键窗口期。",
+		banPusher:
+			"VinFast 是“禁摩令”的主要提议者和推动者，其利用强大的政商影响力加速这一进程。",
+		geographicFeature: "产业呈现高度的“北重南轻”集群特征。",
 		clusters: [
 			{
-				name: "兴安省 (Hung Yen)",
-				desc: "配套厂家最密集，租金 ~$3.5/㎡/月",
+				name: "兴安省 (Hung Yen) —— 配套与组装核心区",
+				desc: "供应链最完善，成本洼地。租金约 3.5美金/平米/月",
 				brands: [
 					"台铃 (Tailg)",
 					"Osakar",
 					"JVC",
 					"Victoria",
-					"Detech",
+					"Detech (Espero)",
 					"同明 (Dong Minh)",
 					"赛鸽 (Saige)",
 					"Souda",
 				],
-				suppliers: ["精锐 (Jingrui)", "昊旺 (Hao Wang)", "线束厂", "烤漆厂"],
+				suppliers: [
+					"精锐 (Jingrui)",
+					"昊旺 (Hao Wang)",
+					"车架厂",
+					"注塑厂",
+					"线束厂",
+					"灵都 (LD) 散件贸易商",
+				],
 			},
 			{
-				name: "北宁/北江 (Bac Ninh/Giang)",
-				desc: "中国头部品牌基地，租金 ~$4.5/㎡/月",
+				name: "北宁省 (Bac Ninh) / 北江省 (Bac Giang) —— 头部品牌制造基地",
+				desc: "中国头部品牌集中地，规模效应强。租金约 4.5美金/平米/月",
 				brands: ["雅迪 (Yadea)", "爱玛 (Aima)", "DV Motor", "SMB"],
 			},
 		],
 	},
+	regulations: {
+		note: "基于越南最新法律（Law No. 36/2024/QH15）及国家技术标准（QCVN 14:2024/BGTVT, QCVN 68:2013/BGTVT 修正案）",
+		categories: [
+			{
+				type: "电动自行车 (E-bike)",
+				vietName: "Xe đạp điện",
+				definition:
+					"1. 电机功率 ≤ 250W\n2. 设计时速 ≤ 25 km/h\n3. 整车质量(含电池) ≤ 40 kg",
+				feature: "必须具备脚踏板，且能通过脚踏驱动行驶。",
+			},
+			{
+				type: "电动轻便摩托车 (E-Moped)",
+				vietName: "Xe gắn máy điện",
+				definition: "1. 设计时速 ≤ 50 km/h\n2. 电机最大功率 ≤ 4 kW",
+				feature: "属于 L1 组。目前中国出口的“免驾照”铅酸车型多属于此类。",
+			},
+			{
+				type: "电动摩托车 (E-Motorcycle)",
+				vietName: "Xe mô tô điện",
+				definition: "1. 设计时速 > 50 km/h\n2. 或者 电机功率 > 4 kW",
+				feature: "属于 L3 组。需要驾照，也是VinFast主力车型区间。",
+			},
+		],
+		safetyRequirements: [
+			{
+				label: "身份标识",
+				value:
+					"车辆必须具备唯一的车架号（VIN）和电机号，且不得有任何擦改痕迹。",
+			},
+			{
+				label: "车身安全",
+				value: "车身表面严禁有半径小于 0.5mm 的锐利边缘（防割伤设计）。",
+			},
+			{
+				label: "整车尺寸",
+				value: "全长 ≤ 4.0m，全宽（两轮）≤ 1.0m，全高 ≤ 2.5m。",
+			},
+			{
+				label: "高压安全",
+				value:
+					"直流电（DC）电压在 60V 至 1500V 之间被定义为“高压”，需符合特定绝缘安全标准。",
+			},
+			{
+				label: "制动系统",
+				value:
+					"总制动力不得小于车辆空载重量的 50%。三轮车驻车制动需能在 18% 坡度上保持满载静止 5 分钟。",
+			},
+			{
+				label: "照明与信号",
+				value:
+					"前大灯必须在电机运转时自动开启或可随时开启（常亮逻辑）。摩托车（L3）光强 ≥ 10,000 cd。",
+			},
+		],
+		trafficRules: [
+			"所有上路机动车辆（含电摩/轻便电摩）必须依法注册并安装号牌（电自通常豁免）。",
+			"车辆必须在指定车道行驶。",
+			"轮渡优先权：上轮渡时机动车/电动车优先；下轮渡时行人优先。",
+		],
+	},
 	competition: {
-		note: "注：续航里程多为厂家标称工况数据；铅酸车型普遍限速在50km/h以下（免驾照合规）。",
+		note: "注：基于新法规，铅酸车型普遍限速在50km/h以下以符合“电动轻便摩托车”标准（免驾照合规）；VinFast等高速车型则属于“电动摩托车”。",
 		tiers: [
 			{
-				name: "第一梯队：绝对统领（不计成本）",
+				name: "第一梯队：绝对统领（不计成本的扩张）",
 				brands: [
 					{
-						name: "VinFast",
+						name: "VinFast（本土龙头）",
 						logo: "/logos/Vinfast_logo.png",
 						yield2025: "40万辆",
 						plan2026: "150万辆",
-						desc: "依托温纳集团 (Vingroup) 背景，已投资3亿美金布局。采取极度激进的“亏损换份额”策略，单车最高亏损额达5000元人民币。拥有垄断级生态链，汽车级研发标准。依靠政策话语权实施降维打击。",
+						desc: "依托温纳集团 (Vingroup) 背景，已投资 3亿美金 布局。采取极度激进的“亏损换份额”策略，单车最高亏损额达 5000元人民币。拥有垄断级生态链，采用汽车级研发标准。",
 						models: [
 							{
 								name: "Evo 200",
@@ -54,7 +122,7 @@ export const reportData = {
 								spec: "LFP 3.5kWh / 1500W",
 								speedRange: "70 km/h / 203 km",
 								image: "/model_images/Vinfast/Evo 200.webp",
-								note: "销量王、两轮滴滴",
+								note: "销量王。价格屠夫，两轮滴滴首选。",
 							},
 							{
 								name: "Feliz S",
@@ -86,14 +154,14 @@ export const reportData = {
 				],
 			},
 			{
-				name: "第二梯队：强势竞对",
+				name: "第二梯队：强势竞对与代工网络",
 				brands: [
 					{
 						name: "雅迪 (Yadea)",
 						logo: "/logos/Yadea_Logo.png",
 						yield2025: "15万辆",
 						plan2026: "30万辆",
-						desc: "350亩新厂房第一期3月开业。计划逐步淘汰老化车型(特斯拉款)。",
+						desc: "350亩新厂房一期3月份开业。除了网红款和GOGO从精锐散件(方便快速上量)，其他车型全是自己开模。冲击高端新品。",
 						models: [
 							{
 								name: "Voltguard U50",
@@ -111,7 +179,7 @@ export const reportData = {
 								spec: "60V 22Ah 石墨烯 / 600W",
 								speedRange: "46 km/h / 80 km",
 								image: "/model_images/Yadea/Odora S2.png",
-								note: "走量。",
+								note: "大龟款，走量。",
 							},
 							{
 								name: "Orla",
@@ -120,7 +188,7 @@ export const reportData = {
 								spec: "60V 22Ah 石墨烯 / 800W",
 								speedRange: "48 km/h / 65 km",
 								image: "/model_images/Yadea/Orla P.jpg",
-								note: "走量。",
+								note: "复古款，走量。",
 							},
 							{
 								name: "i8 (新133)",
@@ -136,14 +204,104 @@ export const reportData = {
 				],
 			},
 			{
-				name: "第三梯队：细分玩家与现状",
+				name: "第三梯队：细分玩家与生存现状",
 				brands: [
+					{
+						name: "台铃 (Tailg)",
+						logo: "/logos/tailg_logo.webp",
+						yield2025: "5万辆",
+						plan2026: "15万辆",
+						desc: "去年采购了灵都 (LD) 1.5万套网红款散件，但反馈质量不佳。明年重点开发B2B市场。",
+						models: [
+							{
+								name: "R52",
+								price: "17,990,000 VND",
+								rmbPrice: "4,780",
+								spec: "60V 23Ah 铅酸 / 800W",
+								speedRange: "49 km/h / 60 km",
+								image: "/model_images/Tailg/R52.png",
+								note: "特斯拉/Vespa款。锂电升级目标。",
+							},
+							{
+								name: "T61",
+								price: "27,900,000 VND",
+								rmbPrice: "7,414",
+								spec: "72V 32Ah 铅酸 / 2000W",
+								speedRange: "60 km/h / 70 km",
+								image: "/model_images/Tailg/T61.jpg",
+								note: "EX007。车重痛点，需锂电减重。",
+							},
+							{
+								name: "X51",
+								price: "14,600,000 VND",
+								rmbPrice: "3,887",
+								spec: "60V 20Ah 铅酸 / 800W",
+								speedRange: "48 km/h / 60 km",
+								image: "/model_images/Tailg/X51.png",
+								note: "133升级款。",
+							},
+							{
+								name: "GR55",
+								price: "12,990,000 VND",
+								rmbPrice: "3,458",
+								spec: "48V 22.3Ah 铅酸 / 400W",
+								speedRange: "40 km/h / 60 km",
+								image: "/model_images/Tailg/GR55.jpg",
+								note: "网红款，走量。",
+							},
+						],
+					},
+					{
+						name: "JVC",
+						logo: "/logos/Jvc_logo.png",
+						yield2025: "6万辆",
+						plan2026: "10万辆",
+						desc: "大量 “网红”款库存备战开年。还有大量JP Motor贴牌库存(旅游租车)。",
+						models: [
+							{
+								name: "G9 NEW",
+								price: "14,490,000 VND",
+								rmbPrice: "3,858",
+								spec: "48V 20Ah 铅酸 / 500W",
+								speedRange: "42 km/h / 96 km",
+								image: "/model_images/JVC/G9 NEW.png",
+								note: "网红车，主打高个女生。",
+							},
+							{
+								name: "V2 Pro",
+								price: "18,990,000 VND",
+								rmbPrice: "5,056",
+								spec: "60V 20Ah 铅酸 / 800W",
+								speedRange: "47 km/h / 80 km",
+								image: "/model_images/JVC/V2 Pro.png",
+								note: "特斯拉/Vespa公模改款。",
+							},
+							{
+								name: "Xmen F1",
+								price: "15,500,000 VND",
+								rmbPrice: "4,127",
+								spec: "60V 20Ah 铅酸 / 800W",
+								speedRange: "47 km/h / 113 km",
+								image: "/model_images/JVC/Xmen F1.png",
+								note: "战警公模。",
+							},
+							{
+								name: "ZH",
+								price: "22,990,000 VND",
+								rmbPrice: "6,121",
+								spec: "72V 20Ah 铅酸 / 1500W",
+								speedRange: "43-47 km/h / 90 km",
+								image: "/model_images/JVC/ZH.png",
+								note: "仿SH款 (EX007)。高价低配。",
+							},
+						],
+					},
 					{
 						name: "Detech (Espero)",
 						logo: "/logos/Detech_logo.png",
 						yield2025: "6万辆",
 						plan2026: "15万辆",
-						desc: "本土老牌，渠道下沉深。",
+						desc: "老牌大厂，渠道下沉深。",
 						models: [
 							{
 								name: "Classic Plus",
@@ -184,101 +342,11 @@ export const reportData = {
 						],
 					},
 					{
-						name: "JVC",
-						logo: "/logos/Jvc_logo.png",
-						yield2025: "6万辆",
-						plan2026: "10万辆",
-						desc: "备战开年订单，拥有大量网红款库存及JP Motor贴牌库存。",
-						models: [
-							{
-								name: "G9 NEW",
-								price: "14,490,000 VND",
-								rmbPrice: "3,858",
-								spec: "48V 20Ah 铅酸 / 500W",
-								speedRange: "42 km/h / 96 km",
-								image: "/model_images/JVC/G9 NEW.png",
-								note: "网红车，主打高个女生。",
-							},
-							{
-								name: "V2 Pro",
-								price: "18,990,000 VND",
-								rmbPrice: "5,056",
-								spec: "60V 20Ah 铅酸 / 800W",
-								speedRange: "47 km/h / 80 km",
-								image: "/model_images/JVC/V2 Pro.png",
-								note: "特斯拉/Vespa公模改款。",
-							},
-							{
-								name: "Xmen F1",
-								price: "15,500,000 VND",
-								rmbPrice: "4,127",
-								spec: "60V 20Ah 铅酸 / 800W",
-								speedRange: "47 km/h / 113 km",
-								image: "/model_images/JVC/Xmen F1.png",
-								note: "战警公模。",
-							},
-							{
-								name: "ZH",
-								price: "22,990,000 VND",
-								rmbPrice: "6,121",
-								spec: "72V 20Ah 铅酸 / 1500W",
-								speedRange: "43-47 km/h / 90 km",
-								image: "/model_images/JVC/ZH.png",
-								note: "EX007。高价低配。",
-							},
-						],
-					},
-					{
-						name: "台铃 (Tailg)",
-						logo: "/logos/tailg_logo.webp",
-						yield2025: "5万辆",
-						plan2026: "15万辆",
-						desc: "明年重点布局B2B市场。",
-						models: [
-							{
-								name: "R52",
-								price: "17,990,000 VND",
-								rmbPrice: "4,780",
-								spec: "60V 23Ah 铅酸 / 800W",
-								speedRange: "49 km/h / 60 km",
-								image: "/model_images/Tailg/R52.png",
-								note: "特斯拉/Vespa款。",
-							},
-							{
-								name: "T61",
-								price: "27,900,000 VND",
-								rmbPrice: "7,414",
-								spec: "72V 32Ah 铅酸 / 2000W",
-								speedRange: "60 km/h / 70 km",
-								image: "/model_images/Tailg/T61.jpg",
-								note: "EX007",
-							},
-							{
-								name: "X51",
-								price: "14,600,000 VND",
-								rmbPrice: "3,887",
-								spec: "60V 20Ah 铅酸 / 800W",
-								speedRange: "48 km/h / 60 km",
-								image: "/model_images/Tailg/X51.png",
-								note: "133升级款。",
-							},
-							{
-								name: "GR55",
-								price: "12,990,000 VND",
-								rmbPrice: "3,458",
-								spec: "48V 22.3Ah 铅酸 / 400W",
-								speedRange: "40 km/h / 60 km",
-								image: "/model_images/Tailg/GR55.jpg",
-								note: "网红款，走量。",
-							},
-						],
-					},
-					{
 						name: "Osakar",
 						logo: "/logos/Osakar_logo.jpg",
 						yield2025: "-",
 						plan2026: "-",
-						desc: "高端GOGO/Vespa款为主。",
+						desc: "旗舰特斯拉/Vespa款。",
 						models: [
 							{
 								name: "NISPA VERA X",
@@ -314,7 +382,34 @@ export const reportData = {
 								spec: "60V 20Ah 铅酸 / 1000W",
 								speedRange: "49 km/h / 80 km",
 								image: "/model_images/Osakar/GOGO FIONA.png",
-								note: "GOGO。",
+								note: "高端GOGO。",
+							},
+						],
+					},
+					{
+						name: "Victoria",
+						logo: "/logos/Victoria_logo.jpg",
+						yield2025: "5万辆",
+						plan2026: "8万辆",
+						desc: "目前油车为主，'EX007'油车款淡季仍稳定销售。正在电动化转型。",
+						models: [
+							{
+								name: "Royal",
+								price: "-",
+								rmbPrice: "-",
+								spec: "1200W",
+								speedRange: "-",
+								image: "/model_images/Victoria/Royal.jpeg",
+								note: "高端EX007款。",
+							},
+							{
+								name: "Viral S2",
+								price: "-",
+								rmbPrice: "-",
+								spec: "1000W",
+								speedRange: "-",
+								image: "/model_images/Victoria/Viral S2.jpg",
+								note: "特斯拉/Vespa款。",
 							},
 						],
 					},
@@ -363,38 +458,11 @@ export const reportData = {
 						],
 					},
 					{
-						name: "Victoria",
-						logo: "/logos/Victoria_logo.jpg",
-						yield2025: "3万辆",
-						plan2026: "8万辆",
-						desc: "油改电转型中，11月订货售罄，看好 EX008。",
-						models: [
-							{
-								name: "Royal",
-								price: "-",
-								rmbPrice: "-",
-								spec: "1200W",
-								speedRange: "-",
-								image: "/model_images/Victoria/Royal.jpeg",
-								note: "高端EX007款。",
-							},
-							{
-								name: "Viral S2",
-								price: "-",
-								rmbPrice: "-",
-								spec: "1000W",
-								speedRange: "-",
-								image: "/model_images/Victoria/Viral S2.jpg",
-								note: "特斯拉/Vespa款。",
-							},
-						],
-					},
-					{
-						name: "Dat Bike",
+						name: "Dat Bike (性能怪兽)",
 						logo: "/logos/datbike_logo.png",
 						yield2025: "1.5万辆",
 						plan2026: "-",
-						desc: "黑马。避开同质化竞争，主打中高性能差异化。",
+						desc: "黑马。主打中高性能电动车，差异化定位，也是唯一能接受高溢价零部件的客户。",
 						models: [
 							{
 								name: "QUANTUM S1",
@@ -420,21 +488,21 @@ export const reportData = {
 						logo: "/logos/dvmotor_logo.jpg",
 						yield2025: "5万辆",
 						plan2026: "10万辆",
-						desc: "联合 Kazuki 品牌运营。",
+						desc: "联合Kazuki品牌运营。",
 					},
 					{
 						name: "DKBike",
 						logo: "/logos/DK_logo.jpg",
-						yield2025: "2万辆 (预计)",
+						yield2025: "不足2万台",
 						plan2026: "-",
-						desc: "销量腰斩，从去年4万台跌至今年的2万台。",
+						desc: "销量腰斩。之前部分业务是给雅迪做代工。资金风险高。",
 					},
 					{
 						name: "爱玛 (Aima)",
 						logo: "/logos/Powelldd_logo.webp",
-						yield2025: "3,000辆",
-						plan2026: "6万辆",
-						desc: "基数小但目标最激进。",
+						yield2025: "-",
+						plan2026: "-",
+						desc: "北宁基地。",
 					},
 				],
 			},
@@ -442,35 +510,25 @@ export const reportData = {
 	},
 	segments: [
 		{
-			title: "学生市场",
+			title: "学生市场（存量主力）",
 			tags: ["存量主力", "方形大灯"],
-			features: "天津款与特斯拉款为主流，方形大灯设计正流行。",
+			features: "天津款(133,战警)、特斯拉款、网红款、gogo。",
 			details: [
-				{ label: "设计趋势", value: "方形大灯盛行" },
-				{ label: "现状", value: "雅迪拟逐步放弃特斯拉款" },
+				{
+					label: "法规影响",
+					value: "传统超标电动自行车将向合规“E-Moped”转型，但需上牌。",
+				},
+				{
+					label: "设计风向",
+					value: "方形大灯的设计目前非常流行，急需改款方案。",
+				},
 			],
 		},
 		{
-			title: "成人/通勤市场",
+			title: "成人/通勤市场（品牌驱动）",
 			tags: ["锂电升级", "品牌驱动"],
-			features: "VinFast 统治该领域，锂电池是突破口。",
-			insight:
-				"铅酸版增长乏力。Victoria EX007 油车款稳定，锂电化转型是必然路径。",
+			features: "VinFast 统治该领域。各大整车厂开始纷纷布局锂电车型以求突围。",
 			strategy: "各大厂纷纷布局锂电车型。",
-		},
-		{
-			title: "B2B / 外卖配送",
-			tags: ["经济性", "高端化潜力"],
-			features: "运营成本大幅优于燃油车。",
-			details: [
-				{ label: "爆款潜力", value: "72V 90Ah 大电池" },
-				{ label: "设计需求", value: "长坐垫、大脚踏板、高续航" },
-			],
-			costComparison: {
-				ice: "750-800 RMB/月",
-				ev: "100 RMB/月",
-				ratio: "1/8",
-			},
 		},
 	],
 	infrastructure: {
@@ -478,42 +536,49 @@ export const reportData = {
 			title: "供应链与制造",
 			details: [
 				{
-					label: "昊旺 (Wu Wang)",
-					value: "雅迪核心车架供应商。",
+					label: "吴旺 (Wu Wang)",
+					value: "专注车架，是雅迪的核心供应商。",
 				},
 				{
 					label: "精锐 (Jingrui)",
-					value: "极强逆向仿制能力(买VinFast样车回国仿)。",
+					value: "规模大，极强逆向仿制能力（刚买VinFast样车拉回中国仿制）。",
 				},
 				{
 					label: "灵都 (LD)",
-					value: "套件商面临信任危机，质量控制是软肋。",
+					value:
+						"虽能解决全套散件和登检痛点，但去年与台铃的合作暴露出质量控制问题。",
 				},
-				{ label: "成本痛点", value: "本地烤漆成本比中国贵 70-90 RMB。" },
+				{ label: "成本痛点", value: "本地烤漆成本比中国贵 70-90元 RMB。" },
 			],
 		},
-		operations: {
-			title: "运营环境",
+		production: {
+			title: "生产痛点",
 			details: [
 				{
-					label: "登检流程",
-					value: "极度复杂，虽然有套件商代办，但质量风险大。",
+					label: "效率",
+					value: "租金比中国贵，人工效率比中国低。",
 				},
 				{
-					label: "政策保护",
-					value: "“以旧换新”等补贴大概率仅限本土品牌独占。",
+					label: "登检政策",
+					value:
+						"流程极度复杂，且新规（QCVN 14:2024）对刹车、绝缘和锐边的要求更加严格。",
 				},
 			],
 		},
 	},
 	risks: {
-		protective: {
-			title: "政策风险",
-			desc: "越南政府环保政策背后有 VinFast 等本土巨头游说，排他性政策明显。",
-		},
-		ip: {
-			title: "竞争风险",
-			desc: "本地组装厂日益看重口碑，纯贸易型套件商面临被清洗风险。",
+		policy: {
+			title: "政策风险（保护主义）",
+			points: [
+				{
+					label: "禁摩与换购",
+					value: "政策由 VinFast 强力推手。补贴可能仅由本土品牌独占。",
+				},
+				{
+					label: "反倾销与壁垒",
+					value: "随着本土保护主义抬头，纯进口整车或散件的门槛可能提高。",
+				},
+			],
 		},
 	},
 };
