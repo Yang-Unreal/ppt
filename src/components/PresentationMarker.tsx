@@ -475,15 +475,23 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 								},
 							);
 
-							// 5. Calculate new center of these world points
-							const xList = scaledPointsWorld.map((p: Point) => p.x);
-							const yList = scaledPointsWorld.map((p: Point) => p.y);
-							const newCx = (Math.min(...xList) + Math.max(...xList)) / 2;
-							const newCy = (Math.min(...yList) + Math.max(...yList)) / 2;
+							// 5. Calculate the rotation center correctly even for irregular shapes
+							const untitltedPoints = scaledPointsWorld.map((p: Point) =>
+								rotatePoint(p, { x: 0, y: 0 }, -angle),
+							);
+							const xListUntilted = untitltedPoints.map((p: Point) => p.x);
+							const yListUntilted = untitltedPoints.map((p: Point) => p.y);
+							const cUntilted = {
+								x:
+									(Math.min(...xListUntilted) + Math.max(...xListUntilted)) / 2,
+								y:
+									(Math.min(...yListUntilted) + Math.max(...yListUntilted)) / 2,
+							};
+							const newCxCy = rotatePoint(cUntilted, { x: 0, y: 0 }, angle);
 
 							// 6. Unrotate them around the new center to store as axis-aligned model
 							const finalPoints = scaledPointsWorld.map((p: Point) =>
-								rotatePoint(p, { x: newCx, y: newCy }, -angle),
+								rotatePoint(p, newCxCy, -angle),
 							);
 
 							return { ...el, points: finalPoints };
