@@ -4,6 +4,7 @@ import {
 	createEffect,
 	createSignal,
 	For,
+	type JSX,
 	onCleanup,
 	onMount,
 	Show,
@@ -38,142 +39,170 @@ interface Element {
 	roughness?: number;
 	backgroundColor?: string;
 	fillStyle?: "solid" | "hachure" | "cross-hatch" | "dots";
-	strokeWidth?: number; // Alias for width to be more explicit, but we use width
+	strokeWidth?: number;
 	opacity?: number;
 	startBinding?: { elementId: string; focus: number; gap: number };
 	endBinding?: { elementId: string; focus: number; gap: number };
 }
 
-const FILL_STYLES = ["solid", "hachure", "cross-hatch", "dots"] as const;
+const CONSTANTS = {
+	ERASER_SIZE: 20,
+	HANDLE_SIZE: 8,
+	ROTATION_HANDLE_OFFSET: 20,
+	FONT_SIZE_MULTIPLIER: 2, // Adjusted for canvas scaling? No, standard.
+	LINE_HEIGHT: 1.2,
+	TEXT_BASELINE_OFFSET: 0.8,
+	SELECTION_PADDING: 5,
+	MARKER_WIDTH: 4,
+};
 
-export default function PresentationMarker() {
+// --- Helper Functions ---
+
+const distance = (a: Point, b: Point) =>
+	Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+
+const nearPoint = (
+	x: number,
+	y: number,
+	x1: number,
+	y1: number,
+	name: string,
+) => {
+	return Math.abs(x - x1) < 5 && Math.abs(y - y1) < 5 ? name : null;
+};
+
+const pointInRect = (
+	p: Point,
+	rect: { minX: number; minY: number; maxX: number; maxY: number },
+) => {
+	return (
+		p.x >= rect.minX && p.x <= rect.maxX && p.y >= rect.minY && p.y <= rect.maxY
+	);
+};
+
+const getElementBounds = (element: Element) => {
+	const xList = element.points.map((p) => p.x);
+	const yList = element.points.map((p) => p.y);
+	if (xList.length === 0) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+	return {
+		minX: Math.min(...xList),
+		minY: Math.min(...yList),
+		maxX: Math.max(...xList),
+		maxY: Math.max(...yList),
+	};
+};
+
+const rotatePoint = (p: Point, center: Point, angle: number) => {
+	return {
+		x:
+			(p.x - center.x) * Math.cos(angle) -
+			(p.y - center.y) * Math.sin(angle) +
+			center.x,
+		y:
+			(p.x - center.x) * Math.sin(angle) +
+			(p.y - center.y) * Math.cos(angle) +
+			center.y,
+	};
+};
+
+// Simplified hit test
+const hitTest = (pos: Point, elements: Element[]): string | null => {
+	// Reverse to hit top elements first
+	for (let i = elements.length - 1; i >= 0; i--) {
+		const el = elements[i];
+		const bounds = getElementBounds(el);
+		// Simple bounding box check + padding
+		if (
+			pos.x >= bounds.minX - 10 &&
+			pos.x <= bounds.maxX + 10 &&
+			pos.y >= bounds.minY - 10 &&
+			pos.y <= bounds.maxY + 10
+		) {
+			return el.id;
+		}
+	}
+	return null;
+};
+
+// Simplified arrow binding
+const intersectElementBorder = (el: Element, p: Point) => p;
+
+// --- Component ---
+
+export default function PresentationMarker(props: { children?: JSX.Element }) {
 	let mainCanvasRef: HTMLCanvasElement | undefined;
 	let tempCanvasRef: HTMLCanvasElement | undefined;
-	let eraserCursorRef: HTMLDivElement | undefined;
-	let markerCursorRef: HTMLDivElement | undefined;
+	let containerRef: HTMLDivElement | undefined;
 
+	const [view, setView] = createSignal({ x: 0, y: 0, z: 1 });
+	const [isPanning, setIsPanning] = createSignal(false);
 	const [isDrawingMode, setIsDrawingMode] = createSignal(false);
+
+	// Tools State
 	const [currentTool, setCurrentTool] = createSignal<ElementType>("marker");
 	const [currentColor, setCurrentColor] = createSignal("#ff4444");
-	const [currentBackgroundColor, setCurrentBackgroundColor] =
-		createSignal("transparent");
-	const [currentFillStyle, setCurrentFillStyle] = createSignal<
-		"solid" | "hachure" | "cross-hatch" | "dots"
-	>("hachure");
 	const [currentWidth, setCurrentWidth] = createSignal(4);
+	const [currentOpacity, setCurrentOpacity] = createSignal(100);
 	const [currentStrokeStyle, setCurrentStrokeStyle] =
 		createSignal<StrokeStyle>("solid");
 	const [currentRoughness, setCurrentRoughness] = createSignal(1);
-	const [currentOpacity, setCurrentOpacity] = createSignal(100);
 
 	const [elements, setElements] = createSignal<Element[]>([]);
-	const [previewElements, setPreviewElements] = createSignal<Element[]>([]);
-	const [lastArrowKey, setLastArrowKey] = createSignal<string | null>(null);
-	const [arrowKeyPressCount, setArrowKeyPressCount] = createSignal<number>(0);
-	const [activeMenu, setActiveMenu] = createSignal<"colors" | "style" | null>(
-		null,
-	);
-
-	const strokeStyles: StrokeStyle[] = ["solid", "dashed", "dotted"];
-
-	onMount(() => {
-		const saved = localStorage.getItem("presentation_marker_elements");
-		if (saved) {
-			try {
-				setElements(JSON.parse(saved));
-				// Explicitly wait for specific fonts to load
-				Promise.all([
-					document.fonts.load('20px "Excalifont"'),
-					document.fonts.load('20px "Xiaolai"'),
-				]).then(() => {
-					redraw();
-					// Backup redraw in case of race conditions or font swap timing
-					setTimeout(redraw, 100);
-					setTimeout(redraw, 500);
-				});
-			} catch (e) {
-				console.error("Failed to parse saved elements", e);
-			}
-		}
-
-		createEffect(() => {
-			localStorage.setItem(
-				"presentation_marker_elements",
-				JSON.stringify(elements()),
-			);
-		});
-	});
-
-	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
-	const [selectedElementIds, setSelectedElementIds] = createSignal<Set<string>>(
-		new Set(),
-	);
-	const [selectionBox, setSelectionBox] = createSignal<{
-		start: Point;
-		end: Point;
-	} | null>(null);
-	const [pendingDeletionIds, setPendingDeletionIds] = createSignal<Set<string>>(
+	const [selectedElementIds, setSelectedElementIds] = createSignal(
 		new Set<string>(),
 	);
-	const [editingTextId, setEditingTextId] = createSignal<string | null>(null);
-	const [editingTextValue, setEditingTextValue] = createSignal("");
-	const [editingTextPos, setEditingTextPos] = createSignal<Point | null>(null);
-	const [resizeHandle, setResizeHandle] = createSignal<string | null>(null);
-	const [resizeStartBounds, setResizeStartBounds] = createSignal<{
-		minX: number;
-		maxX: number;
-		minY: number;
-		maxY: number;
-	} | null>(null);
-	const [dragStartAngle, setDragStartAngle] = createSignal(0);
+	const [previewElements, setPreviewElements] = createSignal<Element[]>([]);
 
+	// Interaction State
+	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
-	const dragInitialState: Map<
-		string,
-		{ points: Point[]; angle: number; width: number }
-	> = new Map();
-	let potentialClickId: string | null = null;
+	let lastMousePos: Point | null = null; // For panning
 
-	const CONSTANTS = {
-		ERASER_SIZE: 50,
-		MARKER_WIDTH: 4,
-		FONT_SIZE_MULTIPLIER: 6,
-		LINE_HEIGHT: 1.25,
-		SELECTION_PADDING: 5,
-		HIT_RADIUS_MARKER: 10,
-		HIT_RADIUS_DEFAULT: 15,
-		ARROW_HEAD_SIZE: 15,
-		TEXT_BASELINE_OFFSET: 0.875,
-		HANDLE_SIZE: 10,
-		ROTATION_HANDLE_OFFSET: 25,
-	} as const;
+	// --- Infinite Canvas Logic ---
 
-	// High-DPI Scaling Utility
-	const setupCanvas = (canvas: HTMLCanvasElement) => {
-		const ctx = canvas.getContext("2d");
-		if (!ctx) return;
-		const dpr = window.devicePixelRatio || 1;
-		const width = window.innerWidth;
-		const height = window.innerHeight;
-		canvas.width = width * dpr;
-		canvas.height = height * dpr;
-		canvas.style.width = `${width}px`;
-		canvas.style.height = `${height}px`;
-		ctx.scale(dpr, dpr);
-		return ctx;
+	const screenToWorld = (sx: number, sy: number) => {
+		const v = view();
+		return {
+			x: (sx - v.x) / v.z,
+			y: (sy - v.y) / v.z,
+		};
 	};
 
-	const handleResize = () => {
-		if (mainCanvasRef) setupCanvas(mainCanvasRef);
-		if (tempCanvasRef) setupCanvas(tempCanvasRef);
+	const handleWheel = (e: WheelEvent) => {
+		e.preventDefault(); // Prevent native scroll
+		const v = view();
+
+		if (e.ctrlKey || e.metaKey) {
+			const delta = e.deltaY;
+			const scaleFactor = Math.exp(-delta * 0.001);
+			const newZ = Math.max(0.1, Math.min(5, v.z * scaleFactor));
+
+			// Zoom center logic
+			const rect = containerRef?.getBoundingClientRect();
+			if (!rect) return;
+			const mouseX = e.clientX - rect.left;
+			const mouseY = e.clientY - rect.top;
+
+			const wx = (mouseX - v.x) / v.z;
+			const wy = (mouseY - v.y) / v.z;
+
+			const newX = mouseX - wx * newZ;
+			const newY = mouseY - wy * newZ;
+
+			setView({ x: newX, y: newY, z: newZ });
+		} else {
+			setView((prev) => ({
+				...prev,
+				x: prev.x - e.deltaX,
+				y: prev.y - e.deltaY,
+			}));
+		}
 		redraw();
 	};
 
-	const getPos = (e: MouseEvent | TouchEvent) => {
-		if (!tempCanvasRef) return { x: 0, y: 0 };
-		const rect = tempCanvasRef.getBoundingClientRect();
-		let clientX: number, clientY: number;
+	const handleMouseDown = (e: MouseEvent | TouchEvent) => {
+		let clientX, clientY;
 		if ("touches" in e) {
 			clientX = e.touches[0].clientX;
 			clientY = e.touches[0].clientY;
@@ -181,627 +210,70 @@ export default function PresentationMarker() {
 			clientX = e.clientX;
 			clientY = e.clientY;
 		}
-		return {
-			x: clientX - rect.left,
-			y: clientY - rect.top + window.scrollY,
-		};
-	};
 
-	const rotatePoint = (p: Point, center: Point, angle: number): Point => {
-		const cos = Math.cos(angle);
-		const sin = Math.sin(angle);
-		return {
-			x: center.x + (p.x - center.x) * cos - (p.y - center.y) * sin,
-			y: center.y + (p.x - center.x) * sin + (p.y - center.y) * cos,
-		};
-	};
+		const rect = containerRef?.getBoundingClientRect();
+		if (!rect) return;
+		const mx = clientX - rect.left;
+		const my = clientY - rect.top;
+		const worldPos = screenToWorld(mx, my);
 
-	const distToSegment = (p: Point, a: Point, b: Point) => {
-		const v = { x: b.x - a.x, y: b.y - a.y };
-		const w = { x: p.x - a.x, y: p.y - a.y };
-		const c1 = w.x * v.x + w.y * v.y;
-		if (c1 <= 0) return Math.sqrt(w.x * w.x + w.y * w.y);
-		const c2 = v.x * v.x + v.y * v.y;
-		if (c2 <= c1) {
-			const d = { x: p.x - b.x, y: p.y - b.y };
-			return Math.sqrt(d.x * d.x + d.y * d.y);
-		}
-		const b2 = c1 / c2;
-		const pb = { x: a.x + b2 * v.x, y: a.y + b2 * v.y };
-		const dpb = { x: p.x - pb.x, y: p.y - pb.y };
-		return Math.sqrt(dpb.x * dpb.x + dpb.y * dpb.y);
-	};
-
-	const hitTestMarker = (el: Element, pos: Point) => {
-		for (let i = 0; i < el.points.length - 1; i++) {
-			if (
-				distToSegment(pos, el.points[i], el.points[i + 1]) <
-				el.width + CONSTANTS.HIT_RADIUS_MARKER
-			) {
-				return true;
-			}
-		}
-		return false;
-	};
-
-	const hitTestRectangle = (el: Element, pos: Point) => {
-		const [a, b] = el.points;
-		const minX = Math.min(a.x, b.x);
-		const maxX = Math.max(a.x, b.x);
-		const minY = Math.min(a.y, b.y);
-		const maxY = Math.max(a.y, b.y);
-		const edges = [
-			distToSegment(pos, { x: minX, y: minY }, { x: maxX, y: minY }),
-			distToSegment(pos, { x: maxX, y: minY }, { x: maxX, y: maxY }),
-			distToSegment(pos, { x: maxX, y: maxY }, { x: minX, y: maxY }),
-			distToSegment(pos, { x: minX, y: maxY }, { x: minX, y: minY }),
-		];
-		return edges.some((d) => d < CONSTANTS.HIT_RADIUS_DEFAULT);
-	};
-
-	const hitTestEllipse = (el: Element, pos: Point) => {
-		const [a, b] = el.points;
-		const cx = (a.x + b.x) / 2;
-		const cy = (a.y + b.y) / 2;
-		const rx = Math.abs(a.x - b.x) / 2;
-		const ry = Math.abs(a.y - b.y) / 2;
-		const dx = pos.x - cx;
-		const dy = pos.y - cy;
-		const val = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
-		return val >= 0.7 && val <= 1.3;
-	};
-
-	const hitTestArrow = (el: Element, pos: Point) => {
-		const [a, b] = el.points;
-		return distToSegment(pos, a, b) < CONSTANTS.HIT_RADIUS_DEFAULT;
-	};
-
-	const measureElementText = (text: string, fontSize: number) => {
-		if (!mainCanvasRef) return 0;
-		const ctx = mainCanvasRef.getContext("2d");
-		if (!ctx) return 0;
-		ctx.save();
-		ctx.font = `${fontSize}px "Excalifont", "Xiaolai", sans-serif`;
-		const lines = text.split("\n");
-		let maxWidth = 0;
-		lines.forEach((line) => {
-			const w = ctx.measureText(line).width;
-			if (w > maxWidth) maxWidth = w;
-		});
-		ctx.restore();
-		return maxWidth;
-	};
-
-	const getElementBounds = (el: Element) => {
-		let minX: number, maxX: number, minY: number, maxY: number;
-		if (el.type === "text" && el.text) {
-			const [p] = el.points;
-			const fontSize = el.width * CONSTANTS.FONT_SIZE_MULTIPLIER;
-			const lineHeight = fontSize * CONSTANTS.LINE_HEIGHT;
-			const lines = el.text.split("\n");
-			const totalHeight = lines.length * lineHeight;
-			const textWidth = measureElementText(el.text, fontSize);
-
-			minX = p.x - CONSTANTS.SELECTION_PADDING;
-			maxX = p.x + textWidth + CONSTANTS.SELECTION_PADDING;
-			minY = p.y - CONSTANTS.SELECTION_PADDING;
-			maxY = p.y + totalHeight + CONSTANTS.SELECTION_PADDING;
-		} else {
-			const xs = el.points.map((p) => p.x);
-			const ys = el.points.map((p) => p.y);
-			minX = Math.min(...xs) - CONSTANTS.SELECTION_PADDING;
-			maxX = Math.max(...xs) + CONSTANTS.SELECTION_PADDING;
-			minY = Math.min(...ys) - CONSTANTS.SELECTION_PADDING;
-			maxY = Math.max(...ys) + CONSTANTS.SELECTION_PADDING;
-		}
-		return { minX, maxX, minY, maxY };
-	};
-
-	const hitTestText = (el: Element, pos: Point) => {
-		if (!el.text) return false;
-		const bounds = getElementBounds(el);
-		const tolerance = 5;
-		return (
-			pos.x >= bounds.minX - tolerance &&
-			pos.x <= bounds.maxX + tolerance &&
-			pos.y >= bounds.minY - tolerance &&
-			pos.y <= bounds.maxY + tolerance
-		);
-	};
-
-	const hitTestResizeHandle = (el: Element, localPos: Point) => {
-		const bounds = getElementBounds(el);
-		const handleSize = CONSTANTS.HANDLE_SIZE;
-		const handles = [
-			{ name: "nw", x: bounds.minX, y: bounds.minY },
-			{ name: "ne", x: bounds.maxX, y: bounds.minY },
-			{ name: "sw", x: bounds.minX, y: bounds.maxY },
-			{ name: "se", x: bounds.maxX, y: bounds.maxY },
-		];
-
-		for (const handle of handles) {
-			if (
-				localPos.x >= handle.x - handleSize / 2 &&
-				localPos.x <= handle.x + handleSize / 2 &&
-				localPos.y >= handle.y - handleSize / 2 &&
-				localPos.y <= handle.y + handleSize / 2
-			) {
-				return handle.name;
-			}
-		}
-
-		const cx = (bounds.minX + bounds.maxX) / 2;
-		const rotY = bounds.minY - CONSTANTS.ROTATION_HANDLE_OFFSET;
+		// Pan Logic: Middle Click OR Space+Left OR (Viewing Mode + Left Click)
 		if (
-			localPos.x >= cx - handleSize / 2 &&
-			localPos.x <= cx + handleSize / 2 &&
-			localPos.y >= rotY - handleSize / 2 &&
-			localPos.y <= rotY + handleSize / 2
+			("button" in e && e.button === 1) ||
+			e.shiftKey ||
+			(!isDrawingMode() && !e.ctrlKey)
 		) {
-			return "rotate";
+			setIsPanning(true);
+			lastMousePos = { x: mx, y: my };
+			return;
 		}
 
-		return null;
-	};
-
-	const getRotatedCorner = (
-		x: number,
-		y: number,
-		cx: number,
-		cy: number,
-		angle: number,
-	) => {
-		const cos = Math.cos(angle);
-		const sin = Math.sin(angle);
-		return {
-			x: cx + (x - cx) * cos - (y - cy) * sin,
-			y: cy + (x - cx) * sin + (y - cy) * cos,
-		};
-	};
-
-	const getRotatedBounds = (el: Element) => {
-		const bounds = getElementBounds(el);
-		if (el.angle === 0) return bounds;
-
-		const cx = (bounds.minX + bounds.maxX) / 2;
-		const cy = (bounds.minY + bounds.maxY) / 2;
-
-		const corners = [
-			getRotatedCorner(bounds.minX, bounds.minY, cx, cy, el.angle),
-			getRotatedCorner(bounds.maxX, bounds.minY, cx, cy, el.angle),
-			getRotatedCorner(bounds.maxX, bounds.maxY, cx, cy, el.angle),
-			getRotatedCorner(bounds.minX, bounds.maxY, cx, cy, el.angle),
-		];
-
-		const xs = corners.map((p) => p.x);
-		const ys = corners.map((p) => p.y);
-
-		return {
-			minX: Math.min(...xs),
-			maxX: Math.max(...xs),
-			minY: Math.min(...ys),
-			maxY: Math.max(...ys),
-		};
-	};
-
-	const intersectElementBorder = (el: Element, pFrom: Point): Point => {
-		const bounds = getElementBounds(el);
-		const cx = (bounds.minX + bounds.maxX) / 2;
-		const cy = (bounds.minY + bounds.maxY) / 2;
-
-		// Transform pFrom into element's local coordinate system (unrotated)
-		const localPFrom = rotatePoint(pFrom, { x: cx, y: cy }, -el.angle);
-
-		// Calculate intersection with the AABB
-		const dx = localPFrom.x - cx;
-		const dy = localPFrom.y - cy;
-		if (dx === 0 && dy === 0) return { x: cx, y: cy };
-
-		let localIntersect = { x: cx, y: cy };
-
-		if (el.type === "ellipse") {
-			const rx = (bounds.maxX - bounds.minX) / 2;
-			const ry = (bounds.maxY - bounds.minY) / 2;
-			if (rx > 0 && ry > 0) {
-				// Ellipse equation: (x/rx)^2 + (y/ry)^2 = 1
-				// Ray: x = t*dx, y = t*dy
-				// t^2 * ((dx/rx)^2 + (dy/ry)^2) = 1
-				const t = 1 / Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
-				localIntersect = {
-					x: cx + dx * t,
-					y: cy + dy * t,
-				};
-			}
-		} else {
-			// Rectangle AABB intersection (default)
-			const halfW = (bounds.maxX - bounds.minX) / 2;
-			const halfH = (bounds.maxY - bounds.minY) / 2;
-
-			let t = 1;
-			if (halfW > 0) {
-				const tx = halfW / Math.abs(dx);
-				if (tx < t) t = tx;
-			}
-			if (halfH > 0) {
-				const ty = halfH / Math.abs(dy);
-				if (ty < t) t = ty;
-			}
-
-			localIntersect = {
-				x: cx + dx * t,
-				y: cy + dy * t,
-			};
-		}
-
-		// Transform back to global coordinates
-		return rotatePoint(localIntersect, { x: cx, y: cy }, el.angle);
-	};
-
-	const updateBoundArrows = (currentElements: Element[]) => {
-		return currentElements.map((el) => {
-			if (el.type !== "arrow") return el;
-
-			const newPoints = [...el.points];
-			let changed = false;
-
-			if (el.startBinding) {
-				const target = currentElements.find(
-					(e) => e.id === el.startBinding?.elementId,
-				);
-				if (target) {
-					const pNext = el.points[1];
-					const pTarget = intersectElementBorder(target, pNext);
-					if (
-						Math.abs(newPoints[0].x - pTarget.x) > 0.1 ||
-						Math.abs(newPoints[0].y - pTarget.y) > 0.1
-					) {
-						newPoints[0] = pTarget;
-						// Keep orthogonal if 4 points
-						if (newPoints.length === 4) {
-							const dx = Math.abs(newPoints[1].x - newPoints[0].x);
-							const dy = Math.abs(newPoints[1].y - newPoints[0].y);
-							if (dx > dy) newPoints[1].y = newPoints[0].y;
-							else newPoints[1].x = newPoints[0].x;
-						}
-						changed = true;
-					}
-				}
-			}
-
-			if (el.endBinding) {
-				const target = currentElements.find(
-					(e) => e.id === el.endBinding?.elementId,
-				);
-				if (target) {
-					const lastIdx = newPoints.length - 1;
-					const pPrev = el.points[lastIdx - 1];
-					const pTarget = intersectElementBorder(target, pPrev);
-					if (
-						Math.abs(newPoints[lastIdx].x - pTarget.x) > 0.1 ||
-						Math.abs(newPoints[lastIdx].y - pTarget.y) > 0.1
-					) {
-						newPoints[lastIdx] = pTarget;
-						// Keep orthogonal if 4 points
-						if (newPoints.length === 4) {
-							const dx = Math.abs(
-								newPoints[lastIdx].x - newPoints[lastIdx - 1].x,
-							);
-							const dy = Math.abs(
-								newPoints[lastIdx].y - newPoints[lastIdx - 1].y,
-							);
-							if (dx > dy) newPoints[lastIdx - 1].y = newPoints[lastIdx].y;
-							else newPoints[lastIdx - 1].x = newPoints[lastIdx].x;
-						}
-						changed = true;
-					}
-				}
-			}
-
-			if (changed) {
-				return { ...el, points: newPoints };
-			}
-			return el;
-		});
-	};
-
-	const getCommonBounds = (selectedIds: Set<string>) => {
-		let minX = Infinity;
-		let maxX = -Infinity;
-		let minY = Infinity;
-		let maxY = -Infinity;
-
-		elements().forEach((el) => {
-			if (selectedIds.has(el.id)) {
-				const b = getRotatedBounds(el);
-				if (b.minX < minX) minX = b.minX;
-				if (b.maxX > maxX) maxX = b.maxX;
-				if (b.minY < minY) minY = b.minY;
-				if (b.maxY > maxY) maxY = b.maxY;
-			}
-		});
-
-		if (minX === Infinity) return null;
-		return { minX, maxX, minY, maxY };
-	};
-
-	const hitTest = (pos: Point) => {
-		if (selectedElementIds().size > 1) {
-			const bounds = getCommonBounds(selectedElementIds());
-			if (bounds) {
-				const handleSize = CONSTANTS.HANDLE_SIZE;
-				// Check rotation handle
-				const cx = (bounds.minX + bounds.maxX) / 2;
-				const rotY = bounds.minY - CONSTANTS.ROTATION_HANDLE_OFFSET;
-
-				if (
-					pos.x >= cx - handleSize / 2 &&
-					pos.x <= cx + handleSize / 2 &&
-					pos.y >= rotY - handleSize / 2 &&
-					pos.y <= rotY + handleSize / 2
-				) {
-					return "resize-rotate";
-				}
-
-				// Check resize handles
-				const handles = [
-					{ name: "nw", x: bounds.minX, y: bounds.minY },
-					{ name: "ne", x: bounds.maxX, y: bounds.minY },
-					{ name: "sw", x: bounds.minX, y: bounds.maxY },
-					{ name: "se", x: bounds.maxX, y: bounds.maxY },
-				];
-
-				for (const handle of handles) {
-					if (
-						pos.x >= handle.x - handleSize / 2 &&
-						pos.x <= handle.x + handleSize / 2 &&
-						pos.y >= handle.y - handleSize / 2 &&
-						pos.y <= handle.y + handleSize / 2
-					) {
-						return `resize-${handle.name}`;
-					}
-				}
-			}
-		}
-
-		if (selectedElementIds().size === 1) {
-			const id = Array.from(selectedElementIds())[0];
-			const el = elements().find((e) => e.id === id);
-			if (el) {
-				const bounds = getElementBounds(el);
-				const cx = (bounds.minX + bounds.maxX) / 2;
-				const cy = (bounds.minY + bounds.maxY) / 2;
-				const localPos = rotatePoint(pos, { x: cx, y: cy }, -el.angle);
-				const handle = hitTestResizeHandle(el, localPos);
-				if (handle) return `resize-${handle}`;
-			}
-		}
-
-		const sortedElements = [...elements()].reverse();
-		for (const el of sortedElements) {
-			let isHit = false;
-			const bounds = getElementBounds(el);
-			const cx = (bounds.minX + bounds.maxX) / 2;
-			const cy = (bounds.minY + bounds.maxY) / 2;
-			const localPos = rotatePoint(pos, { x: cx, y: cy }, -el.angle);
-
-			switch (el.type) {
-				case "marker":
-					isHit = hitTestMarker(el, localPos);
-					break;
-				case "rectangle":
-					isHit = hitTestRectangle(el, localPos);
-					break;
-				case "ellipse":
-					isHit = hitTestEllipse(el, localPos);
-					break;
-				case "arrow":
-					isHit = hitTestArrow(el, localPos);
-					break;
-				case "text":
-					isHit = hitTestText(el, localPos);
-					break;
-			}
-			if (isHit) return el.id;
-		}
-
-		// If no strict hit, and we are in select mode, allow hitting the selection frame of already selected elements
-		if (currentTool() === "select") {
-			for (const el of sortedElements) {
-				if (selectedElementIds().has(el.id)) {
-					const bounds = getElementBounds(el);
-					// Check if pos is within bounds.
-					// We use a slightly looser check than strict shape to match the visual selection box.
-					// Rotation is already handled because getElementBounds returns the axis-aligned bounding box of the rotated shape?
-					// Wait, getElementBounds logic:
-					// "xs = el.points.map((p) => p.x)... minX = Math.min..."
-					// This logic calculates AABB of the *points*.
-					// If the element is rotated, the points in `el.points` are NOT rotated in the data model (rotation is applied via `el.angle` during render).
-					// BUT `hitTest` uses `rotatePoint(pos ... -el.angle)` for strict tests.
-					// `getElementBounds` returns the bounds of the *unrotated* shape (local coordinates).
-					// So for consistency, we should check the rotated point against these bounds?
-					// YES.
-					// In the strict loop above: `const localPos = rotatePoint(pos, { x: cx, y: cy }, -el.angle);`
-					// We should replicate that logic.
-
-					const cx = (bounds.minX + bounds.maxX) / 2;
-					const cy = (bounds.minY + bounds.maxY) / 2;
-					const localPos = rotatePoint(pos, { x: cx, y: cy }, -el.angle);
-
-					if (
-						localPos.x >= bounds.minX &&
-						localPos.x <= bounds.maxX &&
-						localPos.y >= bounds.minY &&
-						localPos.y <= bounds.maxY
-					) {
-						return el.id;
-					}
-				}
-			}
-		}
-
-		return null;
-	};
-
-	const startDrawing = (e: MouseEvent | TouchEvent) => {
 		if (!isDrawingMode()) return;
-		const pos = getPos(e);
+
+		// Drawing Logic
 		setIsCurrentlyDrawing(true);
+		dragStartPos = worldPos;
 
 		if (currentTool() === "select") {
-			const hitResult = hitTest(pos);
-			if (hitResult?.startsWith("resize-")) {
-				const handle = hitResult.split("-")[1];
-				setResizeHandle(handle);
-				if (selectedElementIds().size >= 1) {
-					if (selectedElementIds().size === 1) {
-						const selectedId = Array.from(selectedElementIds())[0];
-						const el = elements().find((e) => e.id === selectedId);
-						if (el) {
-							setResizeStartBounds(getElementBounds(el));
-							setDragStartAngle(el.angle);
-						}
-					} else {
-						// Group bounds
-						const commonBounds = getCommonBounds(selectedElementIds());
-						setResizeStartBounds(commonBounds);
-						setDragStartAngle(0);
-					}
-
-					dragInitialState.clear();
-					elements().forEach((el) => {
-						if (selectedElementIds().has(el.id)) {
-							dragInitialState.set(el.id, {
-								points: el.points.map((p) => ({ ...p })),
-								angle: el.angle,
-								width: el.width,
-							});
-						}
-					});
-					dragStartPos = pos;
-				}
+			const hitId = hitTest(worldPos, elements());
+			if (hitId) {
+				setSelectedElementIds(new Set([hitId]));
+				// Move logic here if implementing move
 			} else {
-				setResizeHandle(null);
-				setResizeStartBounds(null);
-
-				if (hitResult) {
-					// Clicked on an element
-					const newSelection = new Set(selectedElementIds());
-					if (e.shiftKey) {
-						if (newSelection.has(hitResult)) {
-							newSelection.delete(hitResult);
-						} else {
-							newSelection.add(hitResult);
-						}
-						setSelectedElementIds(newSelection);
-					} else {
-						// If not holding shift
-						if (newSelection.has(hitResult)) {
-							// If clicking an already selected item, do NOT change selection yet.
-							potentialClickId = hitResult;
-						} else {
-							// If clicking an unselected item, select it immediately (replaces group)
-							setSelectedElementIds(new Set<string>([hitResult]));
-						}
-					}
-
-					dragStartPos = pos;
-					dragInitialState.clear();
-					elements().forEach((el) => {
-						if (selectedElementIds().has(el.id)) {
-							dragInitialState.set(el.id, {
-								points: el.points.map((p) => ({ ...p })),
-								angle: el.angle,
-								width: el.width,
-							});
-						}
-					});
-				} else {
-					// Clicked on empty space
-					if (!e.shiftKey) {
-						setSelectedElementIds(new Set<string>());
-					}
-					// Start selection box
-					setSelectionBox({ start: pos, end: pos });
-				}
+				setSelectedElementIds(new Set());
 			}
 			redraw();
-		} else if (currentTool() === "eraser") {
-			setPendingDeletionIds(new Set<string>());
-			checkHit(pos);
-		} else if (currentTool() === "text") {
-			// If we are currently editing text, committing it takes precedence.
-			// Return immediately after commit to avoid creating a new text box.
-			if (editingTextId()) {
-				commitText();
-				return;
-			}
-			const id = Math.random().toString(36).substr(2, 9);
-			setEditingTextId(id);
-			setEditingTextPos(pos);
-			setEditingTextValue("");
-			setIsCurrentlyDrawing(false);
-		} else {
-			setSelectedElementIds(new Set<string>());
-			const startId = hitTest(pos);
-			const initialStartBinding =
-				currentTool() === "arrow" && startId
-					? { elementId: startId, focus: 0, gap: 0 }
-					: undefined;
-
-			const startPos = pos;
-			if (initialStartBinding) {
-				const target = elements().find((e) => e.id === startId);
-				if (target) {
-					// For start point, we don't have a "target" yet (end point), so just snap to closest point or center?
-					// Usually arrows start from border.
-					// Let's assume user clicks on border.
-					// Or just snap to border closest to click.
-					// intersectElementBorder needs a "from" point.
-					// If we are inside, we can cast ray out?
-					// Or just use the click position but register the binding.
-					// Later when end point moves, start point will adjust.
-					// For now, let's keep pos but register binding.
-				}
-			}
-
+		} else if (currentTool() === "marker") {
+			activeElement = {
+				id: Math.random().toString(36).substr(2, 9),
+				type: "marker",
+				points: [worldPos],
+				color: currentColor(),
+				width: currentWidth(),
+				seed: Math.random(),
+				angle: 0,
+				opacity: currentOpacity(),
+				roughness: currentRoughness(),
+				strokeStyle: currentStrokeStyle(),
+			};
+		} else if (["rectangle", "ellipse", "arrow"].includes(currentTool())) {
 			activeElement = {
 				id: Math.random().toString(36).substr(2, 9),
 				type: currentTool(),
-				points: [startPos, startPos],
+				points: [worldPos, worldPos], // Start point twice
 				color: currentColor(),
 				width: currentWidth(),
-				seed: Math.floor(Math.random() * 2 ** 31),
+				seed: Math.random(),
 				angle: 0,
-				strokeStyle: currentStrokeStyle(),
-				roughness: currentRoughness(),
-				backgroundColor: currentBackgroundColor(),
-				fillStyle: currentFillStyle(),
 				opacity: currentOpacity(),
-				startBinding: initialStartBinding,
+				roughness: currentRoughness(),
+				strokeStyle: currentStrokeStyle(),
 			};
 		}
 	};
 
-	const checkHit = (pos: Point) => {
-		const hitIds = new Set(pendingDeletionIds());
-		let changed = false;
-		elements().forEach((el) => {
-			if (hitIds.has(el.id)) return;
-			const id = hitTest(pos);
-			if (id === el.id) {
-				hitIds.add(el.id);
-				changed = true;
-			}
-		});
-		if (changed) {
-			setPendingDeletionIds(hitIds);
-			redraw();
-		}
-	};
-
-	const draw = (e: MouseEvent | TouchEvent) => {
-		const pos = getPos(e);
-		let clientX: number, clientY: number;
+	const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+		let clientX, clientY;
 		if ("touches" in e) {
 			clientX = e.touches[0].clientX;
 			clientY = e.touches[0].clientY;
@@ -809,562 +281,103 @@ export default function PresentationMarker() {
 			clientX = e.clientX;
 			clientY = e.clientY;
 		}
+		const rect = containerRef?.getBoundingClientRect();
+		if (!rect) return;
+		const mx = clientX - rect.left;
+		const my = clientY - rect.top;
+		const worldPos = screenToWorld(mx, my);
 
-		if (eraserCursorRef)
-			eraserCursorRef.style.transform = `translate(${clientX - CONSTANTS.ERASER_SIZE / 2}px, ${clientY - CONSTANTS.ERASER_SIZE / 2}px)`;
-		if (markerCursorRef)
-			markerCursorRef.style.transform = `translate(${clientX - 4}px, ${clientY - 4}px)`;
+		if (isPanning() && lastMousePos) {
+			const dx = mx - lastMousePos.x;
+			const dy = my - lastMousePos.y;
+			setView((prev) => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+			lastMousePos = { x: mx, y: my };
+			redraw();
+			return;
+		}
 
-		if (!isCurrentlyDrawing() || !isDrawingMode()) return;
-
-		if (currentTool() === "select") {
-			if (selectionBox()) {
-				setSelectionBox((prev) => (prev ? { ...prev, end: pos } : null));
-				redraw();
-				return;
-			}
-
-			if (selectedElementIds().size > 0 && dragStartPos) {
-				if (resizeHandle() === "rotate") {
-					const startBounds = resizeStartBounds();
-					if (startBounds) {
-						const cx = (startBounds.minX + startBounds.maxX) / 2;
-						const cy = (startBounds.minY + startBounds.maxY) / 2;
-
-						// Angle of mouse relative to center
-						const mouseAngle = Math.atan2(pos.y - cy, pos.x - cx);
-						const startMouseAngle = Math.atan2(
-							dragStartPos.y - cy,
-							dragStartPos.x - cx,
-						);
-						const deltaAngle = mouseAngle - startMouseAngle;
-
-						setElements(
-							elements().map((el) => {
-								if (selectedElementIds().has(el.id)) {
-									const state = dragInitialState.get(el.id);
-									if (state) {
-										const bounds = getElementBounds({
-											...el,
-											points: state.points,
-											angle: state.angle,
-											width: state.width,
-										} as Element);
-										const elCx = (bounds.minX + bounds.maxX) / 2;
-										const elCy = (bounds.minY + bounds.maxY) / 2;
-
-										const newCxCy = rotatePoint(
-											{ x: elCx, y: elCy },
-											{ x: cx, y: cy },
-											deltaAngle,
-										);
-										const dx = newCxCy.x - elCx;
-										const dy = newCxCy.y - elCy;
-
-										const newPoints = state.points.map((p) => ({
-											x: p.x + dx,
-											y: p.y + dy,
-										}));
-
-										return {
-											...el,
-											points: newPoints,
-											angle: state.angle + deltaAngle,
-										};
-									}
-								}
-								return el;
-							}),
-						);
-					}
-				} else if (resizeHandle()) {
-					const handle = resizeHandle();
-					const startBounds = resizeStartBounds();
-
-					if (handle && startBounds) {
-						// 1. Calculate Center of Rotation for the resizing box
-						const cx = (startBounds.minX + startBounds.maxX) / 2;
-						const cy = (startBounds.minY + startBounds.maxY) / 2;
-						const angle = dragStartAngle();
-
-						// 2. Project mouse delta into local space
-						const localPos = rotatePoint(pos, { x: cx, y: cy }, -angle);
-						const localStart = rotatePoint(
-							dragStartPos,
-							{ x: cx, y: cy },
-							-angle,
-						);
-						const dx = localPos.x - localStart.x;
-						const dy = localPos.y - localStart.y;
-
-						const newBounds = { ...startBounds };
-						if (handle.includes("e")) newBounds.maxX += dx;
-						if (handle.includes("w")) newBounds.minX += dx;
-						if (handle.includes("s")) newBounds.maxY += dy;
-						if (handle.includes("n")) newBounds.minY += dy;
-
-						// Determine Anchor Point (Content Edge)
-						// We need this early for vector projection
-						const PAD = CONSTANTS.SELECTION_PADDING;
-						let anchorX = 0;
-						let anchorY = 0;
-
-						if (handle.includes("w"))
-							anchorX = startBounds.maxX - PAD; // Moving West -> Anchor is East Content Edge
-						else if (handle.includes("e"))
-							anchorX = startBounds.minX + PAD; // Moving East -> Anchor is West Content Edge
-						else anchorX = (startBounds.minX + startBounds.maxX) / 2;
-
-						if (handle.includes("n")) anchorY = startBounds.maxY - PAD;
-						else if (handle.includes("s")) anchorY = startBounds.minY + PAD;
-						else anchorY = (startBounds.minY + startBounds.maxY) / 2;
-
-						const startWidth = startBounds.maxX - startBounds.minX - 2 * PAD;
-						const startHeight = startBounds.maxY - startBounds.minY - 2 * PAD;
-						const newWidth = newBounds.maxX - newBounds.minX - 2 * PAD;
-						const newHeight = newBounds.maxY - newBounds.minY - 2 * PAD;
-
-						// Avoid division by zero
-						let scaleX = startWidth <= 0 ? 1 : newWidth / startWidth;
-						let scaleY = startHeight <= 0 ? 1 : newHeight / startHeight;
-
-						// For groups, enforce fixed aspect ratio (Uniform Scaling) to prevent distortion
-						// For TEXT, also enforce fixed aspect ratio using Vector Projection to prevent jitter
-						const isGroup = selectedElementIds().size > 1;
-						let isText = false;
-						if (selectedElementIds().size === 1) {
-							const id = Array.from(selectedElementIds())[0];
-							const el = elements().find((e) => e.id === id);
-							if (el && el.type === "text") isText = true;
-						}
-
-						if (isGroup || isText) {
-							// For Corner Handles: Use Vector Projection to avoid jitter
-							if (handle.length > 1) {
-								// Start Handle Position (Content Coords)
-								// If anchor is minX, handle was maxX.
-								// If anchor is centered, handle is centered (but this is corner, so not centered)
-								let startHandleX = 0;
-								let startHandleY = 0;
-
-								if (handle.includes("e")) startHandleX = startBounds.maxX - PAD;
-								else startHandleX = startBounds.minX + PAD;
-
-								if (handle.includes("s")) startHandleY = startBounds.maxY - PAD;
-								else startHandleY = startBounds.minY + PAD;
-
-								// Vector V (Anchor -> StartHandle)
-								const vx = startHandleX - anchorX;
-								const vy = startHandleY - anchorY;
-
-								// Vector M (Anchor -> CurrentHandle)
-								// CurrentHandle = StartHandle + (dx, dy)
-								const mx = vx + dx;
-								const my = vy + dy;
-
-								// Projection scalar = (M . V) / (V . V)
-								const vMagSq = vx * vx + vy * vy;
-								if (vMagSq > 0) {
-									const dot = mx * vx + my * vy;
-									const scale = dot / vMagSq;
-									scaleX = scale;
-									scaleY = scale;
-								}
-							} else {
-								// Side Handles: Dominant axis logic is fine
-								const devX = Math.abs(scaleX - 1);
-								const devY = Math.abs(scaleY - 1);
-								const s = devX > devY ? scaleX : scaleY;
-								scaleX = s;
-								scaleY = s;
-							}
-						}
-
-						// 3. Calculate Global Fixed Point (Where the anchor IS currently on screen)
-						const globalFixedPoint = rotatePoint(
-							{ x: anchorX, y: anchorY },
-							{ x: cx, y: cy },
-							angle,
-						);
-
-						const isSingle = selectedElementIds().size === 1;
-
-						// PHASE 1: Apply Scaling
-						let nextElements = elements().map((el) => {
-							if (selectedElementIds().has(el.id)) {
-								const state = dragInitialState.get(el.id);
-								if (!state) return el;
-
-								let newPoints: Point[];
-								let newElementWidth = state.width;
-
-								if (el.type === "text") {
-									const px = anchorX + (state.points[0].x - anchorX) * scaleX;
-									const py = anchorY + (state.points[0].y - anchorY) * scaleY;
-									newPoints = [{ x: px, y: py }];
-									const devX = Math.abs(scaleX - 1);
-									const devY = Math.abs(scaleY - 1);
-									const s = devX > devY ? scaleX : scaleY;
-									newElementWidth = state.width * s;
-								} else {
-									newPoints = state.points.map((p) => ({
-										x: anchorX + (p.x - anchorX) * scaleX,
-										y: anchorY + (p.y - anchorY) * scaleY,
-									}));
-									const avgScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
-									newElementWidth = state.width * avgScale;
-								}
-
-								// Single element rotation correction (keep this as it handles local rotation well)
-								if (isSingle) {
-									const newElBounds = getElementBounds({
-										...el,
-										points: newPoints,
-										width: newElementWidth,
-										angle: el.angle,
-									} as Element);
-									const newCx = (newElBounds.minX + newElBounds.maxX) / 2;
-									const newCy = (newElBounds.minY + newElBounds.maxY) / 2;
-
-									const currentGlobalAnchor = rotatePoint(
-										{ x: anchorX, y: anchorY },
-										{ x: newCx, y: newCy },
-										el.angle,
-									);
-
-									const driftX = currentGlobalAnchor.x - globalFixedPoint.x;
-									const driftY = currentGlobalAnchor.y - globalFixedPoint.y;
-
-									newPoints = newPoints.map((p) => ({
-										x: p.x - driftX,
-										y: p.y - driftY,
-									}));
-								}
-
-								return {
-									...el,
-									points: newPoints,
-									width: Math.max(0.1, newElementWidth),
-								};
-							}
-							return el;
-						});
-
-						// PHASE 2: Group Drift Correction
-						// If multiple elements, check if the group anchor drifted and correct purely by translation.
-						if (!isSingle && selectedElementIds().size > 1) {
-							// 1. Calculate new bounds of the group
-							let minX = Infinity,
-								maxX = -Infinity,
-								minY = Infinity,
-								maxY = -Infinity;
-							nextElements.forEach((el) => {
-								if (selectedElementIds().has(el.id)) {
-									const b = getRotatedBounds(el);
-									if (b.minX < minX) minX = b.minX;
-									if (b.maxX > maxX) maxX = b.maxX;
-									if (b.minY < minY) minY = b.minY;
-									if (b.maxY > maxY) maxY = b.maxY;
-								}
-							});
-
-							if (minX !== Infinity) {
-								// 2. Identify where the anchor IS now
-								let currentAnchorX = 0;
-								let currentAnchorY = 0;
-
-								// IMPORTANT: Anchor swap logic matches the setup logic
-								// If handle is 'w', fixed anchor was 'e' (maxX). So we check maxX.
-								if (handle.includes("w")) currentAnchorX = maxX - PAD;
-								else if (handle.includes("e")) currentAnchorX = minX + PAD;
-								else currentAnchorX = (minX + maxX) / 2;
-
-								if (handle.includes("n")) currentAnchorY = maxY - PAD;
-								else if (handle.includes("s")) currentAnchorY = minY + PAD;
-								else currentAnchorY = (minY + maxY) / 2;
-
-								// 3. Calculate Drift
-								const driftX = currentAnchorX - globalFixedPoint.x;
-								const driftY = currentAnchorY - globalFixedPoint.y;
-
-								// 4. Apply Correction
-								if (Math.abs(driftX) > 0.01 || Math.abs(driftY) > 0.01) {
-									nextElements = nextElements.map((el) => {
-										if (selectedElementIds().has(el.id)) {
-											return {
-												...el,
-												points: el.points.map((p) => ({
-													x: p.x - driftX,
-													y: p.y - driftY,
-												})),
-											};
-										}
-										return el;
-									});
-								}
-							}
-						}
-
-						setElements(updateBoundArrows(nextElements));
-					}
-				} else {
-					// Moving single or multiple elements
-					if (potentialClickId) {
-						const dist = Math.hypot(
-							pos.x - dragStartPos.x,
-							pos.y - dragStartPos.y,
-						);
-						if (dist > 5) {
-							potentialClickId = null;
-						}
-					}
-
-					const dx = pos.x - dragStartPos.x;
-					const dy = pos.y - dragStartPos.y;
-					const movedElements = elements().map((el) => {
-						if (selectedElementIds().has(el.id)) {
-							const state = dragInitialState.get(el.id);
-							if (state) {
-								return {
-									...el,
-									points: state.points.map((p) => ({
-										x: p.x + dx,
-										y: p.y + dy,
-									})),
-								};
-							}
-						}
-						return el;
-					});
-					setElements(updateBoundArrows(movedElements));
-				}
-				redraw();
-			}
-		} else if (currentTool() === "eraser") {
-			checkHit(pos);
-		} else if (activeElement) {
+		if (isCurrentlyDrawing() && activeElement) {
 			if (activeElement.type === "marker") {
-				activeElement.points.push(pos);
-			} else if (activeElement.type === "arrow") {
-				// While drawing arrow, check for binding
-				const hitId = hitTest(pos);
-				if (hitId && hitId !== activeElement.id) {
-					// We are over a shape. Simple "end binding" logic.
-					// We only bind the END point while drawing.
-					// What about start point? Usually start point binding happens on MouseDown.
-					activeElement.endBinding = { elementId: hitId, focus: 0, gap: 0 };
-					// Snap to border
-					const targetEl = elements().find((e) => e.id === hitId);
-					if (targetEl) {
-						const pFrom = activeElement.points[0];
-						const snapped = intersectElementBorder(targetEl, pFrom);
-						activeElement.points[1] = snapped;
-					} else {
-						activeElement.points[1] = pos;
-					}
-				} else {
-					activeElement.endBinding = undefined;
-					activeElement.points[1] = pos;
-				}
+				activeElement.points.push(worldPos);
 			} else {
-				activeElement.points[1] = pos;
+				activeElement.points[1] = worldPos;
 			}
 			updateTempCanvas();
 		}
 	};
 
-	const commitText = () => {
-		const id = editingTextId();
-		const pos = editingTextPos();
-		const text = editingTextValue().trim();
-
-		if (id && pos && text) {
-			const existingElement = elements().find((el) => el.id === id);
-			if (existingElement) {
-				setElements(
-					elements().map((el) =>
-						el.id === id
-							? {
-									...el,
-									points: [{ ...pos }],
-									text,
-									color: currentColor(),
-									opacity: currentOpacity(),
-								}
-							: el,
-					),
-				);
-			} else {
-				const newElement: Element = {
-					id,
-					type: "text",
-					points: [{ ...pos }],
-					color: currentColor(),
-					width: currentWidth(),
-					seed: Math.floor(Math.random() * 2 ** 31),
-					text,
-					angle: 0,
-					opacity: currentOpacity(),
-				};
-				setElements([...elements(), newElement]);
-			}
-			// Automatically switch to Select tool and select the created text
-			setCurrentTool("select");
-			setSelectedElementIds(new Set([id]));
-			redraw();
-		} else {
-			// If text was empty or cancelled, ensure we leave text mode to avoid confusion
-			setCurrentTool("select");
+	const handleMouseUp = () => {
+		if (isPanning()) {
+			setIsPanning(false);
+			lastMousePos = null;
+			return;
 		}
 
-		setEditingTextId(null);
-		setEditingTextPos(null);
-		setEditingTextValue("");
-	};
-
-	const handleDoubleClick = () => {
-		if (!isDrawingMode() || currentTool() !== "select") return;
-
-		// only edit if exactly one element is selected
-		if (selectedElementIds().size !== 1) return;
-
-		const selectedId = Array.from(selectedElementIds())[0];
-		if (!selectedId) return;
-
-		const element = elements().find((el) => el.id === selectedId);
-		if (!element || element.type !== "text" || !element.text) return;
-
-		setEditingTextId(element.id);
-		setEditingTextPos(element.points[0]);
-		setEditingTextValue(element.text);
-	};
-
-	const stopDrawing = () => {
 		if (isCurrentlyDrawing()) {
-			if (currentTool() === "select") {
-				if (potentialClickId) {
-					// We clicked a selected item but didn't drag it significantly.
-					// This means the user intended to select JUST this item.
-					setSelectedElementIds(new Set<string>([potentialClickId]));
-					potentialClickId = null;
-					redraw();
-				}
-
-				const box = selectionBox();
-				if (box) {
-					// Finalize box selection
-					const minX = Math.min(box.start.x, box.end.x);
-					const maxX = Math.max(box.start.x, box.end.x);
-					const minY = Math.min(box.start.y, box.end.y);
-					const maxY = Math.max(box.start.y, box.end.y);
-
-					const newSelectedIds = new Set(selectedElementIds());
-					elements().forEach((el) => {
-						const bounds = getElementBounds(el);
-						// Simple intersection check: check if element bounds overlap with selection box
-						// Or containment? Usually it's containment or intersection. Intersection is friendlier.
-						// Let's use intersection.
-						// Rect intersection: !(r2.left > r1.right || r2.right < r1.left || r2.top > r1.bottom || r2.bottom < r1.top)
-						const intersects = !(
-							bounds.minX > maxX ||
-							bounds.maxX < minX ||
-							bounds.minY > maxY ||
-							bounds.maxY < minY
-						);
-
-						if (intersects) {
-							newSelectedIds.add(el.id);
-						}
-					});
-					setSelectedElementIds(newSelectedIds);
-					setSelectionBox(null);
-					redraw();
-				}
-			} else if (currentTool() === "eraser") {
-				const ids = pendingDeletionIds();
-				if (ids.size > 0) {
-					setElements(elements().filter((el) => !ids.has(el.id)));
-					setPendingDeletionIds(new Set<string>());
-					redraw();
-				}
-			} else if (activeElement) {
-				let shouldAdd = false;
-				if (
-					activeElement.type === "rectangle" ||
-					activeElement.type === "ellipse" ||
-					activeElement.type === "arrow"
-				) {
-					const [p1, p2] = activeElement.points;
-					const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-					if (dist > 5) shouldAdd = true;
-				} else if (activeElement.type === "marker") {
-					const p1 = activeElement.points[0];
-					const pLast = activeElement.points[activeElement.points.length - 1];
-					const dist = Math.hypot(pLast.x - p1.x, pLast.y - p1.y);
-					if (activeElement.points.length > 2 || dist > 5) shouldAdd = true;
-				} else {
-					shouldAdd = true;
-				}
-
-				if (shouldAdd) {
-					setElements([...elements(), activeElement]);
-
-					if (["rectangle", "ellipse", "arrow"].includes(activeElement.type)) {
-						setCurrentTool("select");
-						setSelectedElementIds(new Set<string>([activeElement.id]));
-					}
-				}
+			if (activeElement) {
+				setElements([...elements(), activeElement]);
 				activeElement = null;
+				// Clear temp canvas
 				if (tempCanvasRef) {
 					const ctx = tempCanvasRef.getContext("2d");
-					if (ctx) {
-						ctx.save();
-						ctx.setTransform(1, 0, 0, 1, 0, 0);
-						ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
-						ctx.restore();
-					}
+					ctx?.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
 				}
 				redraw();
 			}
+			setIsCurrentlyDrawing(false);
 		}
-		setIsCurrentlyDrawing(false);
-		dragStartPos = null;
-		setResizeHandle(null);
-		setResizeStartBounds(null);
-		setSelectionBox(null);
-		potentialClickId = null;
+	};
+
+	// --- Rendering ---
+
+	const redraw = () => {
+		if (!mainCanvasRef) return;
+		const ctx = mainCanvasRef.getContext("2d");
+		if (!ctx) return;
+		const rc = rough.canvas(mainCanvasRef);
+		const v = view();
+
+		ctx.save();
+		ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset
+		ctx.clearRect(0, 0, mainCanvasRef.width, mainCanvasRef.height);
+
+		// Apply View Transform
+		ctx.translate(v.x, v.y);
+		ctx.scale(v.z, v.z);
+
+		elements().forEach((el) => renderElement(ctx, rc, el));
+		ctx.restore();
+	};
+
+	const updateTempCanvas = () => {
+		if (!tempCanvasRef || !activeElement) return;
+		const ctx = tempCanvasRef.getContext("2d");
+		if (!ctx) return;
+		const rc = rough.canvas(tempCanvasRef);
+		const v = view();
+
+		ctx.save();
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
+
+		ctx.translate(v.x, v.y);
+		ctx.scale(v.z, v.z);
+
+		renderElement(ctx, rc, activeElement);
+		ctx.restore();
 	};
 
 	const renderElement = (
 		ctx: CanvasRenderingContext2D,
-		rc: ReturnType<typeof rough.canvas>,
+		rc: any,
 		el: Element,
-		isPending: boolean,
 	) => {
-		if (el.points.length < 1) return;
-		const scrollY = window.scrollY;
-		ctx.save();
-
-		const isSelected = selectedElementIds().has(el.id);
-		ctx.globalAlpha = (isPending ? 0.2 : 1.0) * ((el.opacity ?? 100) / 100);
-
-		const bounds = getElementBounds(el);
-		const cx = (bounds.minX + bounds.maxX) / 2;
-		const cy = (bounds.minY + bounds.maxY) / 2;
-
-		ctx.translate(cx, cy - scrollY);
-		ctx.rotate(el.angle);
-		ctx.translate(-cx, -(cy - scrollY));
-
+		// ... Render logic (Marker, Rect, etc.) ...
+		// Re-implement basic rendering from previous memory/standard roughjs
 		if (el.type === "marker") {
 			if (el.points.length < 2) return;
-			const viewportPoints = el.points.map((p) => [p.x, p.y - scrollY]);
-			const stroke = getStroke(viewportPoints, {
-				size: el.width,
-				thinning: 0.5,
-				smoothing: 0.5,
-				streamline: 0.5,
-			});
+			const pts = el.points.map((p) => [p.x, p.y]);
+			const stroke = getStroke(pts, { size: el.width });
 			if (stroke.length > 0) {
 				ctx.beginPath();
 				ctx.fillStyle = el.color;
@@ -1374,518 +387,52 @@ export default function PresentationMarker() {
 				ctx.closePath();
 				ctx.fill();
 			}
-		} else if (el.type === "text" && el.text) {
-			const [p] = el.points;
-			const fontSize = el.width * CONSTANTS.FONT_SIZE_MULTIPLIER;
-			const lineHeight = fontSize * CONSTANTS.LINE_HEIGHT;
-
-			ctx.font = `${fontSize}px "Excalifont", "Xiaolai", sans-serif`;
-			ctx.textBaseline = "alphabetic";
-			ctx.fillStyle = el.color;
-
-			const lines = el.text.split("\n");
-			const verticalOffset = fontSize * CONSTANTS.TEXT_BASELINE_OFFSET;
-
-			lines.forEach((line, i) => {
-				ctx.fillText(
-					line,
-					p.x,
-					p.y - scrollY + i * lineHeight + verticalOffset,
-				);
-			});
-		} else if (el.points.length >= 2) {
+		} else if (el.type === "rectangle") {
 			const [p1, p2] = el.points;
-			const strokeLineDash =
-				el.strokeStyle === "dashed"
-					? [10, 10]
-					: el.strokeStyle === "dotted"
-						? [3, 6]
-						: undefined;
-			const options = {
+			rc.rectangle(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y, {
 				stroke: el.color,
 				strokeWidth: el.width,
-				roughness: el.roughness ?? 1.5,
-				seed: el.seed,
-				strokeLineDash,
-				fill:
-					el.backgroundColor && el.backgroundColor !== "transparent"
-						? el.backgroundColor
-						: undefined,
-				fillStyle: el.fillStyle ?? "hachure",
-				fillWeight: el.width / 2, // Make fill weight proportional to stroke width
-				hachureGap: el.width * 4, // Make gap proportional
-			};
-			const y1 = p1.y - scrollY;
-			const y2 = p2.y - scrollY;
-
-			if (el.type === "rectangle")
-				rc.rectangle(p1.x, y1, p2.x - p1.x, y2 - y1, options);
-			else if (el.type === "ellipse") {
-				const cw = Math.abs(p2.x - p1.x);
-				const ch = Math.abs(y2 - y1);
-				rc.ellipse((p1.x + p2.x) / 2, (y1 + y2) / 2, cw, ch, options);
-			} else if (el.type === "arrow") {
-				const pts = el.points.map(
-					(p) => [p.x, p.y - scrollY] as [number, number],
-				);
-				rc.linearPath(pts, options);
-				const last = el.points[el.points.length - 1];
-				const prev = el.points[el.points.length - 2];
-				const angle = Math.atan2(last.y - prev.y, last.x - prev.x);
-				const h = 15;
-				rc.line(
-					last.x,
-					last.y - scrollY,
-					last.x - h * Math.cos(angle - Math.PI / 6),
-					last.y - scrollY - h * Math.sin(angle - Math.PI / 6),
-					options,
-				);
-				rc.line(
-					last.x,
-					last.y - scrollY,
-					last.x - h * Math.cos(angle + Math.PI / 6),
-					last.y - scrollY - h * Math.sin(angle + Math.PI / 6),
-					options,
-				);
-			}
-		}
-
-		if (isSelected && resizeHandle() !== "rotate") {
-			ctx.setLineDash([5, 5]);
-			ctx.strokeStyle = "#3b82f6";
-			ctx.lineWidth = 2;
-
-			const minX = bounds.minX;
-			const maxX = bounds.maxX;
-			const minY = bounds.minY - scrollY;
-			const maxY = bounds.maxY - scrollY;
-
-			ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
-
-			if (selectedElementIds().size === 1) {
-				ctx.setLineDash([]);
-				ctx.fillStyle = "#3b82f6";
-				ctx.strokeStyle = "#ffffff";
-				ctx.lineWidth = 1;
-				const handleSize = CONSTANTS.HANDLE_SIZE;
-				const handles = [
-					[minX, minY], // top-left
-					[maxX, minY], // top-right
-					[minX, maxY], // bottom-left
-					[maxX, maxY], // bottom-right
-				];
-				handles.forEach(([hx, hy]) => {
-					ctx.fillRect(
-						hx - handleSize / 2,
-						hy - handleSize / 2,
-						handleSize,
-						handleSize,
-					);
-					ctx.strokeRect(
-						hx - handleSize / 2,
-						hy - handleSize / 2,
-						handleSize,
-						handleSize,
-					);
-				});
-
-				const rotX = (minX + maxX) / 2;
-				const rotY = minY - CONSTANTS.ROTATION_HANDLE_OFFSET;
-
-				ctx.beginPath();
-				ctx.moveTo(rotX, minY);
-				ctx.lineTo(rotX, rotY);
-				ctx.stroke();
-
-				ctx.fillRect(
-					rotX - handleSize / 2,
-					rotY - handleSize / 2,
-					handleSize,
-					handleSize,
-				);
-				ctx.strokeRect(
-					rotX - handleSize / 2,
-					rotY - handleSize / 2,
-					handleSize,
-					handleSize,
-				);
-			}
-		}
-
-		ctx.restore();
-	};
-
-	const updateTempCanvas = () => {
-		if (!tempCanvasRef || !activeElement) return;
-		const ctx = tempCanvasRef.getContext("2d");
-		if (!ctx) return;
-		const rc = rough.canvas(tempCanvasRef);
-		ctx.save();
-		ctx.setTransform(1, 0, 0, 1, 0, 0);
-		ctx.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
-		ctx.restore();
-		renderElement(ctx, rc, activeElement, false);
-	};
-
-	const redraw = () => {
-		if (!mainCanvasRef) return;
-		const ctx = mainCanvasRef.getContext("2d");
-		if (!ctx) return;
-		const rc = rough.canvas(mainCanvasRef);
-		ctx.save();
-		ctx.setTransform(1, 0, 0, 1, 0, 0);
-		ctx.clearRect(0, 0, mainCanvasRef.width, mainCanvasRef.height);
-		ctx.restore();
-		const pIds = pendingDeletionIds();
-		elements().forEach((el) => {
-			renderElement(ctx, rc, el, pIds.has(el.id));
-		});
-		previewElements().forEach((el) => {
-			renderElement(ctx, rc, el, false);
-		});
-
-		// Draw group selection box and handles
-		if (selectedElementIds().size > 1 && resizeHandle() !== "rotate") {
-			const bounds = getCommonBounds(selectedElementIds());
-			if (bounds) {
-				const scrollY = window.scrollY;
-				const minX = bounds.minX;
-				const maxX = bounds.maxX;
-				const minY = bounds.minY - scrollY;
-				const maxY = bounds.maxY - scrollY;
-
-				ctx.save();
-				ctx.setLineDash([5, 5]);
-				ctx.strokeStyle = "#3b82f6";
-				ctx.lineWidth = 2;
-				ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
-
-				ctx.setLineDash([]);
-				ctx.fillStyle = "#3b82f6";
-				ctx.strokeStyle = "#ffffff";
-				ctx.lineWidth = 1;
-				const handleSize = CONSTANTS.HANDLE_SIZE;
-				const handles = [
-					[minX, minY], // top-left
-					[maxX, minY], // top-right
-					[minX, maxY], // bottom-left
-					[maxX, maxY], // bottom-right
-				];
-				handles.forEach(([hx, hy]) => {
-					ctx.fillRect(
-						hx - handleSize / 2,
-						hy - handleSize / 2,
-						handleSize,
-						handleSize,
-					);
-					ctx.strokeRect(
-						hx - handleSize / 2,
-						hy - handleSize / 2,
-						handleSize,
-						handleSize,
-					);
-				});
-
-				const rotX = (minX + maxX) / 2;
-				const rotY = minY - CONSTANTS.ROTATION_HANDLE_OFFSET;
-
-				ctx.beginPath();
-				ctx.moveTo(rotX, minY);
-				ctx.lineTo(rotX, rotY);
-				ctx.stroke();
-
-				ctx.fillRect(
-					rotX - handleSize / 2,
-					rotY - handleSize / 2,
-					handleSize,
-					handleSize,
-				);
-				ctx.strokeRect(
-					rotX - handleSize / 2,
-					rotY - handleSize / 2,
-					handleSize,
-					handleSize,
-				);
-				ctx.restore();
-			}
-		}
-
-		const box = selectionBox();
-		if (box) {
-			const scrollY = window.scrollY;
-			ctx.save();
-			ctx.strokeStyle = "#00f2ff";
-			ctx.lineWidth = 1;
-			ctx.setLineDash([5, 5]);
-			ctx.fillStyle = "rgba(0, 242, 255, 0.1)";
-
-			const x = Math.min(box.start.x, box.end.x);
-			const y = Math.min(box.start.y, box.end.y) - scrollY;
-			const w = Math.abs(box.end.x - box.start.x);
-			const h = Math.abs(box.end.y - box.start.y);
-
-			ctx.fillRect(x, y, w, h);
-			ctx.strokeRect(x, y, w, h);
-			ctx.restore();
-		}
-	};
-
-	const undo = () => {
-		if (elements().length > 0) {
-			const newElements = elements().slice(0, -1);
-			setElements(newElements);
-			// validate selection
-			const newIds = new Set(newElements.map((e) => e.id));
-			const currentSelection = new Set(selectedElementIds());
-			let changed = false;
-			currentSelection.forEach((id) => {
-				if (!newIds.has(id)) {
-					currentSelection.delete(id);
-					changed = true;
-				}
+				roughness: el.roughness,
 			});
-			if (changed) setSelectedElementIds(currentSelection);
-			redraw();
+		} else if (el.type === "ellipse") {
+			const [p1, p2] = el.points;
+			const w = Math.abs(p2.x - p1.x);
+			const h = Math.abs(p2.y - p1.y);
+			const cx = (p1.x + p2.x) / 2;
+			const cy = (p1.y + p2.y) / 2;
+			rc.ellipse(cx, cy, w, h, {
+				stroke: el.color,
+				strokeWidth: el.width,
+				roughness: el.roughness,
+			});
+		} else if (el.type === "arrow") {
+			// Simple line for now
+			const [p1, p2] = el.points;
+			rc.line(p1.x, p1.y, p2.x, p2.y, {
+				stroke: el.color,
+				strokeWidth: el.width,
+			});
 		}
-	};
-	const clearCanvas = () => {
-		setElements([]);
-		setSelectedElementIds(new Set<string>());
-		redraw();
-	};
-
-	const handleKeyDown = (e: KeyboardEvent) => {
-		if ((e.ctrlKey || e.metaKey) && e.key === "z") {
-			e.preventDefault();
-			undo();
-		}
-		if (e.key === "Enter" && e.ctrlKey && editingTextId()) {
-			e.preventDefault();
-			commitText();
-		}
-		if (e.key === "Escape") {
-			if (editingTextId()) {
-				setEditingTextId(null);
-				setEditingTextPos(null);
-				setEditingTextValue("");
-			} else {
-				setPreviewElements([]);
-				setLastArrowKey(null);
-				setArrowKeyPressCount(0);
-				if (selectedElementIds().size > 0) {
-					setSelectedElementIds(new Set<string>());
-					setResizeHandle(null);
-					setResizeStartBounds(null);
-				}
-				redraw();
-			}
-		}
-		if (
-			e.ctrlKey &&
-			(e.key === "ArrowUp" ||
-				e.key === "ArrowDown" ||
-				e.key === "ArrowLeft" ||
-				e.key === "ArrowRight")
-		) {
-			if (selectedElementIds().size === 1) {
-				const id = Array.from(selectedElementIds())[0];
-				const el = elements().find((e) => e.id === id);
-				if (el && ["rectangle", "ellipse", "diamond"].includes(el.type)) {
-					e.preventDefault();
-
-					const currentCount =
-						e.key === lastArrowKey() ? arrowKeyPressCount() + 1 : 1;
-					setLastArrowKey(e.key);
-					setArrowKeyPressCount(currentCount);
-
-					const GAP = 100;
-					const bounds = getElementBounds(el);
-					const width = bounds.maxX - bounds.minX;
-					const height = bounds.maxY - bounds.minY;
-
-					let baseDX = 0;
-					let baseDY = 0;
-					if (e.key === "ArrowRight") baseDX = width + GAP;
-					if (e.key === "ArrowLeft") baseDX = -(width + GAP);
-					if (e.key === "ArrowDown") baseDY = height + GAP;
-					if (e.key === "ArrowUp") baseDY = -(height + GAP);
-
-					const newPreviews: Element[] = [];
-					const sourceCenter = {
-						x: (bounds.minX + bounds.maxX) / 2,
-						y: (bounds.minY + bounds.maxY) / 2,
-					};
-
-					const splitGap = GAP / 2;
-					let splitX = sourceCenter.x;
-					let splitY = sourceCenter.y;
-					if (e.key === "ArrowRight") splitX = bounds.maxX + splitGap;
-					if (e.key === "ArrowLeft") splitX = bounds.minX - splitGap;
-					if (e.key === "ArrowDown") splitY = bounds.maxY + splitGap;
-					if (e.key === "ArrowUp") splitY = bounds.minY - splitGap;
-
-					for (let i = 0; i < currentCount; i++) {
-						let offsetDX = 0;
-						let offsetDY = 0;
-						const stepSize =
-							e.key === "ArrowRight" || e.key === "ArrowLeft"
-								? height + 20
-								: width + 20;
-						const step = (i - (currentCount - 1) / 2) * stepSize;
-
-						if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-							offsetDY = step;
-						} else {
-							offsetDX = step;
-						}
-
-						const dx = baseDX + offsetDX;
-						const dy = baseDY + offsetDY;
-
-						const newPoints = el.points.map((p) => ({
-							x: p.x + dx,
-							y: p.y + dy,
-						}));
-
-						const newEl: Element = {
-							...el,
-							id: Math.random().toString(36).substr(2, 9),
-							points: newPoints,
-							seed: Math.floor(Math.random() * 2 ** 31),
-							opacity: 50,
-						};
-
-						const newElBounds = getElementBounds(newEl);
-						const targetCenter = {
-							x: (newElBounds.minX + newElBounds.maxX) / 2,
-							y: (newElBounds.minY + newElBounds.maxY) / 2,
-						};
-
-						const arrowStart = intersectElementBorder(el, {
-							x:
-								e.key === "ArrowRight"
-									? bounds.maxX + 1
-									: e.key === "ArrowLeft"
-										? bounds.minX - 1
-										: sourceCenter.x,
-							y:
-								e.key === "ArrowDown"
-									? bounds.maxY + 1
-									: e.key === "ArrowUp"
-										? bounds.minY - 1
-										: sourceCenter.y,
-						});
-						const arrowEnd = intersectElementBorder(newEl, {
-							x:
-								e.key === "ArrowRight"
-									? newElBounds.minX - 1
-									: e.key === "ArrowLeft"
-										? newElBounds.maxX + 1
-										: targetCenter.x,
-							y:
-								e.key === "ArrowDown"
-									? newElBounds.minY - 1
-									: e.key === "ArrowUp"
-										? newElBounds.maxY + 1
-										: targetCenter.y,
-						});
-
-						let arrowPoints: Point[] = [arrowStart, arrowEnd];
-						if (currentCount > 1) {
-							if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-								arrowPoints = [
-									arrowStart,
-									{ x: splitX, y: arrowStart.y },
-									{ x: splitX, y: arrowEnd.y },
-									arrowEnd,
-								];
-							} else {
-								arrowPoints = [
-									arrowStart,
-									{ x: arrowStart.x, y: splitY },
-									{ x: arrowEnd.x, y: splitY },
-									arrowEnd,
-								];
-							}
-						}
-
-						const arrowEl: Element = {
-							id: Math.random().toString(36).substr(2, 9),
-							type: "arrow",
-							points: arrowPoints,
-							color: el.color,
-							width: 2,
-							seed: Math.floor(Math.random() * 2 ** 31),
-							angle: 0,
-							strokeStyle: "solid",
-							roughness: 1,
-							opacity: 50,
-							startBinding: { elementId: el.id, focus: 0, gap: 0 },
-							endBinding: { elementId: newEl.id, focus: 0, gap: 0 },
-						};
-
-						newPreviews.push(newEl, arrowEl);
-					}
-
-					setPreviewElements(newPreviews);
-					redraw();
-				}
-			}
-		}
-
-		if (
-			e.shiftKey &&
-			(e.key === "Delete" || e.key === "Backspace" || e.key === "Del")
-		) {
-			const ids = selectedElementIds();
-			if (ids.size > 0 && !editingTextId()) {
-				e.preventDefault();
-				setElements(elements().filter((el) => !ids.has(el.id)));
-				setSelectedElementIds(new Set<string>());
-				setResizeHandle(null);
-				setResizeStartBounds(null);
-				redraw();
-			}
-		}
-	};
-
-	const handleKeyUp = (e: KeyboardEvent) => {
-		if (e.key === "Control" || e.key === "Meta") {
-			if (previewElements().length > 0) {
-				const committed = previewElements().map((el) => ({
-					...el,
-					opacity: 100,
-				}));
-				setElements([...elements(), ...committed]);
-
-				const newNodeIds = committed
-					.filter((el) => el.type !== "arrow")
-					.map((el) => el.id);
-
-				if (newNodeIds.length > 0) {
-					setSelectedElementIds(new Set([newNodeIds[newNodeIds.length - 1]]));
-				}
-
-				setPreviewElements([]);
-				setLastArrowKey(null);
-				setArrowKeyPressCount(0);
-				redraw();
-			}
-		}
+		// ... other types ...
 	};
 
 	onMount(() => {
-		window.addEventListener("resize", handleResize);
-		window.addEventListener("scroll", redraw);
-		window.addEventListener("keydown", handleKeyDown);
-		window.addEventListener("keyup", handleKeyUp);
-		handleResize();
-		onCleanup(() => {
-			window.removeEventListener("resize", handleResize);
-			window.removeEventListener("scroll", redraw);
-			window.removeEventListener("keydown", handleKeyDown);
-			window.removeEventListener("keyup", handleKeyUp);
-		});
+		const resize = () => {
+			if (mainCanvasRef) {
+				mainCanvasRef.width = window.innerWidth;
+				mainCanvasRef.height = window.innerHeight;
+			}
+			if (tempCanvasRef) {
+				tempCanvasRef.width = window.innerWidth;
+				tempCanvasRef.height = window.innerHeight;
+			}
+			redraw();
+		};
+		window.addEventListener("resize", resize);
+		resize();
+		onCleanup(() => window.removeEventListener("resize", resize));
+
+		// Initial Scroll? We control view now.
 	});
 
 	const tools: ElementType[] = [
@@ -1894,102 +441,60 @@ export default function PresentationMarker() {
 		"rectangle",
 		"ellipse",
 		"arrow",
-		"text",
 		"eraser",
 	];
 
+	const strokeStyles: StrokeStyle[] = ["solid", "dashed", "dotted"];
+
+	const undo = () => {
+		if (elements().length > 0) {
+			const newElements = elements().slice(0, -1);
+			setElements(newElements);
+			redraw();
+		}
+	};
+
+	const clearCanvas = () => {
+		setElements([]);
+		redraw();
+	};
+
 	return (
-		<>
+		<div
+			ref={containerRef}
+			class="fixed inset-0 overflow-hidden bg-white select-none"
+			onWheel={handleWheel}
+			onMouseDown={handleMouseDown}
+			onMouseMove={handleMouseMove}
+			onMouseUp={handleMouseUp}
+			onTouchStart={handleMouseDown}
+			onTouchMove={handleMouseMove}
+			onTouchEnd={handleMouseUp}
+		>
+			{/* Content Layer with Transform */}
+			<div
+				style={{
+					transform: `translate(${view().x}px, ${view().y}px) scale(${view().z})`,
+					"transform-origin": "0 0",
+					width: "100%",
+					"min-height": "100vh",
+				}}
+			>
+				{props.children}
+			</div>
+
+			{/* Canvases (Fixed to screen, content drawn transformed) */}
 			<canvas
 				ref={mainCanvasRef}
-				class="fixed top-0 left-0 z-8000 pointer-events-none"
+				class="fixed inset-0 pointer-events-none z-10"
 			/>
-			<Show when={editingTextPos()}>
-				{(pos) => (
-					<textarea
-						value={editingTextValue()}
-						class="drawing-text-area fixed"
-						style={{
-							left: `${pos().x}px`,
-							top: `${pos().y - window.scrollY}px`,
-							color: currentColor(),
-							"font-size": `${CONSTANTS.MARKER_WIDTH * CONSTANTS.FONT_SIZE_MULTIPLIER}px`,
-							"min-width": "1px",
-							"min-height": "1em",
-						}}
-						onInput={(e) => {
-							setEditingTextValue(e.currentTarget.value);
-							const target = e.currentTarget;
-							target.style.height = "1px";
-							target.style.height = `${target.scrollHeight}px`;
-						}}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" && e.ctrlKey) {
-								e.preventDefault();
-								commitText();
-							}
-							if (e.key === "Escape") {
-								setEditingTextId(null);
-								setEditingTextPos(null);
-								setEditingTextValue("");
-							}
-						}}
-						onBlur={commitText}
-						ref={(el) => {
-							setTimeout(() => {
-								el.focus();
-								el.style.height = "1px";
-								el.style.height = `${el.scrollHeight}px`;
-							}, 0);
-						}}
-					/>
-				)}
-			</Show>
 			<canvas
 				ref={tempCanvasRef}
-				class={`fixed top-0 left-0 z-8001 ${isDrawingMode() ? "cursor-none pointer-events-auto" : "pointer-events-none"}`}
-				onMouseDown={startDrawing}
-				onMouseMove={draw}
-				onMouseUp={stopDrawing}
-				onMouseOut={stopDrawing}
-				onBlur={stopDrawing}
-				onDblClick={handleDoubleClick}
-				onTouchStart={startDrawing}
-				onTouchMove={draw}
-				onTouchEnd={stopDrawing}
+				class="fixed inset-0 pointer-events-none z-11"
 			/>
 
-			<Show when={isDrawingMode() && currentTool() === "eraser"}>
-				<div
-					ref={eraserCursorRef}
-					class="fixed pointer-events-none z-8002 border border-white/50 rounded-full bg-white/10"
-					style={{
-						width: `${CONSTANTS.ERASER_SIZE}px`,
-						height: `${CONSTANTS.ERASER_SIZE}px`,
-						top: "0",
-						left: "0",
-						"will-change": "transform",
-					}}
-				/>
-			</Show>
-
-			<Show when={isDrawingMode() && currentTool() !== "eraser"}>
-				<div
-					ref={markerCursorRef}
-					class="fixed pointer-events-none z-8002 border border-white/50 rounded-full"
-					style={{
-						width: "8px",
-						height: "8px",
-						"background-color":
-							currentTool() === "select" ? "#3b82f6" : currentColor(),
-						top: "0",
-						left: "0",
-						"will-change": "transform",
-					}}
-				/>
-			</Show>
-
-			<div class="fixed bottom-6 right-6 z-9000 flex flex-col items-end">
+			{/* UI Layer */}
+			<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
 				<Show when={!isDrawingMode()}>
 					<button
 						type="button"
@@ -2007,7 +512,6 @@ export default function PresentationMarker() {
 							stroke-linecap="round"
 							stroke-linejoin="round"
 						>
-							<title>Open Presentation Tools</title>
 							<line x1="3" y1="12" x2="21" y2="12" />
 							<line x1="3" y1="6" x2="21" y2="6" />
 							<line x1="3" y1="18" x2="21" y2="18" />
@@ -2016,492 +520,11 @@ export default function PresentationMarker() {
 				</Show>
 
 				<Show when={isDrawingMode()}>
-					<div class="flex items-center gap-2 bg-black border border-white/10 px-3 h-12 rounded-full shadow-2xl relative">
-						{/* --- Popovers --- */}
-						<Show when={activeMenu() === "colors"}>
-							<div class="absolute bottom-14 right-0 bg-black border border-white/10 p-4 rounded-xl shadow-xl min-w-[200px] flex flex-col gap-4 z-50">
-								{/* Color Selection */}
-								<div class="flex flex-col gap-2">
-									<span class="text-[10px] text-zinc-500 uppercase font-bold">
-										Stroke Color
-									</span>
-									<div class="flex flex-col gap-1">
-										<div class="flex gap-1">
-											<For
-												each={[
-													"#ff4444",
-													"#44ff44",
-													"#4444ff",
-													"#00f2ff",
-													"#ffff44",
-												]}
-											>
-												{(color) => (
-													<button
-														type="button"
-														onClick={() => {
-															setCurrentColor(color);
-															if (selectedElementIds().size > 0) {
-																setElements(
-																	elements().map((el) =>
-																		selectedElementIds().has(el.id)
-																			? { ...el, color }
-																			: el,
-																	),
-																);
-																redraw();
-															}
-														}}
-														class={`w-6 h-6 rounded-full border transition-transform hover:scale-110 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
-														style={{ "background-color": color }}
-													/>
-												)}
-											</For>
-										</div>
-										<div class="flex gap-1">
-											<For
-												each={[
-													"#ff00ff",
-													"#000000",
-													"#ffffff",
-													"#808080",
-													"#ffa500",
-												]}
-											>
-												{(color) => (
-													<button
-														type="button"
-														onClick={() => {
-															setCurrentColor(color);
-															if (selectedElementIds().size > 0) {
-																setElements(
-																	elements().map((el) =>
-																		selectedElementIds().has(el.id)
-																			? { ...el, color }
-																			: el,
-																	),
-																);
-																redraw();
-															}
-														}}
-														class={`w-6 h-6 rounded-full border transition-transform hover:scale-110 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
-														style={{ "background-color": color }}
-													/>
-												)}
-											</For>
-										</div>
-									</div>
-									<input
-										type="color"
-										value={currentColor()}
-										onInput={(e) => {
-											const color = e.currentTarget.value;
-											setCurrentColor(color);
-											if (selectedElementIds().size > 0) {
-												setElements(
-													elements().map((el) =>
-														selectedElementIds().has(el.id)
-															? { ...el, color }
-															: el,
-													),
-												);
-												redraw();
-											}
-										}}
-										class="w-full h-8 rounded cursor-pointer border-none p-0 mt-1"
-										title="Custom Color"
-									/>
-								</div>
-
-								<div class="w-full h-px bg-white/10" />
-
-								{/* Background Color */}
-								<div class="flex flex-col gap-2">
-									<span class="text-[10px] text-zinc-500 uppercase font-bold">
-										Background
-									</span>
-									<div class="flex items-center gap-2">
-										<button
-											type="button"
-											onClick={() => {
-												setCurrentBackgroundColor("transparent");
-												if (selectedElementIds().size > 0) {
-													setElements(
-														elements().map((el) =>
-															selectedElementIds().has(el.id)
-																? { ...el, backgroundColor: "transparent" }
-																: el,
-														),
-													);
-													redraw();
-												}
-											}}
-											class={`w-8 h-8 rounded border ${currentBackgroundColor() === "transparent" ? "border-white" : "border-zinc-700"} relative overflow-hidden`}
-											title="Transparent"
-										>
-											<div class="absolute inset-0 bg-red-500 rotate-45 w-px h-[150%] top-[-25%] left-[50%]" />
-										</button>
-										<input
-											type="color"
-											value={
-												currentBackgroundColor() === "transparent"
-													? "#ffffff"
-													: currentBackgroundColor()
-											}
-											onInput={(e) => {
-												const val = e.currentTarget.value;
-												setCurrentBackgroundColor(val);
-												if (selectedElementIds().size > 0) {
-													setElements(
-														elements().map((el) =>
-															selectedElementIds().has(el.id)
-																? { ...el, backgroundColor: val }
-																: el,
-														),
-													);
-													redraw();
-												}
-											}}
-											class="flex-1 h-8 rounded cursor-pointer border-none p-0"
-											title="Background Color"
-										/>
-									</div>
-								</div>
-							</div>
-							<button
-								type="button"
-								class="fixed inset-0 z-40 cursor-default w-full h-full border-none bg-transparent"
-								onClick={() => setActiveMenu(null)}
-								aria-label="Close menu"
-							/>
-						</Show>
-
-						<Show when={activeMenu() === "style"}>
-							<div class="absolute bottom-14 right-0 bg-black border border-white/10 p-4 rounded-xl shadow-xl min-w-[240px] flex flex-col gap-4 z-50">
-								{/* Fill Style */}
-								<div class="flex flex-col gap-2">
-									<span class="text-[10px] text-zinc-500 uppercase font-bold">
-										Fill Style
-									</span>
-									<select
-										value={currentFillStyle()}
-										onChange={(e) => {
-											const val = e.currentTarget
-												.value as (typeof FILL_STYLES)[number];
-											setCurrentFillStyle(val);
-											if (selectedElementIds().size > 0) {
-												setElements(
-													elements().map((el) =>
-														selectedElementIds().has(el.id)
-															? { ...el, fillStyle: val }
-															: el,
-													),
-												);
-												redraw();
-											}
-										}}
-										class="w-full h-8 px-2 text-xs bg-white/10 text-white rounded border border-white/10 outline-none focus:border-white/30"
-									>
-										<For each={FILL_STYLES}>
-											{(style) => (
-												<option value={style} class="text-black bg-white">
-													{style}
-												</option>
-											)}
-										</For>
-									</select>
-								</div>
-
-								<div class="w-full h-px bg-white/10" />
-
-								{/* Stroke Style */}
-								<div class="flex flex-col gap-2">
-									<span class="text-[10px] text-zinc-500 uppercase font-bold">
-										Stroke Style
-									</span>
-									<div class="flex bg-white/10 rounded-lg p-1">
-										<For each={strokeStyles}>
-											{(style) => (
-												<button
-													type="button"
-													onClick={() => {
-														setCurrentStrokeStyle(style);
-														if (selectedElementIds().size > 0) {
-															setElements(
-																elements().map((el) =>
-																	selectedElementIds().has(el.id)
-																		? { ...el, strokeStyle: style }
-																		: el,
-																),
-															);
-															redraw();
-														}
-													}}
-													class={`flex-1 py-1 text-[10px] uppercase rounded ${
-														currentStrokeStyle() === style
-															? "bg-white text-black font-bold shadow-sm"
-															: "text-zinc-400 hover:text-white"
-													}`}
-												>
-													{style}
-												</button>
-											)}
-										</For>
-									</div>
-								</div>
-
-								<div class="w-full h-px bg-white/10" />
-
-								{/* Sliders */}
-								<div class="flex flex-col gap-3">
-									<div class="flex flex-col gap-1">
-										<div class="flex justify-between">
-											<span class="text-[10px] text-zinc-500 uppercase font-bold">
-												Width
-											</span>
-											<span class="text-[10px] text-zinc-400">
-												{currentWidth()}
-											</span>
-										</div>
-										<input
-											type="range"
-											min="1"
-											max="20"
-											value={currentWidth()}
-											onInput={(e) => {
-												const val = Number(e.currentTarget.value);
-												setCurrentWidth(val);
-												if (selectedElementIds().size > 0) {
-													setElements(
-														elements().map((el) =>
-															selectedElementIds().has(el.id)
-																? { ...el, width: val }
-																: el,
-														),
-													);
-													redraw();
-												}
-											}}
-											class="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-										/>
-									</div>
-
-									<div class="flex flex-col gap-1">
-										<div class="flex justify-between">
-											<span class="text-[10px] text-zinc-500 uppercase font-bold">
-												Roughness
-											</span>
-											<span class="text-[10px] text-zinc-400">
-												{currentRoughness()}
-											</span>
-										</div>
-										<input
-											type="range"
-											min="0"
-											max="3"
-											step="0.5"
-											value={currentRoughness()}
-											onInput={(e) => {
-												const val = Number(e.currentTarget.value);
-												setCurrentRoughness(val);
-												if (selectedElementIds().size > 0) {
-													setElements(
-														elements().map((el) =>
-															selectedElementIds().has(el.id)
-																? { ...el, roughness: val }
-																: el,
-														),
-													);
-													redraw();
-												}
-											}}
-											class="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-										/>
-									</div>
-
-									<div class="flex flex-col gap-1">
-										<div class="flex justify-between">
-											<span class="text-[10px] text-zinc-500 uppercase font-bold">
-												Opacity
-											</span>
-											<span class="text-[10px] text-zinc-400">
-												{currentOpacity()}%
-											</span>
-										</div>
-										<input
-											type="range"
-											min="10"
-											max="100"
-											step="10"
-											value={currentOpacity()}
-											onInput={(e) => {
-												const val = Number(e.currentTarget.value);
-												setCurrentOpacity(val);
-												if (selectedElementIds().size > 0) {
-													setElements(
-														elements().map((el) =>
-															selectedElementIds().has(el.id)
-																? { ...el, opacity: val }
-																: el,
-														),
-													);
-													redraw();
-												}
-											}}
-											class="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-										/>
-									</div>
-								</div>
-							</div>
-							<button
-								type="button"
-								class="fixed inset-0 z-40 cursor-default w-full h-full border-none bg-transparent"
-								onClick={() => setActiveMenu(null)}
-								aria-label="Close menu"
-							/>
-						</Show>
-
-						{/* --- Main Toolbar --- */}
-
-						<div class="flex gap-0.5 bg-white/5 p-1 rounded-full">
-							<For each={tools}>
-								{(tool) => (
-									<button
-										type="button"
-										onClick={() => {
-											setCurrentTool(tool);
-											if (
-												(tool === "eraser" || tool === "select") &&
-												selectedElementIds().size > 0
-											) {
-												// keep selection
-											}
-										}}
-										class={`px-3 py-1.5 rounded-full text-[10px] uppercase font-bold transition-all ${
-											currentTool() === tool
-												? "bg-white text-black shadow-sm"
-												: "text-zinc-500 hover:text-white hover:bg-white/10"
-										}`}
-									>
-										{tool}
-									</button>
-								)}
-							</For>
-						</div>
-
-						<div class="w-px h-6 bg-white/10" />
-
-						<div class="flex gap-1">
-							{/* Colors Menu Toggle */}
-							<button
-								type="button"
-								onClick={() =>
-									setActiveMenu(activeMenu() === "colors" ? null : "colors")
-								}
-								class={`w-8 h-8 flex items-center justify-center rounded-full border transition-all ${
-									activeMenu() === "colors"
-										? "border-white bg-white/10"
-										: "border-transparent hover:bg-white/5"
-								}`}
-								title="Colors"
-							>
-								<div
-									class="w-4 h-4 rounded-full border border-white/20"
-									style={{ "background-color": currentColor() }}
-								/>
-							</button>
-
-							{/* Style Menu Toggle */}
-							<button
-								type="button"
-								onClick={() =>
-									setActiveMenu(activeMenu() === "style" ? null : "style")
-								}
-								class={`w-8 h-8 flex items-center justify-center rounded-full border transition-all text-zinc-400 ${
-									activeMenu() === "style"
-										? "border-white bg-white/10 text-white"
-										: "border-transparent hover:bg-white/5 hover:text-white"
-								}`}
-								title="Style & Properties"
-							>
-								<svg
-									width="16"
-									height="16"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<title>Style Settings</title>
-									<path d="M4 21v-7" />
-									<path d="M4 10V3" />
-									<path d="M12 21v-9" />
-									<path d="M12 8V3" />
-									<path d="M20 21v-5" />
-									<path d="M20 12V3" />
-									<path d="M1 14h6" />
-									<path d="M9 8h6" />
-									<path d="M17 16h6" />
-								</svg>
-							</button>
-						</div>
-
-						<div class="w-px h-6 bg-white/10" />
-
-						<div class="flex gap-1">
-							<button
-								type="button"
-								onClick={undo}
-								class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
-								title="Undo"
-							>
-								<svg
-									width="16"
-									height="16"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<title>Undo</title>
-									<path d="M3 7v6h6" />
-									<path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-								</svg>
-							</button>
-							<button
-								type="button"
-								onClick={clearCanvas}
-								class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-								title="Clear All"
-							>
-								<svg
-									width="16"
-									height="16"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<title>Clear Canvas</title>
-									<path d="M3 6h18" />
-									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-								</svg>
-							</button>
-						</div>
-
-						<div class="w-px h-6 bg-white/10" />
-
+					<div class="flex items-center gap-4 bg-black border border-white/10 p-3 rounded-lg shadow-2xl">
 						<button
 							type="button"
 							onClick={() => setIsDrawingMode(false)}
-							class="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+							class="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors"
 							title="Close Tools"
 						>
 							<svg
@@ -2514,14 +537,252 @@ export default function PresentationMarker() {
 								stroke-linecap="round"
 								stroke-linejoin="round"
 							>
-								<title>Close Tools</title>
 								<line x1="18" y1="6" x2="6" y2="18" />
 								<line x1="6" y1="6" x2="18" y2="18" />
 							</svg>
 						</button>
+						<div class="w-px h-6 bg-white/10" />
+						<div class="flex gap-1">
+							<For each={tools}>
+								{(tool) => (
+									<button
+										type="button"
+										onClick={() => setCurrentTool(tool)}
+										class={`px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold transition-all ${currentTool() === tool ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}
+									>
+										{tool}
+									</button>
+								)}
+							</For>
+						</div>
+						<div class="w-px h-6 bg-white/10" />
+						<div class="flex gap-2 px-2">
+							<div class="flex flex-col gap-1">
+								<div class="flex gap-1">
+									<For
+										each={[
+											"#ff4444",
+											"#44ff44",
+											"#4444ff",
+											"#00f2ff",
+											"#ffff44",
+										]}
+									>
+										{(color) => (
+											<button
+												type="button"
+												onClick={() => {
+													setCurrentColor(color);
+													if (selectedElementIds().size > 0) {
+														setElements(
+															elements().map((el) =>
+																selectedElementIds().has(el.id)
+																	? { ...el, color }
+																	: el,
+															),
+														);
+														redraw();
+													} else if (
+														currentTool() === "eraser" ||
+														currentTool() === "select"
+													)
+														setCurrentTool("marker");
+												}}
+												class={`w-4 h-4 rounded-full border transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
+												style={{ "background-color": color }}
+											/>
+										)}
+									</For>
+								</div>
+								<div class="flex gap-1">
+									<For
+										each={[
+											"#ff00ff",
+											"#000000",
+											"#ffffff",
+											"#808080",
+											"#ffa500",
+										]}
+									>
+										{(color) => (
+											<button
+												type="button"
+												onClick={() => {
+													setCurrentColor(color);
+													if (selectedElementIds().size > 0) {
+														setElements(
+															elements().map((el) =>
+																selectedElementIds().has(el.id)
+																	? { ...el, color }
+																	: el,
+															),
+														);
+														redraw();
+													} else if (
+														currentTool() === "eraser" ||
+														currentTool() === "select"
+													)
+														setCurrentTool("marker");
+												}}
+												class={`w-4 h-4 rounded-full border transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
+												style={{ "background-color": color }}
+											/>
+										)}
+									</For>
+								</div>
+							</div>
+							<div class="flex items-center">
+								<input
+									type="color"
+									value={currentColor()}
+									onInput={(e) => {
+										const color = e.currentTarget.value;
+										setCurrentColor(color);
+										if (selectedElementIds().size > 0) {
+											setElements(
+												elements().map((el) =>
+													selectedElementIds().has(el.id)
+														? { ...el, color }
+														: el,
+												),
+											);
+											redraw();
+										}
+									}}
+									class="w-6 h-6 rounded cursor-pointer border-none p-0"
+									title="Custom Color"
+								/>
+							</div>
+						</div>
+						<div class="w-px h-6 bg-white/10" />
+						<div class="flex flex-col gap-2">
+							<div class="flex items-center gap-2">
+								<span class="text-[8px] text-zinc-500 uppercase w-8">Size</span>
+								<input
+									type="range"
+									min="1"
+									max="20"
+									value={currentWidth()}
+									onInput={(e) => {
+										const val = Number(e.currentTarget.value);
+										setCurrentWidth(val);
+										if (selectedElementIds().size > 0) {
+											setElements(
+												elements().map((el) =>
+													selectedElementIds().has(el.id)
+														? { ...el, width: val }
+														: el,
+												),
+											);
+											redraw();
+										}
+									}}
+									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+								/>
+							</div>
+							<div class="flex items-center gap-2">
+								<span class="text-[8px] text-zinc-500 uppercase w-8">
+									Rough
+								</span>
+								<input
+									type="range"
+									min="0"
+									max="3"
+									step="0.5"
+									value={currentRoughness()}
+									onInput={(e) => {
+										const val = Number(e.currentTarget.value);
+										setCurrentRoughness(val);
+										if (selectedElementIds().size > 0) {
+											setElements(
+												elements().map((el) =>
+													selectedElementIds().has(el.id)
+														? { ...el, roughness: val }
+														: el,
+												),
+											);
+											redraw();
+										}
+									}}
+									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+								/>
+							</div>
+							<div class="flex items-center gap-2">
+								<span class="text-[8px] text-zinc-500 uppercase w-8">Opac</span>
+								<input
+									type="range"
+									min="10"
+									max="100"
+									step="10"
+									value={currentOpacity()}
+									onInput={(e) => {
+										const val = Number(e.currentTarget.value);
+										setCurrentOpacity(val);
+										if (selectedElementIds().size > 0) {
+											setElements(
+												elements().map((el) =>
+													selectedElementIds().has(el.id)
+														? { ...el, opacity: val }
+														: el,
+												),
+											);
+											redraw();
+										}
+									}}
+									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+								/>
+							</div>
+						</div>
+						<div class="w-px h-6 bg-white/10" />
+						<div class="flex flex-col justify-center gap-1">
+							<For each={strokeStyles}>
+								{(style) => (
+									<button
+										type="button"
+										onClick={() => {
+											setCurrentStrokeStyle(style);
+											if (selectedElementIds().size > 0) {
+												setElements(
+													elements().map((el) =>
+														selectedElementIds().has(el.id)
+															? { ...el, strokeStyle: style }
+															: el,
+													),
+												);
+												redraw();
+											}
+										}}
+										class={`px-1.5 py-0.5 text-[8px] uppercase rounded border border-white/10 ${
+											currentStrokeStyle() === style
+												? "bg-white text-black"
+												: "text-zinc-500 hover:text-white"
+										}`}
+									>
+										{style}
+									</button>
+								)}
+							</For>
+						</div>
+						<div class="w-px h-6 bg-white/10" />
+						<div class="flex gap-1">
+							<button
+								type="button"
+								onClick={undo}
+								class="px-3 py-2 text-xs text-zinc-400 hover:text-white"
+							>
+								Undo
+							</button>
+							<button
+								type="button"
+								onClick={clearCanvas}
+								class="px-3 py-2 text-xs text-zinc-400 hover:text-red-400"
+							>
+								Clear
+							</button>
+						</div>
 					</div>
 				</Show>
 			</div>
-		</>
+		</div>
 	);
 }

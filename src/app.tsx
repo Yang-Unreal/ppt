@@ -11,8 +11,9 @@ export default function App() {
 			root={(props) => (
 				<MetaProvider>
 					<Title>SolidStart - Basic</Title>
-					<PresentationMarker />
-					<Suspense>{props.children}</Suspense>
+					<PresentationMarker>
+						<Suspense>{props.children}</Suspense>
+					</PresentationMarker>
 				</MetaProvider>
 			)}
 		>
