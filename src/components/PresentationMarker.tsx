@@ -252,9 +252,26 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				setResizeHandle(handleHit.handle);
 				const el = elements().find((e) => e.id === handleHit.id);
 				if (el) {
+					const b = getElementBounds(el);
+					const cx = (b.minX + b.maxX) / 2;
+					const cy = (b.minY + b.maxY) / 2;
+					let localAnchor = { x: 0, y: 0 };
+					const h = handleHit.handle;
+					if (h === "nw") localAnchor = { x: b.maxX, y: b.maxY };
+					if (h === "se") localAnchor = { x: b.minX, y: b.minY };
+					if (h === "ne") localAnchor = { x: b.minX, y: b.maxY };
+					if (h === "sw") localAnchor = { x: b.maxX, y: b.minY };
+
+					const globalAnchor = rotatePoint(
+						localAnchor,
+						{ x: cx, y: cy },
+						el.angle,
+					);
+
 					dragInitialState.set(el.id, {
 						points: el.points.map((p) => ({ ...p })),
 						angle: el.angle,
+						globalAnchor,
 					});
 				}
 			} else {
@@ -400,72 +417,35 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				setElements(
 					elements().map((el) => {
 						const state = dragInitialState.get(el.id);
-						if (state) {
-							const handle = resizeHandle();
-							const initialPoints = state.points;
+						if (state && state.globalAnchor) {
 							const angle = state.angle;
+							const anchor = state.globalAnchor;
 
-							// 1. Original local bounds & center
-							const oldB = {
-								minX: initialPoints[0].x,
-								minY: initialPoints[0].y,
-								maxX: initialPoints[1].x,
-								maxY: initialPoints[1].y,
-							};
-							const oldCx = (oldB.minX + oldB.maxX) / 2;
-							const oldCy = (oldB.minY + oldB.maxY) / 2;
+							// 1. Vector from anchor to mouse
+							const dx = worldPos.x - anchor.x;
+							const dy = worldPos.y - anchor.y;
 
-							// 2. Identify local anchor (opposite of handle)
-							let localAnchor = { x: 0, y: 0 };
-							if (handle === "nw") localAnchor = { x: oldB.maxX, y: oldB.maxY };
-							if (handle === "se") localAnchor = { x: oldB.minX, y: oldB.minY };
-							if (handle === "ne") localAnchor = { x: oldB.minX, y: oldB.maxY };
-							if (handle === "sw") localAnchor = { x: oldB.maxX, y: oldB.minY };
+							// 2. Project onto local axes
+							const cos = Math.cos(angle);
+							const sin = Math.sin(angle);
+							const ux = cos,
+								uy = sin;
+							const vx = -sin,
+								vy = cos;
 
-							// 3. Current global position of anchor
-							const globalAnchor = rotatePoint(
-								localAnchor,
-								{ x: oldCx, y: oldCy },
-								angle,
-							);
+							const distU = dx * ux + dy * uy;
+							const distV = dx * vx + dy * vy;
 
-							// 4. Current mouse world pos to local (unrotated around oldCenter)
-							const localMouse = rotatePoint(
-								worldPos,
-								{ x: oldCx, y: oldCy },
-								-angle,
-							);
+							// 3. New Center
+							const newCx = anchor.x + (distU / 2) * ux + (distV / 2) * vx;
+							const newCy = anchor.y + (distU / 2) * uy + (distV / 2) * vy;
 
-							// New local points based on localMouse and anchor
-							const newPoints = [...initialPoints];
-							if (handle === "nw") newPoints[0] = localMouse;
-							if (handle === "se") newPoints[1] = localMouse;
-							if (handle === "ne") {
-								newPoints[1].x = localMouse.x;
-								newPoints[0].y = localMouse.y;
-							}
-							if (handle === "sw") {
-								newPoints[0].x = localMouse.x;
-								newPoints[1].y = localMouse.y;
-							}
-
-							// 5. Correct for drift: New center must preserve global anchor position
-							const newCx = (newPoints[0].x + newPoints[1].x) / 2;
-							const newCy = (newPoints[0].y + newPoints[1].y) / 2;
-							const currentGlobalAnchor = rotatePoint(
-								localAnchor,
-								{ x: newCx, y: newCy },
-								angle,
-							);
-
-							const dx = globalAnchor.x - currentGlobalAnchor.x;
-							const dy = globalAnchor.y - currentGlobalAnchor.y;
-
+							// 4. Update points to match the new dimensions and center
 							return {
 								...el,
 								points: [
-									{ x: newPoints[0].x + dx, y: newPoints[0].y + dy },
-									{ x: newPoints[1].x + dx, y: newPoints[1].y + dy },
+									{ x: newCx - distU / 2, y: newCy - distV / 2 },
+									{ x: newCx + distU / 2, y: newCy + distV / 2 },
 								],
 							};
 						}
