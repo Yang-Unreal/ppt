@@ -49,7 +49,7 @@ const CONSTANTS = {
 	ERASER_SIZE: 20,
 	HANDLE_SIZE: 8,
 	ROTATION_HANDLE_OFFSET: 20,
-	FONT_SIZE_MULTIPLIER: 2, // Adjusted for canvas scaling? No, standard.
+	FONT_SIZE_MULTIPLIER: 2,
 	LINE_HEIGHT: 1.2,
 	TEXT_BASELINE_OFFSET: 0.8,
 	SELECTION_PADDING: 5,
@@ -60,25 +60,6 @@ const CONSTANTS = {
 
 const distance = (a: Point, b: Point) =>
 	Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-
-const nearPoint = (
-	x: number,
-	y: number,
-	x1: number,
-	y1: number,
-	name: string,
-) => {
-	return Math.abs(x - x1) < 5 && Math.abs(y - y1) < 5 ? name : null;
-};
-
-const pointInRect = (
-	p: Point,
-	rect: { minX: number; minY: number; maxX: number; maxY: number },
-) => {
-	return (
-		p.x >= rect.minX && p.x <= rect.maxX && p.y >= rect.minY && p.y <= rect.maxY
-	);
-};
 
 const getElementBounds = (element: Element) => {
 	const xList = element.points.map((p) => p.x);
@@ -92,26 +73,10 @@ const getElementBounds = (element: Element) => {
 	};
 };
 
-const rotatePoint = (p: Point, center: Point, angle: number) => {
-	return {
-		x:
-			(p.x - center.x) * Math.cos(angle) -
-			(p.y - center.y) * Math.sin(angle) +
-			center.x,
-		y:
-			(p.x - center.x) * Math.sin(angle) +
-			(p.y - center.y) * Math.cos(angle) +
-			center.y,
-	};
-};
-
-// Simplified hit test
 const hitTest = (pos: Point, elements: Element[]): string | null => {
-	// Reverse to hit top elements first
 	for (let i = elements.length - 1; i >= 0; i--) {
 		const el = elements[i];
 		const bounds = getElementBounds(el);
-		// Simple bounding box check + padding
 		if (
 			pos.x >= bounds.minX - 10 &&
 			pos.x <= bounds.maxX + 10 &&
@@ -123,9 +88,6 @@ const hitTest = (pos: Point, elements: Element[]): string | null => {
 	}
 	return null;
 };
-
-// Simplified arrow binding
-const intersectElementBorder = (el: Element, p: Point) => p;
 
 // --- Component ---
 
@@ -157,7 +119,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
-	let lastMousePos: Point | null = null; // For panning
+	let lastMousePos: Point | null = null;
 
 	// --- Infinite Canvas Logic ---
 
@@ -170,7 +132,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	};
 
 	const handleWheel = (e: WheelEvent) => {
-		e.preventDefault(); // Prevent native scroll
+		e.preventDefault();
 		const v = view();
 
 		if (e.ctrlKey || e.metaKey) {
@@ -178,7 +140,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			const scaleFactor = Math.exp(-delta * 0.001);
 			const newZ = Math.max(0.1, Math.min(5, v.z * scaleFactor));
 
-			// Zoom center logic
 			const rect = containerRef?.getBoundingClientRect();
 			if (!rect) return;
 			const mouseX = e.clientX - rect.left;
@@ -207,8 +168,8 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			clientX = e.touches[0].clientX;
 			clientY = e.touches[0].clientY;
 		} else {
-			clientX = e.clientX;
-			clientY = e.clientY;
+			clientX = (e as MouseEvent).clientX;
+			clientY = (e as MouseEvent).clientY;
 		}
 
 		const rect = containerRef?.getBoundingClientRect();
@@ -217,7 +178,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		const my = clientY - rect.top;
 		const worldPos = screenToWorld(mx, my);
 
-		// Pan Logic: Middle Click OR Space+Left OR (Viewing Mode + Left Click)
 		if (
 			("button" in e && e.button === 1) ||
 			e.shiftKey ||
@@ -230,7 +190,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 
 		if (!isDrawingMode()) return;
 
-		// Drawing Logic
 		setIsCurrentlyDrawing(true);
 		dragStartPos = worldPos;
 
@@ -238,11 +197,17 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			const hitId = hitTest(worldPos, elements());
 			if (hitId) {
 				setSelectedElementIds(new Set([hitId]));
-				// Move logic here if implementing move
 			} else {
 				setSelectedElementIds(new Set());
 			}
 			redraw();
+		} else if (currentTool() === "eraser") {
+			// Eraser click
+			const hitId = hitTest(worldPos, elements());
+			if (hitId) {
+				setElements(elements().filter((el) => el.id !== hitId));
+				redraw();
+			}
 		} else if (currentTool() === "marker") {
 			activeElement = {
 				id: Math.random().toString(36).substr(2, 9),
@@ -250,7 +215,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				points: [worldPos],
 				color: currentColor(),
 				width: currentWidth(),
-				seed: Math.random(),
+				seed: Math.floor(Math.random() * 2 ** 31),
 				angle: 0,
 				opacity: currentOpacity(),
 				roughness: currentRoughness(),
@@ -260,10 +225,10 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			activeElement = {
 				id: Math.random().toString(36).substr(2, 9),
 				type: currentTool(),
-				points: [worldPos, worldPos], // Start point twice
+				points: [worldPos, worldPos],
 				color: currentColor(),
 				width: currentWidth(),
-				seed: Math.random(),
+				seed: Math.floor(Math.random() * 2 ** 31),
 				angle: 0,
 				opacity: currentOpacity(),
 				roughness: currentRoughness(),
@@ -278,8 +243,8 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			clientX = e.touches[0].clientX;
 			clientY = e.touches[0].clientY;
 		} else {
-			clientX = e.clientX;
-			clientY = e.clientY;
+			clientX = (e as MouseEvent).clientX;
+			clientY = (e as MouseEvent).clientY;
 		}
 		const rect = containerRef?.getBoundingClientRect();
 		if (!rect) return;
@@ -293,6 +258,19 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			setView((prev) => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
 			lastMousePos = { x: mx, y: my };
 			redraw();
+			return;
+		}
+
+		if (
+			isDrawingMode() &&
+			currentTool() === "eraser" &&
+			(e as MouseEvent).buttons === 1
+		) {
+			const hitId = hitTest(worldPos, elements());
+			if (hitId) {
+				setElements(elements().filter((el) => el.id !== hitId));
+				redraw();
+			}
 			return;
 		}
 
@@ -317,7 +295,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			if (activeElement) {
 				setElements([...elements(), activeElement]);
 				activeElement = null;
-				// Clear temp canvas
 				if (tempCanvasRef) {
 					const ctx = tempCanvasRef.getContext("2d");
 					ctx?.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
@@ -338,14 +315,35 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		const v = view();
 
 		ctx.save();
-		ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
 		ctx.clearRect(0, 0, mainCanvasRef.width, mainCanvasRef.height);
 
-		// Apply View Transform
 		ctx.translate(v.x, v.y);
 		ctx.scale(v.z, v.z);
 
 		elements().forEach((el) => renderElement(ctx, rc, el));
+
+		// Draw Selection Box
+		if (selectedElementIds().size > 0) {
+			ctx.save();
+			ctx.strokeStyle = "#3b82f6";
+			ctx.lineWidth = 1 / v.z; // Constant visual width
+			ctx.setLineDash([5 / v.z, 5 / v.z]);
+
+			elements().forEach((el) => {
+				if (selectedElementIds().has(el.id)) {
+					const b = getElementBounds(el);
+					ctx.strokeRect(
+						b.minX - 5,
+						b.minY - 5,
+						b.maxX - b.minX + 10,
+						b.maxY - b.minY + 10,
+					);
+				}
+			});
+			ctx.restore();
+		}
+
 		ctx.restore();
 	};
 
@@ -372,8 +370,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		rc: any,
 		el: Element,
 	) => {
-		// ... Render logic (Marker, Rect, etc.) ...
-		// Re-implement basic rendering from previous memory/standard roughjs
 		if (el.type === "marker") {
 			if (el.points.length < 2) return;
 			const pts = el.points.map((p) => [p.x, p.y]);
@@ -393,6 +389,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				stroke: el.color,
 				strokeWidth: el.width,
 				roughness: el.roughness,
+				seed: el.seed,
 			});
 		} else if (el.type === "ellipse") {
 			const [p1, p2] = el.points;
@@ -404,16 +401,36 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				stroke: el.color,
 				strokeWidth: el.width,
 				roughness: el.roughness,
+				seed: el.seed,
 			});
 		} else if (el.type === "arrow") {
-			// Simple line for now
 			const [p1, p2] = el.points;
 			rc.line(p1.x, p1.y, p2.x, p2.y, {
 				stroke: el.color,
 				strokeWidth: el.width,
+				roughness: el.roughness,
+				seed: el.seed,
+			});
+			// Arrow Head
+			const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+			const headLen = 20;
+			const x3 = p2.x - headLen * Math.cos(angle - Math.PI / 6);
+			const y3 = p2.y - headLen * Math.sin(angle - Math.PI / 6);
+			const x4 = p2.x - headLen * Math.cos(angle + Math.PI / 6);
+			const y4 = p2.y - headLen * Math.sin(angle + Math.PI / 6);
+			rc.line(p2.x, p2.y, x3, y3, {
+				stroke: el.color,
+				strokeWidth: el.width,
+				roughness: el.roughness,
+				seed: el.seed,
+			});
+			rc.line(p2.x, p2.y, x4, y4, {
+				stroke: el.color,
+				strokeWidth: el.width,
+				roughness: el.roughness,
+				seed: el.seed,
 			});
 		}
-		// ... other types ...
 	};
 
 	onMount(() => {
@@ -431,8 +448,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		window.addEventListener("resize", resize);
 		resize();
 		onCleanup(() => window.removeEventListener("resize", resize));
-
-		// Initial Scroll? We control view now.
 	});
 
 	const tools: ElementType[] = [
@@ -471,7 +486,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			onTouchMove={handleMouseMove}
 			onTouchEnd={handleMouseUp}
 		>
-			{/* Content Layer with Transform */}
 			<div
 				style={{
 					transform: `translate(${view().x}px, ${view().y}px) scale(${view().z})`,
@@ -483,7 +497,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				{props.children}
 			</div>
 
-			{/* Canvases (Fixed to screen, content drawn transformed) */}
 			<canvas
 				ref={mainCanvasRef}
 				class="fixed inset-0 pointer-events-none z-10"
@@ -493,7 +506,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				class="fixed inset-0 pointer-events-none z-11"
 			/>
 
-			{/* UI Layer */}
 			<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
 				<Show when={!isDrawingMode()}>
 					<button
