@@ -419,23 +419,23 @@ export default function Report() {
 			</section>
 
 			{/* --- Section 08: Risks --- */}
-			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-[#0a0a0a]">
+			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-[#fcfcfc]">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="mb-20 border-b border-gray-800 pb-8">
-						<span class="text-sm font-bold font-mono text-[#555] uppercase tracking-widest block mb-3">
+					<div class="mb-20 border-b border-gray-200 pb-8">
+						<span class="text-sm font-bold font-mono text-gray-400 uppercase tracking-widest block mb-3">
 							07.
 						</span>
-						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-white!">
+						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
 							七、 政策环境与风险提示
 						</h2>
 					</div>
 
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 text-white">
-						<div class="p-10 border border-gray-800 rounded-lg">
-							<span class="text-sm font-bold font-mono text-[#d3fd50] uppercase tracking-widest mb-8 block">
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 text-black">
+						<div class="p-10 border border-gray-200 rounded-lg bg-white">
+							<span class="text-sm font-bold font-mono text-[#d3fd50] bg-black px-2 py-1 uppercase tracking-widest mb-8 inline-block">
 								核心风险
 							</span>
-							<h3 class="text-3xl font-medium tracking-tighter mb-12 text-white!">
+							<h3 class="text-3xl font-medium tracking-tighter mb-12 text-black">
 								{reportData.risks.policy.title}
 							</h3>
 
@@ -443,10 +443,10 @@ export default function Report() {
 								<For each={reportData.risks.policy.points}>
 									{(point) => (
 										<div>
-											<h4 class="text-xl font-medium mb-4 border-l-2 border-[#d3fd50] pl-6 text-white!">
+											<h4 class="text-xl font-medium mb-4 border-l-2 border-[#d3fd50] pl-6 text-black">
 												{point.label}
 											</h4>
-											<p class="text-base text-gray-400 leading-relaxed font-light pl-6">
+											<p class="text-base text-gray-500 leading-relaxed font-light pl-6">
 												{point.value}
 											</p>
 										</div>
@@ -457,7 +457,7 @@ export default function Report() {
 
 						<div class="flex flex-col justify-center p-10">
 							<div class="mb-12">
-								<h3 class="text-6xl font-bold tracking-tighter text-white! mb-6">
+								<h3 class="text-6xl font-bold tracking-tighter text-black mb-6">
 									内护倾向
 								</h3>
 								<p class="text-gray-500 text-xl font-light leading-relaxed">
@@ -465,14 +465,14 @@ export default function Report() {
 								</p>
 							</div>
 							<div class="mt-auto">
-								<span class="px-6 py-3 bg-red-600/20 text-red-500 border border-red-600/30 rounded inline-block text-xs font-bold uppercase tracking-widest">
+								<span class="px-6 py-3 bg-red-600/10 text-red-600 border border-red-600/20 rounded inline-block text-xs font-bold uppercase tracking-widest">
 									高战略风险 (Strategic Risk)
 								</span>
 							</div>
 						</div>
 					</div>
 
-					<div class="mt-24 pt-16 border-t border-gray-800 flex justify-between items-center text-xs font-bold uppercase tracking-widest text-[#555]">
+					<div class="mt-24 pt-16 border-t border-gray-200 flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-400">
 						<span>仅供内参</span>
 						<span>© 2026 VIETNAM EV MARKET REPORT</span>
 					</div>
