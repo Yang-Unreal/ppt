@@ -268,10 +268,26 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 						el.angle,
 					);
 
+					const handleRel = {
+						x: worldPos.x - globalAnchor.x,
+						y: worldPos.y - globalAnchor.y,
+					};
+					const handleStartLocal = rotatePoint(
+						handleRel,
+						{ x: 0, y: 0 },
+						-el.angle,
+					);
+
+					const worldPointsAtStart = el.points.map((p) =>
+						rotatePoint(p, { x: cx, y: cy }, el.angle),
+					);
+
 					dragInitialState.set(el.id, {
 						points: el.points.map((p) => ({ ...p })),
 						angle: el.angle,
 						globalAnchor,
+						dragStartWorldPos: worldPos,
+						worldPointsAtStart,
 					});
 				}
 			} else {
@@ -418,36 +434,59 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 					elements().map((el) => {
 						const state = dragInitialState.get(el.id);
 						if (state && state.globalAnchor) {
-							const angle = state.angle;
 							const anchor = state.globalAnchor;
+							const angle = state.angle;
 
-							// 1. Vector from anchor to mouse
-							const dx = worldPos.x - anchor.x;
-							const dy = worldPos.y - anchor.y;
-
-							// 2. Project onto local axes
-							const cos = Math.cos(angle);
-							const sin = Math.sin(angle);
-							const ux = cos,
-								uy = sin;
-							const vx = -sin,
-								vy = cos;
-
-							const distU = dx * ux + dy * uy;
-							const distV = dx * vx + dy * vy;
-
-							// 3. New Center
-							const newCx = anchor.x + (distU / 2) * ux + (distV / 2) * vx;
-							const newCy = anchor.y + (distU / 2) * uy + (distV / 2) * vy;
-
-							// 4. Update points to match the new dimensions and center
-							return {
-								...el,
-								points: [
-									{ x: newCx - distU / 2, y: newCy - distV / 2 },
-									{ x: newCx + distU / 2, y: newCy + distV / 2 },
-								],
+							// 1. Mouse relative to anchor
+							const mouseRel = {
+								x: worldPos.x - anchor.x,
+								y: worldPos.y - anchor.y,
 							};
+							const mouseLocal = rotatePoint(mouseRel, { x: 0, y: 0 }, -angle);
+
+							// 2. Start handle relative to anchor in local space
+							const handleRel = {
+								x: state.dragStartWorldPos.x - anchor.x,
+								y: state.dragStartWorldPos.y - anchor.y,
+							};
+							const handleLocal = rotatePoint(
+								handleRel,
+								{ x: 0, y: 0 },
+								-angle,
+							);
+
+							// 3. Scale factors
+							const scaleX =
+								handleLocal.x === 0 ? 1 : mouseLocal.x / handleLocal.x;
+							const scaleY =
+								handleLocal.y === 0 ? 1 : mouseLocal.y / handleLocal.y;
+
+							// 4. Scale points relative to anchor (which is 0,0 in this space)
+							const scaledPointsWorld = state.worldPointsAtStart.map(
+								(p: Point) => {
+									const pRel = { x: p.x - anchor.x, y: p.y - anchor.y };
+									const pLocal = rotatePoint(pRel, { x: 0, y: 0 }, -angle);
+									const pScaled = {
+										x: pLocal.x * scaleX,
+										y: pLocal.y * scaleY,
+									};
+									const pRotated = rotatePoint(pScaled, { x: 0, y: 0 }, angle);
+									return { x: pRotated.x + anchor.x, y: pRotated.y + anchor.y };
+								},
+							);
+
+							// 5. Calculate new center of these world points
+							const xList = scaledPointsWorld.map((p: Point) => p.x);
+							const yList = scaledPointsWorld.map((p: Point) => p.y);
+							const newCx = (Math.min(...xList) + Math.max(...xList)) / 2;
+							const newCy = (Math.min(...yList) + Math.max(...yList)) / 2;
+
+							// 6. Unrotate them around the new center to store as axis-aligned model
+							const finalPoints = scaledPointsWorld.map((p: Point) =>
+								rotatePoint(p, { x: newCx, y: newCy }, -angle),
+							);
+
+							return { ...el, points: finalPoints };
 						}
 						return el;
 					}),
