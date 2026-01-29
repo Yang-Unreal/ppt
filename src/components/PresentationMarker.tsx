@@ -552,6 +552,11 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 
 				if (isValid) {
 					setElements([...elements(), el]);
+					// Auto-switch to selection tool for shapes and arrows
+					if (["rectangle", "ellipse", "arrow"].includes(el.type)) {
+						setCurrentTool("select");
+						setSelectedElementIds(new Set([el.id]));
+					}
 				}
 				activeElement = null;
 			}
