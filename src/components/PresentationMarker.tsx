@@ -47,12 +47,12 @@ interface Element {
 
 const CONSTANTS = {
 	ERASER_SIZE: 20,
-	HANDLE_SIZE: 8,
-	ROTATION_HANDLE_OFFSET: 20,
+	HANDLE_SIZE: 10,
+	ROTATION_HANDLE_OFFSET: 30,
 	FONT_SIZE_MULTIPLIER: 2,
 	LINE_HEIGHT: 1.2,
 	TEXT_BASELINE_OFFSET: 0.8,
-	SELECTION_PADDING: 5,
+	SELECTION_PADDING: 10,
 	MARKER_WIDTH: 4,
 };
 
@@ -89,6 +89,19 @@ const hitTest = (pos: Point, elements: Element[]): string | null => {
 	return null;
 };
 
+const rotatePoint = (p: Point, center: Point, angle: number) => {
+	return {
+		x:
+			(p.x - center.x) * Math.cos(angle) -
+			(p.y - center.y) * Math.sin(angle) +
+			center.x,
+		y:
+			(p.x - center.x) * Math.sin(angle) +
+			(p.y - center.y) * Math.cos(angle) +
+			center.y,
+	};
+};
+
 // --- Component ---
 
 export default function PresentationMarker(props: { children?: JSX.Element }) {
@@ -113,13 +126,18 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	const [selectedElementIds, setSelectedElementIds] = createSignal(
 		new Set<string>(),
 	);
-	const [previewElements, setPreviewElements] = createSignal<Element[]>([]);
 
 	// Interaction State
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
+	const [interactionType, setInteractionType] = createSignal<
+		"none" | "draw" | "move" | "resize" | "rotate"
+	>("none");
+	const [resizeHandle, setResizeHandle] = createSignal<string | null>(null);
+
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
 	let lastMousePos: Point | null = null;
+	const dragInitialState = new Map<string, any>();
 
 	// --- Infinite Canvas Logic ---
 
@@ -162,6 +180,41 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		redraw();
 	};
 
+	const getHandleAtPosition = (
+		pos: Point,
+	): { id: string; handle: string } | null => {
+		const v = view();
+		const pad = 10 / v.z;
+		for (const id of selectedElementIds()) {
+			const el = elements().find((e) => e.id === id);
+			if (!el) continue;
+			const b = getElementBounds(el);
+			const cx = (b.minX + b.maxX) / 2;
+			const cy = (b.minY + b.maxY) / 2;
+
+			// Handles
+			const handles = [
+				{ x: b.minX, y: b.minY, name: "nw" },
+				{ x: b.maxX, y: b.minY, name: "ne" },
+				{ x: b.minX, y: b.maxY, name: "sw" },
+				{ x: b.maxX, y: b.maxY, name: "se" },
+				{
+					x: cx,
+					y: b.minY - CONSTANTS.ROTATION_HANDLE_OFFSET / v.z,
+					name: "rotate",
+				},
+			];
+
+			for (const h of handles) {
+				const rotatedH = rotatePoint(h, { x: cx, y: cy }, el.angle);
+				if (distance(pos, rotatedH) < pad) {
+					return { id, handle: h.name };
+				}
+			}
+		}
+		return null;
+	};
+
 	const handleMouseDown = (e: MouseEvent | TouchEvent) => {
 		let clientX, clientY;
 		if ("touches" in e) {
@@ -190,25 +243,52 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 
 		if (!isDrawingMode()) return;
 
-		setIsCurrentlyDrawing(true);
 		dragStartPos = worldPos;
 
 		if (currentTool() === "select") {
-			const hitId = hitTest(worldPos, elements());
-			if (hitId) {
-				setSelectedElementIds(new Set([hitId]));
+			const handleHit = getHandleAtPosition(worldPos);
+			if (handleHit) {
+				setInteractionType(handleHit.handle === "rotate" ? "rotate" : "resize");
+				setResizeHandle(handleHit.handle);
+				const el = elements().find((e) => e.id === handleHit.id);
+				if (el) {
+					dragInitialState.set(el.id, {
+						points: el.points.map((p) => ({ ...p })),
+						angle: el.angle,
+					});
+				}
 			} else {
-				setSelectedElementIds(new Set());
+				const hitId = hitTest(worldPos, elements());
+				if (hitId) {
+					setInteractionType("move");
+					if (!selectedElementIds().has(hitId)) {
+						setSelectedElementIds(new Set([hitId]));
+					}
+					selectedElementIds().forEach((id) => {
+						const el = elements().find((e) => e.id === id);
+						if (el) {
+							dragInitialState.set(id, {
+								points: el.points.map((p) => ({ ...p })),
+								angle: el.angle,
+							});
+						}
+					});
+				} else {
+					setSelectedElementIds(new Set<string>());
+					setInteractionType("none");
+				}
 			}
+			setIsCurrentlyDrawing(true);
 			redraw();
 		} else if (currentTool() === "eraser") {
-			// Eraser click
 			const hitId = hitTest(worldPos, elements());
 			if (hitId) {
 				setElements(elements().filter((el) => el.id !== hitId));
 				redraw();
 			}
 		} else if (currentTool() === "marker") {
+			setInteractionType("draw");
+			setIsCurrentlyDrawing(true);
 			activeElement = {
 				id: Math.random().toString(36).substr(2, 9),
 				type: "marker",
@@ -222,6 +302,8 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				strokeStyle: currentStrokeStyle(),
 			};
 		} else if (["rectangle", "ellipse", "arrow"].includes(currentTool())) {
+			setInteractionType("draw");
+			setIsCurrentlyDrawing(true);
 			activeElement = {
 				id: Math.random().toString(36).substr(2, 9),
 				type: currentTool(),
@@ -274,13 +356,131 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			return;
 		}
 
-		if (isCurrentlyDrawing() && activeElement) {
-			if (activeElement.type === "marker") {
-				activeElement.points.push(worldPos);
-			} else {
-				activeElement.points[1] = worldPos;
+		if (isCurrentlyDrawing()) {
+			if (interactionType() === "move" && dragStartPos) {
+				const dx = worldPos.x - dragStartPos.x;
+				const dy = worldPos.y - dragStartPos.y;
+				setElements(
+					elements().map((el) => {
+						const state = dragInitialState.get(el.id);
+						if (state) {
+							return {
+								...el,
+								points: state.points.map((p: Point) => ({
+									x: p.x + dx,
+									y: p.y + dy,
+								})),
+							};
+						}
+						return el;
+					}),
+				);
+				redraw();
+			} else if (interactionType() === "rotate" && dragStartPos) {
+				setElements(
+					elements().map((el) => {
+						const state = dragInitialState.get(el.id);
+						if (state) {
+							const bounds = getElementBounds(el);
+							const cx = (bounds.minX + bounds.maxX) / 2;
+							const cy = (bounds.minY + bounds.maxY) / 2;
+							const angle =
+								Math.atan2(worldPos.y - cy, worldPos.x - cx) + Math.PI / 2;
+							return { ...el, angle };
+						}
+						return el;
+					}),
+				);
+				redraw();
+			} else if (
+				interactionType() === "resize" &&
+				dragStartPos &&
+				resizeHandle()
+			) {
+				setElements(
+					elements().map((el) => {
+						const state = dragInitialState.get(el.id);
+						if (state) {
+							const handle = resizeHandle();
+							const initialPoints = state.points;
+							const angle = state.angle;
+
+							// 1. Original local bounds & center
+							const oldB = {
+								minX: initialPoints[0].x,
+								minY: initialPoints[0].y,
+								maxX: initialPoints[1].x,
+								maxY: initialPoints[1].y,
+							};
+							const oldCx = (oldB.minX + oldB.maxX) / 2;
+							const oldCy = (oldB.minY + oldB.maxY) / 2;
+
+							// 2. Identify local anchor (opposite of handle)
+							let localAnchor = { x: 0, y: 0 };
+							if (handle === "nw") localAnchor = { x: oldB.maxX, y: oldB.maxY };
+							if (handle === "se") localAnchor = { x: oldB.minX, y: oldB.minY };
+							if (handle === "ne") localAnchor = { x: oldB.minX, y: oldB.maxY };
+							if (handle === "sw") localAnchor = { x: oldB.maxX, y: oldB.minY };
+
+							// 3. Current global position of anchor
+							const globalAnchor = rotatePoint(
+								localAnchor,
+								{ x: oldCx, y: oldCy },
+								angle,
+							);
+
+							// 4. Current mouse world pos to local (unrotated around oldCenter)
+							const localMouse = rotatePoint(
+								worldPos,
+								{ x: oldCx, y: oldCy },
+								-angle,
+							);
+
+							// New local points based on localMouse and anchor
+							const newPoints = [...initialPoints];
+							if (handle === "nw") newPoints[0] = localMouse;
+							if (handle === "se") newPoints[1] = localMouse;
+							if (handle === "ne") {
+								newPoints[1].x = localMouse.x;
+								newPoints[0].y = localMouse.y;
+							}
+							if (handle === "sw") {
+								newPoints[0].x = localMouse.x;
+								newPoints[1].y = localMouse.y;
+							}
+
+							// 5. Correct for drift: New center must preserve global anchor position
+							const newCx = (newPoints[0].x + newPoints[1].x) / 2;
+							const newCy = (newPoints[0].y + newPoints[1].y) / 2;
+							const currentGlobalAnchor = rotatePoint(
+								localAnchor,
+								{ x: newCx, y: newCy },
+								angle,
+							);
+
+							const dx = globalAnchor.x - currentGlobalAnchor.x;
+							const dy = globalAnchor.y - currentGlobalAnchor.y;
+
+							return {
+								...el,
+								points: [
+									{ x: newPoints[0].x + dx, y: newPoints[0].y + dy },
+									{ x: newPoints[1].x + dx, y: newPoints[1].y + dy },
+								],
+							};
+						}
+						return el;
+					}),
+				);
+				redraw();
+			} else if (interactionType() === "draw" && activeElement) {
+				if (activeElement.type === "marker") {
+					activeElement.points.push(worldPos);
+				} else {
+					activeElement.points[1] = worldPos;
+				}
+				updateTempCanvas();
 			}
-			updateTempCanvas();
 		}
 	};
 
@@ -292,16 +492,19 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		}
 
 		if (isCurrentlyDrawing()) {
-			if (activeElement) {
+			if (interactionType() === "draw" && activeElement) {
 				setElements([...elements(), activeElement]);
 				activeElement = null;
-				if (tempCanvasRef) {
-					const ctx = tempCanvasRef.getContext("2d");
-					ctx?.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
-				}
-				redraw();
+			}
+			if (tempCanvasRef) {
+				const ctx = tempCanvasRef.getContext("2d");
+				ctx?.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
 			}
 			setIsCurrentlyDrawing(false);
+			setInteractionType("none");
+			setResizeHandle(null);
+			dragInitialState.clear();
+			redraw();
 		}
 	};
 
@@ -323,22 +526,51 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 
 		elements().forEach((el) => renderElement(ctx, rc, el));
 
-		// Draw Selection Box
+		// Draw Selection UI
 		if (selectedElementIds().size > 0) {
 			ctx.save();
-			ctx.strokeStyle = "#3b82f6";
-			ctx.lineWidth = 1 / v.z; // Constant visual width
-			ctx.setLineDash([5 / v.z, 5 / v.z]);
-
 			elements().forEach((el) => {
 				if (selectedElementIds().has(el.id)) {
 					const b = getElementBounds(el);
+					const cx = (b.minX + b.maxX) / 2;
+					const cy = (b.minY + b.maxY) / 2;
+
+					ctx.save();
+					ctx.translate(cx, cy);
+					ctx.rotate(el.angle);
+					ctx.translate(-cx, -cy);
+
+					ctx.strokeStyle = "#3b82f6";
+					ctx.lineWidth = 2 / v.z;
+					ctx.setLineDash([5 / v.z, 5 / v.z]);
 					ctx.strokeRect(
 						b.minX - 5,
 						b.minY - 5,
 						b.maxX - b.minX + 10,
 						b.maxY - b.minY + 10,
 					);
+
+					// Handles
+					ctx.setLineDash([]);
+					ctx.fillStyle = "white";
+					const s = CONSTANTS.HANDLE_SIZE / v.z;
+					const drawHandle = (x: number, y: number) => {
+						ctx.fillRect(x - s / 2, y - s / 2, s, s);
+						ctx.strokeRect(x - s / 2, y - s / 2, s, s);
+					};
+					drawHandle(b.minX, b.minY);
+					drawHandle(b.maxX, b.minY);
+					drawHandle(b.minX, b.maxY);
+					drawHandle(b.maxX, b.maxY);
+					// Rotation
+					const rx = cx;
+					const ry = b.minY - CONSTANTS.ROTATION_HANDLE_OFFSET / v.z;
+					ctx.beginPath();
+					ctx.moveTo(cx, b.minY);
+					ctx.lineTo(rx, ry);
+					ctx.stroke();
+					drawHandle(rx, ry);
+					ctx.restore();
 				}
 			});
 			ctx.restore();
@@ -370,6 +602,14 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		rc: any,
 		el: Element,
 	) => {
+		ctx.save();
+		const b = getElementBounds(el);
+		const cx = (b.minX + b.maxX) / 2;
+		const cy = (b.minY + b.maxY) / 2;
+		ctx.translate(cx, cy);
+		ctx.rotate(el.angle);
+		ctx.translate(-cx, -cy);
+
 		if (el.type === "marker") {
 			if (el.points.length < 2) return;
 			const pts = el.points.map((p) => [p.x, p.y]);
@@ -395,9 +635,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			const [p1, p2] = el.points;
 			const w = Math.abs(p2.x - p1.x);
 			const h = Math.abs(p2.y - p1.y);
-			const cx = (p1.x + p2.x) / 2;
-			const cy = (p1.y + p2.y) / 2;
-			rc.ellipse(cx, cy, w, h, {
+			rc.ellipse((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, w, h, {
 				stroke: el.color,
 				strokeWidth: el.width,
 				roughness: el.roughness,
@@ -411,25 +649,45 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				roughness: el.roughness,
 				seed: el.seed,
 			});
-			// Arrow Head
 			const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 			const headLen = 20;
-			const x3 = p2.x - headLen * Math.cos(angle - Math.PI / 6);
-			const y3 = p2.y - headLen * Math.sin(angle - Math.PI / 6);
-			const x4 = p2.x - headLen * Math.cos(angle + Math.PI / 6);
-			const y4 = p2.y - headLen * Math.sin(angle + Math.PI / 6);
-			rc.line(p2.x, p2.y, x3, y3, {
-				stroke: el.color,
-				strokeWidth: el.width,
-				roughness: el.roughness,
-				seed: el.seed,
-			});
-			rc.line(p2.x, p2.y, x4, y4, {
-				stroke: el.color,
-				strokeWidth: el.width,
-				roughness: el.roughness,
-				seed: el.seed,
-			});
+			rc.line(
+				p2.x,
+				p2.y,
+				p2.x - headLen * Math.cos(angle - Math.PI / 6),
+				p2.y - headLen * Math.sin(angle - Math.PI / 6),
+				{
+					stroke: el.color,
+					strokeWidth: el.width,
+					roughness: el.roughness,
+					seed: el.seed,
+				},
+			);
+			rc.line(
+				p2.x,
+				p2.y,
+				p2.x - headLen * Math.cos(angle + Math.PI / 6),
+				p2.y - headLen * Math.sin(angle + Math.PI / 6),
+				{
+					stroke: el.color,
+					strokeWidth: el.width,
+					roughness: el.roughness,
+					seed: el.seed,
+				},
+			);
+		}
+		ctx.restore();
+	};
+
+	const handleKeyDown = (e: KeyboardEvent) => {
+		if (e.key === "Backspace" || e.key === "Delete") {
+			const selected = selectedElementIds();
+			if (selected.size > 0) {
+				e.preventDefault();
+				setElements(elements().filter((el) => !selected.has(el.id)));
+				setSelectedElementIds(new Set<string>());
+				redraw();
+			}
 		}
 	};
 
@@ -446,8 +704,12 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 			redraw();
 		};
 		window.addEventListener("resize", resize);
+		window.addEventListener("keydown", handleKeyDown);
 		resize();
-		onCleanup(() => window.removeEventListener("resize", resize));
+		onCleanup(() => {
+			window.removeEventListener("resize", resize);
+			window.removeEventListener("keydown", handleKeyDown);
+		});
 	});
 
 	const tools: ElementType[] = [
@@ -471,6 +733,11 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 
 	const clearCanvas = () => {
 		setElements([]);
+		redraw();
+	};
+
+	const resetZoom = () => {
+		setView({ x: 0, y: 0, z: 1 });
 		redraw();
 	};
 
@@ -506,7 +773,19 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				class="fixed inset-0 pointer-events-none z-11"
 			/>
 
-			<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+			<div
+				class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2"
+				onMouseDown={(e) => e.stopPropagation()}
+				onWheel={(e) => e.stopPropagation()}
+			>
+				<button
+					type="button"
+					onClick={resetZoom}
+					class="px-2 py-1 bg-black text-white text-[10px] font-mono rounded border border-white/10 hover:bg-zinc-900 transition-colors shadow-xl"
+					title="Reset Zoom"
+				>
+					{Math.round(view().z * 100)}%
+				</button>
 				<Show when={!isDrawingMode()}>
 					<button
 						type="button"
