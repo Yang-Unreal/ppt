@@ -538,10 +538,16 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 					isValid =
 						el.points.length > 1 &&
 						el.points.some((p) => distance(p, startPoint) > 2);
-				} else if (["rectangle", "ellipse", "arrow"].includes(el.type)) {
+				} else if (["rectangle", "ellipse"].includes(el.type)) {
 					const p1 = el.points[0];
 					const p2 = el.points[1];
-					isValid = distance(p1, p2) > 3;
+					// Ensure shapes have a minimum width and height
+					isValid = Math.abs(p2.x - p1.x) > 5 && Math.abs(p2.y - p1.y) > 5;
+				} else if (el.type === "arrow") {
+					const p1 = el.points[0];
+					const p2 = el.points[1];
+					// Ensure arrows have a minimum length
+					isValid = distance(p1, p2) > 15;
 				}
 
 				if (isValid) {
