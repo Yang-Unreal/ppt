@@ -137,8 +137,9 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	// Interaction State
 	const [isCurrentlyDrawing, setIsCurrentlyDrawing] = createSignal(false);
 	const [interactionType, setInteractionType] = createSignal<
-		"none" | "draw" | "move" | "resize" | "rotate"
+		"none" | "draw" | "move" | "resize" | "rotate" | "selection"
 	>("none");
+	const [selectionEnd, setSelectionEnd] = createSignal<Point | null>(null);
 	const [resizeHandle, setResizeHandle] = createSignal<string | null>(null);
 
 	let activeElement: Element | null = null;
@@ -315,7 +316,8 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 					});
 				} else {
 					setSelectedElementIds(new Set<string>());
-					setInteractionType("none");
+					setInteractionType("selection");
+					setSelectionEnd(worldPos);
 				}
 			}
 			setIsCurrentlyDrawing(true);
@@ -518,6 +520,9 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 					activeElement.points[1] = worldPos;
 				}
 				updateTempCanvas();
+			} else if (interactionType() === "selection") {
+				setSelectionEnd(worldPos);
+				updateTempCanvas();
 			}
 		}
 	};
@@ -565,6 +570,34 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				ctx?.clearRect(0, 0, tempCanvasRef.width, tempCanvasRef.height);
 			}
 			setIsCurrentlyDrawing(false);
+			const currentSelectionEnd = selectionEnd();
+			if (
+				interactionType() === "selection" &&
+				dragStartPos &&
+				currentSelectionEnd
+			) {
+				const end = currentSelectionEnd;
+				const minX = Math.min(dragStartPos.x, end.x);
+				const maxX = Math.max(dragStartPos.x, end.x);
+				const minY = Math.min(dragStartPos.y, end.y);
+				const maxY = Math.max(dragStartPos.y, end.y);
+
+				const hitIds = new Set<string>();
+				elements().forEach((el) => {
+					const b = getElementBounds(el);
+					// Check if element's bounding box intersects with selection box
+					if (
+						b.minX <= maxX &&
+						b.maxX >= minX &&
+						b.minY <= maxY &&
+						b.maxY >= minY
+					) {
+						hitIds.add(el.id);
+					}
+				});
+				setSelectedElementIds(hitIds);
+				setSelectionEnd(null);
+			}
 			setInteractionType("none");
 			setResizeHandle(null);
 			dragInitialState.clear();
@@ -646,7 +679,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	};
 
 	const updateTempCanvas = () => {
-		if (!tempCanvasRef || !activeElement) return;
+		if (!tempCanvasRef) return;
 		const ctx = tempCanvasRef.getContext("2d");
 		if (!ctx) return;
 		const rc = rough.canvas(tempCanvasRef);
@@ -659,7 +692,36 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 		ctx.translate(v.x, v.y);
 		ctx.scale(v.z, v.z);
 
-		renderElement(ctx, rc, activeElement);
+		if (activeElement) {
+			renderElement(ctx, rc, activeElement);
+		}
+
+		const end = selectionEnd();
+		if (interactionType() === "selection" && dragStartPos && end) {
+			drawSelectionBox(ctx, dragStartPos, end);
+		}
+
+		ctx.restore();
+	};
+
+	const drawSelectionBox = (
+		ctx: CanvasRenderingContext2D,
+		start: Point,
+		end: Point,
+	) => {
+		const v = view();
+		ctx.save();
+		ctx.strokeStyle = "#3b82f6";
+		ctx.lineWidth = 1 / v.z;
+		ctx.setLineDash([5 / v.z, 5 / v.z]);
+		const x = Math.min(start.x, end.x);
+		const y = Math.min(start.y, end.y);
+		const w = Math.abs(end.x - start.x);
+		const h = Math.abs(end.y - start.y);
+		ctx.strokeRect(x, y, w, h);
+
+		ctx.fillStyle = "rgba(59, 130, 246, 0.1)";
+		ctx.fillRect(x, y, w, h);
 		ctx.restore();
 	};
 
