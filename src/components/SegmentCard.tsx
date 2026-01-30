@@ -4,6 +4,7 @@ interface Segment {
 	title: string;
 	tags: string[];
 	features: string;
+	images?: string[];
 	details?: { label: string; value: string }[];
 	insight?: string;
 	strategy?: string;
@@ -19,7 +20,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 	return (
 		<div class="swiss-card p-0 grid grid-cols-1 lg:grid-cols-12 min-h-[340px]">
 			{/* Header Column */}
-			<div class="lg:col-span-4 p-10 border-b lg:border-b-0 lg:border-r border-gray-100 flex flex-col bg-gray-50/50">
+			<div class="lg:col-span-3 p-10 border-b lg:border-b-0 lg:border-r border-gray-100 flex flex-col bg-gray-50/50">
 				<div class="mb-8">
 					<div class="flex flex-wrap gap-2 mb-6">
 						<For each={segment.tags}>
@@ -31,7 +32,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 							)}
 						</For>
 					</div>
-					<h3 class="text-3xl font-medium tracking-tight text-black leading-tight">
+					<h3 class="text-2xl font-medium tracking-tight text-black leading-tight">
 						{segment.title}
 					</h3>
 				</div>
@@ -41,7 +42,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 			</div>
 
 			{/* Content Area */}
-			<div class="lg:col-span-8 p-10 flex flex-col justify-center bg-white gap-8">
+			<div class="lg:col-span-9 p-10 flex flex-col justify-center bg-white gap-8">
 				{segment.details && (
 					<div class="grid grid-cols-2 gap-6">
 						<For each={segment.details}>
@@ -53,6 +54,22 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 									<div class="text-lg font-medium tracking-tight text-black leading-snug">
 										{detail.value}
 									</div>
+								</div>
+							)}
+						</For>
+					</div>
+				)}
+
+				{segment.images && (
+					<div class="flex gap-6 overflow-x-auto pb-6 scrollbar-hide">
+						<For each={segment.images}>
+							{(img) => (
+								<div class="flex-none w-80 h-80 rounded-xl overflow-hidden bg-white border border-gray-100 flex items-center justify-center p-4 hover:border-gray-200 transition-all hover:shadow-sm group">
+									<img
+										src={img}
+										alt=""
+										class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+									/>
 								</div>
 							)}
 						</For>

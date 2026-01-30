@@ -504,6 +504,11 @@ export const reportData = {
 			tags: ["初高中生", "无驾照", "家长买单"],
 			features:
 				"受网红款爆发与新规强制锂电化影响，正经历从“公模简易款”向“复古方灯”与“合规锂电”转向。",
+			images: [
+				"/user_images/Student_1.jpg",
+				"/user_images/Student_2.jpg",
+				"/user_images/Student_3.jpg",
+			],
 			details: [
 				{
 					label: "过去主流",
@@ -528,6 +533,7 @@ export const reportData = {
 			tags: ["油改电", "品质符号", "上班族"],
 			features:
 				"女性追求轻便与意式优雅，男性看重体量感与通过性，整体呈现高端化、锂电化趋势。",
+			images: ["/user_images/Commuter_1.jpg"],
 			details: [
 				{
 					label: "女性趋势",
@@ -548,6 +554,11 @@ export const reportData = {
 			tags: ["Grab/Be司机", "TCO成本为王", "耐用性"],
 			features:
 				"VinFast Evo 200 凭借极致性价比统治该市场，是“两轮界的比亚迪秦”。",
+			images: [
+				"/user_images/taxi_1.jpg",
+				"/user_images/taxi_2.jpg",
+				"/user_images/Carrier_1.jpg",
+			],
 			details: [
 				{
 					label: "续航KPI",
