@@ -35,7 +35,7 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 						<span class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 block">
 							实体
 						</span>
-						<h3 class="text-4xl font-medium tracking-tighter text-black">
+						<h3 class="text-3xl font-medium tracking-tighter text-black">
 							{brand.name}
 						</h3>
 					</div>

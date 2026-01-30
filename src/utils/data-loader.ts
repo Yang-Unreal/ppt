@@ -27,18 +27,11 @@ export const reportData = {
 					"赛鸽 (Saige)",
 					"Souda",
 				],
-				suppliers: [
-					"精锐 (Jingrui)",
-					"昊旺 (Hao Wang)",
-					"车架厂",
-					"注塑厂",
-					"线束厂",
-					"灵都 (LD) 散件贸易商",
-				],
+				suppliers: ["精锐", "昊旺", "烤漆厂", "线束厂", "灵都 (LD) 散件贸易商"],
 			},
 			{
-				name: "北宁省 (Bac Ninh) / 北江省 (Bac Giang) —— 头部品牌制造基地",
-				desc: "中国头部品牌集中地，规模效应强。租金约 4.5美金/平米/月",
+				name: "北宁省 (Bac Ninh)  —— 头部品牌制造基地",
+				desc: "大品牌集中地。租金约 4.5美金/平米/月",
 				brands: ["雅迪 (Yadea)", "爱玛 (Aima)", "DV Motor", "SMB"],
 			},
 		],
@@ -55,7 +48,7 @@ export const reportData = {
 			{
 				type: "电动轻便摩托车 (E-Moped)",
 				definition: "1. 设计时速 ≤ 50 km/h\n2. 电机最大功率 ≤ 4 kW",
-				feature: "属于 L1 组。目前中国出口的“免驾照”铅酸车型多属于此类。",
+				feature: "属于 L1 组。免驾照但骑行者需年满16岁，但目前并未严格执行。",
 			},
 			{
 				type: "电动摩托车 (E-Motorcycle)",
@@ -341,9 +334,9 @@ export const reportData = {
 					{
 						name: "Osakar",
 						logo: "/logos/Osakar_logo.jpg",
-						yield2025: "-",
+						yield2025: "4万辆",
 						plan2026: "-",
-						desc: "旗舰特斯拉/Vespa款。",
+						desc: "本土主流品牌之一，主打实用。",
 						models: [
 							{
 								name: "NISPA VERA X",
@@ -413,9 +406,9 @@ export const reportData = {
 					{
 						name: "Dibao",
 						logo: "/logos/Dibao_logo.webp",
-						yield2025: "-",
+						yield2025: "3万辆",
 						plan2026: "-",
-						desc: "大功率铅酸为主。",
+						desc: "主流品牌之一，主打时尚。",
 						models: [
 							{
 								name: "LS 007",
@@ -507,25 +500,72 @@ export const reportData = {
 	},
 	segments: [
 		{
-			title: "学生市场（存量主力）",
-			tags: ["存量主力", "方形大灯"],
-			features: "天津款(133,战警)、特斯拉款、网红款、gogo。",
+			title: "学生市场（存量基本盘）",
+			tags: ["初高中生", "无驾照", "家长买单"],
+			features:
+				"受网红款爆发与新规强制锂电化影响，正经历从“公模简易款”向“复古方灯”与“合规锂电”转向。",
 			details: [
 				{
-					label: "法规影响",
-					value: "传统超标电动自行车将向合规“E-Moped”转型，但需上牌。",
+					label: "过去主流",
+					value: "133简易款、Xmen、GOGO（运动/男性化）",
 				},
 				{
-					label: "设计风向",
-					value: "方形大灯的设计目前非常流行，急需改款方案。",
+					label: "现在爆发",
+					value: "网红款（色彩圆润、卡通IP、圆灯）",
+				},
+				{
+					label: "未来趋势",
+					value: "方灯复古设计 (Boxy Retro) 将成2025-26爆款",
+				},
+				{
+					label: "合规路径",
+					value: "路径A:锂电化(<40kg)；路径B:铅酸转电轻摩(上牌)",
 				},
 			],
 		},
 		{
-			title: "成人/通勤市场（品牌驱动）",
-			tags: ["锂电升级", "品牌驱动"],
-			features: "VinFast 统治该领域。各大整车厂开始纷纷布局锂电车型以求突围。",
-			strategy: "各大厂纷纷布局锂电车型。",
+			title: "成人/通勤市场（增量战场）",
+			tags: ["油改电", "品质符号", "上班族"],
+			features:
+				"女性追求轻便与意式优雅，男性看重体量感与通过性，整体呈现高端化、锂电化趋势。",
+			details: [
+				{
+					label: "女性趋势",
+					value: "锂电化减重(<80kg) + 优化意式(Vespa)质感",
+				},
+				{
+					label: "男性趋势",
+					value: "大尺寸大轮毂 + 高仿SH/EX007款国民神车造型",
+				},
+				{
+					label: "技术关键词",
+					value: "石墨烯/锂电升级、大功率、极速、高通过性",
+				},
+			],
+		},
+		{
+			title: "B2B / 营运市场（爆发前夜）",
+			tags: ["Grab/Be司机", "TCO成本为王", "耐用性"],
+			features:
+				"VinFast Evo 200 凭借极致性价比统治该市场，是“两轮界的比亚迪秦”。",
+			details: [
+				{
+					label: "续航KPI",
+					value: "真实续航 > 150km (满足整日跑单不充电)",
+				},
+				{
+					label: "动力KPI",
+					value: "极速 > 60km/h (确保拥堵车流中的抢单效率)",
+				},
+				{
+					label: "营运霸主",
+					value: "VinFast Evo: 约¥5800售价 + 200km续航",
+				},
+				{
+					label: "差异化竞争",
+					value: "Dat Bike: 6.4kWh大电池 + 快充 (定位高端营运)",
+				},
+			],
 		},
 	],
 	infrastructure: {

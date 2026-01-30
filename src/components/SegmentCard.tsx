@@ -50,7 +50,7 @@ export default function SegmentCard({ segment }: { segment: Segment }) {
 									<div class="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2">
 										{detail.label}
 									</div>
-									<div class="text-2xl font-medium tracking-tight text-black">
+									<div class="text-lg font-medium tracking-tight text-black leading-snug">
 										{detail.value}
 									</div>
 								</div>

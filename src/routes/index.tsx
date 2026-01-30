@@ -35,9 +35,6 @@ export default function Report() {
 			<section class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
-							01.
-						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
 							一、 市场宏观概况
 						</h2>
@@ -114,13 +111,84 @@ export default function Report() {
 				</div>
 			</section>
 
-			{/* --- Section 03: Regulations --- */}
+			{/* --- Section 03: Geographic Clusters --- */}
+			<section class="w-full border-y border-gray-100 py-16 lg:py-24 min-h-screen flex flex-col justify-center bg-white">
+				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
+					<div class="mb-20 border-b border-gray-200 pb-8">
+						<h2 class="text-3xl md:text-4xl font-bold tracking-tighter text-black">
+							产业布局分布
+						</h2>
+					</div>
+					<div class="grid grid-cols-1 lg:grid-cols-3 gap-20">
+						{/* Section Header */}
+						<div>
+							<h3 class="text-3xl font-medium tracking-tighter text-black mb-8">
+								地理集群
+							</h3>
+							<p class="text-gray-500 text-lg font-light leading-relaxed">
+								越南两轮车产业呈现高度的“北重南轻”集群特征，中国头部品牌和核心配套厂主要分布在兴安、北江与北宁省。
+							</p>
+						</div>
+
+						{/* Clusters List */}
+						<div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+							<For each={reportData.marketOverview.clusters}>
+								{(cluster) => (
+									<div class="swiss-card p-8 bg-white border border-gray-100 flex flex-col h-full hover:-translate-y-1 transition-transform duration-300">
+										<div class="mb-8">
+											<h3 class="text-2xl font-medium text-black mb-3">
+												{cluster.name}
+											</h3>
+											<p class="text-xs font-bold uppercase tracking-widest text-gray-500 leading-relaxed">
+												{cluster.desc}
+											</p>
+										</div>
+
+										<div class="mt-auto space-y-8 pt-8 border-t border-gray-100">
+											<div>
+												<span class="text-xs text-gray-400 font-bold uppercase block mb-3 tracking-widest">
+													入驻整车企业
+												</span>
+												<div class="flex flex-wrap gap-2">
+													<For each={cluster.brands}>
+														{(brand) => (
+															<span class="text-sm font-medium bg-gray-50 border border-gray-100 px-3 py-1.5 rounded text-gray-900">
+																{brand}
+															</span>
+														)}
+													</For>
+												</div>
+											</div>
+
+											{cluster.suppliers && (
+												<div>
+													<span class="text-xs text-gray-400 font-bold uppercase block mb-3 tracking-widest">
+														配套资源/核心厂
+													</span>
+													<div class="grid grid-cols-2 gap-y-2">
+														<For each={cluster.suppliers}>
+															{(supplier) => (
+																<span class="text-sm text-gray-500 block font-light">
+																	• {supplier}
+																</span>
+															)}
+														</For>
+													</div>
+												</div>
+											)}
+										</div>
+									</div>
+								)}
+							</For>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* --- Section 04: Regulations --- */}
 			<section class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center bg-gray-50">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
-							02.
-						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
 							二、 法规与技术标准
 						</h2>
@@ -211,92 +279,12 @@ export default function Report() {
 				</div>
 			</section>
 
-			{/* --- Section 04: Geographic Clusters --- */}
-			<section class="w-full border-y border-gray-100 py-16 lg:py-24 min-h-screen flex flex-col justify-center bg-white">
-				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
-							03.
-						</span>
-						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
-							三、 产业布局分布
-						</h2>
-					</div>
-					<div class="grid grid-cols-1 lg:grid-cols-3 gap-20">
-						{/* Section Header */}
-						<div>
-							<h3 class="text-3xl font-medium tracking-tighter text-black mb-8">
-								地理集群
-							</h3>
-							<p class="text-gray-500 text-lg font-light leading-relaxed">
-								越南两轮车产业呈现高度的“北重南轻”集群特征，中国头部品牌和核心配套厂主要分布在兴安、北江与北宁省。
-							</p>
-						</div>
-
-						{/* Clusters List */}
-						<div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-							<For each={reportData.marketOverview.clusters}>
-								{(cluster) => (
-									<div class="swiss-card p-8 bg-white border border-gray-100 flex flex-col h-full hover:-translate-y-1 transition-transform duration-300">
-										<div class="mb-8">
-											<h3 class="text-2xl font-medium text-black mb-3">
-												{cluster.name}
-											</h3>
-											<p class="text-xs font-bold uppercase tracking-widest text-gray-500 leading-relaxed">
-												{cluster.desc}
-											</p>
-										</div>
-
-										<div class="mt-auto space-y-8 pt-8 border-t border-gray-100">
-											<div>
-												<span class="text-xs text-gray-400 font-bold uppercase block mb-3 tracking-widest">
-													入驻整车企业
-												</span>
-												<div class="flex flex-wrap gap-2">
-													<For each={cluster.brands}>
-														{(brand) => (
-															<span class="text-sm font-medium bg-gray-50 border border-gray-100 px-3 py-1.5 rounded text-gray-900">
-																{brand}
-															</span>
-														)}
-													</For>
-												</div>
-											</div>
-
-											{cluster.suppliers && (
-												<div>
-													<span class="text-xs text-gray-400 font-bold uppercase block mb-3 tracking-widest">
-														配套资源/核心厂
-													</span>
-													<div class="grid grid-cols-2 gap-y-2">
-														<For each={cluster.suppliers}>
-															{(supplier) => (
-																<span class="text-sm text-gray-500 block font-light">
-																	• {supplier}
-																</span>
-															)}
-														</For>
-													</div>
-												</div>
-											)}
-										</div>
-									</div>
-								)}
-							</For>
-						</div>
-					</div>
-				</div>
-			</section>
-
 			{/* --- Section 05: Competition --- */}
 			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-[#fcfcfc]">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
-							04.
-						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black mb-6">
-							四、 竞争格局与车型对标
+							三、 竞争格局与车型对标
 						</h2>
 						<p class="text-base text-gray-500 border-l-2 border-[#d3fd50] pl-4 italic max-w-2xl">
 							{reportData.competition.note}
@@ -342,11 +330,8 @@ export default function Report() {
 			<section class="w-full bg-[#f9f9fb] border-t border-gray-200 py-24 min-h-screen flex flex-col justify-center">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
-							05.
-						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
-							五、 细分市场与产品趋势
+							四、 细分市场与产品趋势
 						</h2>
 					</div>
 
@@ -362,11 +347,8 @@ export default function Report() {
 			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-white">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-gray-500 uppercase tracking-widest block mb-3">
-							06.
-						</span>
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
-							六、 供应链与制造痛点
+							五、 供应链与制造痛点
 						</h2>
 					</div>
 
