@@ -134,16 +134,13 @@ export default function Report() {
 						<table class="w-full text-left border-collapse">
 							<thead>
 								<tr class="border-b-2 border-black">
-									<th class="py-4 text-sm font-bold uppercase tracking-widest text-gray-400 w-1/4">
+									<th class="py-4 text-sm font-bold uppercase tracking-widest text-gray-400 w-1/3">
 										车辆分类
 									</th>
-									<th class="py-4 text-sm font-bold uppercase tracking-widest text-gray-400 w-1/4">
-										越南语名称
-									</th>
-									<th class="py-4 text-sm font-bold uppercase tracking-widest text-gray-400 w-1/4">
+									<th class="py-4 text-sm font-bold uppercase tracking-widest text-gray-400 w-1/3">
 										指标限制
 									</th>
-									<th class="py-4 text-sm font-bold uppercase tracking-widest text-gray-400 w-1/4">
+									<th class="py-4 text-sm font-bold uppercase tracking-widest text-gray-400 w-1/3">
 										关键特征
 									</th>
 								</tr>
@@ -155,7 +152,6 @@ export default function Report() {
 											<td class="py-6 font-bold text-xl text-black">
 												{cat.type}
 											</td>
-											<td class="py-6 text-gray-500 italic">{cat.vietName}</td>
 											<td class="py-6 text-gray-700 whitespace-pre-line">
 												{cat.definition}
 											</td>
@@ -414,67 +410,6 @@ export default function Report() {
 								</For>
 							</div>
 						</div>
-					</div>
-				</div>
-			</section>
-
-			{/* --- Section 08: Risks --- */}
-			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-[#fcfcfc]">
-				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="mb-20 border-b border-gray-200 pb-8">
-						<span class="text-sm font-bold font-mono text-gray-400 uppercase tracking-widest block mb-3">
-							07.
-						</span>
-						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
-							七、 政策环境与风险提示
-						</h2>
-					</div>
-
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 text-black">
-						<div class="p-10 border border-gray-200 rounded-lg bg-white">
-							<span class="text-sm font-bold font-mono text-[#d3fd50] bg-black px-2 py-1 uppercase tracking-widest mb-8 inline-block">
-								核心风险
-							</span>
-							<h3 class="text-3xl font-medium tracking-tighter mb-12 text-black">
-								{reportData.risks.policy.title}
-							</h3>
-
-							<div class="space-y-12">
-								<For each={reportData.risks.policy.points}>
-									{(point) => (
-										<div>
-											<h4 class="text-xl font-medium mb-4 border-l-2 border-[#d3fd50] pl-6 text-black">
-												{point.label}
-											</h4>
-											<p class="text-base text-gray-500 leading-relaxed font-light pl-6">
-												{point.value}
-											</p>
-										</div>
-									)}
-								</For>
-							</div>
-						</div>
-
-						<div class="flex flex-col justify-center p-10">
-							<div class="mb-12">
-								<h3 class="text-6xl font-bold tracking-tighter text-black mb-6">
-									内护倾向
-								</h3>
-								<p class="text-gray-500 text-xl font-light leading-relaxed">
-									越南政府在“禁摩”与“换购”补贴政策上的制定，带有明显的本土企业利益保护倾向。
-								</p>
-							</div>
-							<div class="mt-auto">
-								<span class="px-6 py-3 bg-red-600/10 text-red-600 border border-red-600/20 rounded inline-block text-xs font-bold uppercase tracking-widest">
-									高战略风险 (Strategic Risk)
-								</span>
-							</div>
-						</div>
-					</div>
-
-					<div class="mt-24 pt-16 border-t border-gray-200 flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-400">
-						<span>仅供内参</span>
-						<span>© 2026 VIETNAM EV MARKET REPORT</span>
 					</div>
 				</div>
 			</section>

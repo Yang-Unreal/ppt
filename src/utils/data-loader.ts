@@ -48,20 +48,17 @@ export const reportData = {
 		categories: [
 			{
 				type: "电动自行车 (E-bike)",
-				vietName: "Xe đạp điện",
 				definition:
 					"1. 电机功率 ≤ 250W\n2. 设计时速 ≤ 25 km/h\n3. 整车质量(含电池) ≤ 40 kg",
 				feature: "必须具备脚踏板，且能通过脚踏驱动行驶。",
 			},
 			{
 				type: "电动轻便摩托车 (E-Moped)",
-				vietName: "Xe gắn máy điện",
 				definition: "1. 设计时速 ≤ 50 km/h\n2. 电机最大功率 ≤ 4 kW",
 				feature: "属于 L1 组。目前中国出口的“免驾照”铅酸车型多属于此类。",
 			},
 			{
 				type: "电动摩托车 (E-Motorcycle)",
-				vietName: "Xe mô tô điện",
 				definition: "1. 设计时速 > 50 km/h\n2. 或者 电机功率 > 4 kW",
 				feature: "属于 L3 组。需要驾照，也是VinFast主力车型区间。",
 			},
@@ -561,22 +558,7 @@ export const reportData = {
 				{
 					label: "登检政策",
 					value:
-						"流程极度复杂，且新规（QCVN 14:2024）对刹车、绝缘和锐边的要求更加严格。",
-				},
-			],
-		},
-	},
-	risks: {
-		policy: {
-			title: "政策风险（保护主义）",
-			points: [
-				{
-					label: "禁摩与换购",
-					value: "政策由 VinFast 强力推手。补贴可能仅由本土品牌独占。",
-				},
-				{
-					label: "反倾销与壁垒",
-					value: "随着本土保护主义抬头，纯进口整车或散件的门槛可能提高。",
+						"流程复杂且耗时，部分组装厂为了快速上市某些车型直接向LD或者精锐采购全套散件",
 				},
 			],
 		},
