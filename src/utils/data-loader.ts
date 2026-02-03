@@ -101,9 +101,9 @@ export const reportData = {
 					{
 						name: "VinFast（本土龙头）",
 						logo: "/logos/Vinfast_logo.png",
-						yield2025: "40万辆",
+						yield2025: "406,453辆 (↑473%)",
 						plan2026: "150万辆",
-						desc: "依托温纳集团 (Vingroup) 背景，已投资 3亿美金 布局。采取极度激进的“亏损换份额”策略，单车最高亏损额达 5000元人民币。拥有垄断级生态链，采用汽车级研发标准。",
+						desc: "依托温纳集团 (Vingroup) 背景，已投资 3亿美金 布局。2025年销量爆发式增长，稳居本土龙头地位。采取极度激进的“亏损换份额”策略，单车最高亏损额达 5000元人民币。拥有垄断级生态链，采用汽车级研发标准。",
 						models: [
 							{
 								name: "Evo 200",
@@ -334,8 +334,8 @@ export const reportData = {
 					{
 						name: "Osakar",
 						logo: "/logos/Osakar_logo.jpg",
-						yield2025: "4万辆",
-						plan2026: "-",
+						yield2025: "6万辆",
+						plan2026: "8万辆",
 						desc: "本土主流品牌之一，主打实用。",
 						models: [
 							{
@@ -407,7 +407,7 @@ export const reportData = {
 						name: "Dibao",
 						logo: "/logos/Dibao_logo.webp",
 						yield2025: "3万辆",
-						plan2026: "-",
+						plan2026: "6万辆",
 						desc: "主流品牌之一，主打时尚。",
 						models: [
 							{
@@ -451,7 +451,7 @@ export const reportData = {
 						name: "Dat Bike (性能怪兽)",
 						logo: "/logos/datbike_logo.png",
 						yield2025: "1.5万辆",
-						plan2026: "-",
+						plan2026: "3万辆",
 						desc: "黑马。主打中高性能电动车，差异化定位，也是唯一能接受高溢价零部件的客户。",
 						models: [
 							{
@@ -484,15 +484,15 @@ export const reportData = {
 						name: "DKBike",
 						logo: "/logos/DK_logo.jpg",
 						yield2025: "不足2万台",
-						plan2026: "-",
+						plan2026: "4万辆",
 						desc: "销量腰斩。之前部分业务是给雅迪做代工。资金风险高。",
 					},
 					{
 						name: "爱玛 (Aima)",
 						logo: "/logos/Powelldd_logo.webp",
-						yield2025: "-",
-						plan2026: "-",
-						desc: "北宁基地。",
+						yield2025: "3000台",
+						plan2026: "6万辆",
+						desc: "还没打开市场",
 					},
 				],
 			},
@@ -532,20 +532,28 @@ export const reportData = {
 			title: "成人/通勤市场（增量战场）",
 			tags: ["油改电", "品质符号", "上班族"],
 			features:
-				"女性追求轻便与意式优雅，男性看重体量感与通过性，整体呈现高端化、锂电化趋势。",
+				"从“玩具”向“工具”的跨越：作为“油改电”主力军，成年通勤者更关注续航耐用性、动力表现及社交面子（路权尊严）。",
 			images: ["/user_images/Commuter_1.jpg"],
 			details: [
 				{
-					label: "女性趋势",
-					value: "锂电化减重(<80kg) + 优化意式(Vespa)质感",
+					label: "女性：轻奢与易操控",
+					value:
+						"解决<80kg挪车痛点（地下车位拥挤）；审美偏向Vespa化（圆润、欧式复古、时尚单品）。",
 				},
 				{
-					label: "男性趋势",
-					value: "大尺寸大轮毂 + 高仿SH/EX007款国民神车造型",
+					label: "男性：体量与通过性",
+					value:
+						"大尺寸大轮毂（12/14寸）应对雨季积水；审美偏向Vision化（肌肉感、体量感、拒绝“自行车”感）。",
 				},
 				{
-					label: "技术关键词",
-					value: "石墨烯/锂电升级、大功率、极速、高通过性",
+					label: "动力：匹配燃油车流",
+					value:
+						"必须具备大功率电机。红绿灯起步不能“肉”，极速须>50km/h以避免在车流中被按喇叭。",
+				},
+				{
+					label: "能源：脱离老代步逻辑",
+					value:
+						"引入石墨烯或锂电，保证单日40-60km通勤无需充电，且电池寿命足以支撑多年高频使用。",
 				},
 			],
 		},
@@ -579,39 +587,4 @@ export const reportData = {
 			],
 		},
 	],
-	infrastructure: {
-		supplyChain: {
-			title: "供应链与制造",
-			details: [
-				{
-					label: "吴旺 (Wu Wang)",
-					value: "专注车架，是雅迪的核心供应商。",
-				},
-				{
-					label: "精锐 (Jingrui)",
-					value: "规模大，极强逆向仿制能力（刚买VinFast样车拉回中国仿制）。",
-				},
-				{
-					label: "灵都 (LD)",
-					value:
-						"虽能解决全套散件和登检痛点，但去年与台铃的合作暴露出质量控制问题。",
-				},
-				{ label: "成本痛点", value: "本地烤漆成本比中国贵 70-90元 RMB。" },
-			],
-		},
-		production: {
-			title: "生产痛点",
-			details: [
-				{
-					label: "效率",
-					value: "租金比中国贵，人工效率比中国低。",
-				},
-				{
-					label: "登检政策",
-					value:
-						"流程复杂且耗时，部分组装厂为了快速上市某些车型直接向LD或者精锐采购全套散件",
-				},
-			],
-		},
-	},
 };

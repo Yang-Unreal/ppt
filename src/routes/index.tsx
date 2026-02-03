@@ -31,8 +31,73 @@ export default function Report() {
 				</div>
 			</section>
 
+			{/* --- Section 01.5: Table of Contents --- */}
+			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-gray-50 border-b border-gray-100">
+				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
+					<div class="mb-24">
+						<span class="text-sm font-bold uppercase tracking-[0.3em] text-gray-400 mb-4 block">
+							Contents
+						</span>
+						<h2 class="text-6xl md:text-8xl font-bold tracking-tighter text-black">
+							目录
+						</h2>
+					</div>
+
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-12">
+						<For
+							each={[
+								{ id: "section-1", title: "市场宏观概况", prefix: "一" },
+								{ id: "section-2", title: "法规与技术标准", prefix: "二" },
+								{ id: "section-3", title: "竞争格局与车型对标", prefix: "三" },
+								{ id: "section-4", title: "细分市场与产品趋势", prefix: "四" },
+							]}
+						>
+							{(item, idx) => (
+								<a
+									href={`#${item.id}`}
+									aria-label={`跳转至 ${item.title}`}
+									class="group flex items-start gap-8 py-8 border-b border-gray-200 hover:border-black transition-colors duration-500"
+								>
+									<span class="text-4xl md:text-5xl font-mono text-gray-200 group-hover:text-[#d3fd50] transition-colors duration-500">
+										0{idx() + 1}
+									</span>
+									<div class="flex flex-col">
+										<span class="text-xs font-bold uppercase tracking-widest text-[#d3fd50] mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+											{item.prefix}
+										</span>
+										<h3 class="text-3xl md:text-4xl font-medium text-black group-hover:translate-x-2 transition-transform duration-500">
+											{item.title}
+										</h3>
+									</div>
+									<div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+										<svg
+											width="32"
+											height="32"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											role="img"
+											aria-hidden="true"
+										>
+											<line x1="7" y1="17" x2="17" y2="7"></line>
+											<polyline points="7 7 17 7 17 17"></polyline>
+										</svg>
+									</div>
+								</a>
+							)}
+						</For>
+					</div>
+				</div>
+			</section>
+
 			{/* --- Section 02: Macro Overview --- */}
-			<section class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center">
+			<section
+				id="section-1"
+				class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center"
+			>
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
@@ -186,7 +251,10 @@ export default function Report() {
 			</section>
 
 			{/* --- Section 04: Regulations --- */}
-			<section class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center bg-gray-50">
+			<section
+				id="section-2"
+				class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center bg-gray-50"
+			>
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
@@ -280,7 +348,10 @@ export default function Report() {
 			</section>
 
 			{/* --- Section 05: Competition --- */}
-			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-[#fcfcfc]">
+			<section
+				id="section-3"
+				class="w-full py-24 min-h-screen flex flex-col justify-center bg-[#fcfcfc]"
+			>
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black mb-6">
@@ -327,7 +398,10 @@ export default function Report() {
 			</section>
 
 			{/* --- Section 06: Segments --- */}
-			<section class="w-full bg-[#f9f9fb] border-t border-gray-200 py-24 min-h-screen flex flex-col justify-center">
+			<section
+				id="section-4"
+				class="w-full bg-[#f9f9fb] border-t border-gray-200 py-24 min-h-screen flex flex-col justify-center"
+			>
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
 					<div class="mb-20 border-b border-gray-200 pb-8">
 						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
@@ -339,59 +413,6 @@ export default function Report() {
 						<For each={reportData.segments}>
 							{(segment) => <SegmentCard segment={segment} />}
 						</For>
-					</div>
-				</div>
-			</section>
-
-			{/* --- Section 07: Supply Chain & Production --- */}
-			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-white">
-				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="mb-20 border-b border-gray-200 pb-8">
-						<h2 class="text-5xl md:text-6xl font-bold tracking-tighter text-black">
-							五、 供应链与制造痛点
-						</h2>
-					</div>
-
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-						<div class="swiss-card p-10 bg-white border border-gray-100">
-							<h3 class="text-2xl font-medium tracking-tight mb-10">
-								供应链核心伙伴
-							</h3>
-							<div class="space-y-6">
-								<For each={reportData.infrastructure.supplyChain.details}>
-									{(detail) => (
-										<div class="flex flex-col border-b border-gray-100 pb-4 last:border-0">
-											<span class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">
-												{detail.label}
-											</span>
-											<span class="text-lg font-light text-gray-700 leading-relaxed">
-												{detail.value}
-											</span>
-										</div>
-									)}
-								</For>
-							</div>
-						</div>
-
-						<div class="swiss-card p-10 bg-white border border-gray-100">
-							<h3 class="text-2xl font-medium tracking-tight mb-10">
-								生产与作业痛点
-							</h3>
-							<div class="space-y-6">
-								<For each={reportData.infrastructure.production.details}>
-									{(detail) => (
-										<div class="flex flex-col border-b border-gray-100 pb-4 last:border-0">
-											<span class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">
-												{detail.label}
-											</span>
-											<span class="text-lg font-light text-gray-700 leading-relaxed">
-												{detail.value}
-											</span>
-										</div>
-									)}
-								</For>
-							</div>
-						</div>
 					</div>
 				</div>
 			</section>
