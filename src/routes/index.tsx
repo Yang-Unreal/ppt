@@ -9,7 +9,6 @@ export default function Report() {
 	return (
 		<main class="w-full min-h-screen bg-(--bg-page) text-(--text-primary) selection:bg-[#d3fd50] selection:text-black">
 			<Title>{reportData.meta.title}</Title>
-
 			{/* --- Section 01: Hero / Cover --- */}
 			<section class="w-full border-b border-gray-100 bg-white relative min-h-screen flex flex-col justify-center items-center">
 				<div class="absolute inset-0 bg-grid-pattern pointer-events-none opacity-50"></div>
@@ -30,7 +29,6 @@ export default function Report() {
 					</div>
 				</div>
 			</section>
-
 			{/* --- Section 01.5: Table of Contents --- */}
 			<section class="w-full py-24 min-h-screen flex flex-col justify-center bg-gray-50 border-b border-gray-100">
 				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
@@ -92,7 +90,6 @@ export default function Report() {
 					</div>
 				</div>
 			</section>
-
 			{/* --- Section 02: Macro Overview --- */}
 			<section
 				id="section-1"
@@ -167,51 +164,49 @@ export default function Report() {
 							</div>
 						</div>
 					</div>
-				</div>
-			</section>
 
-			{/* --- Section 03: Geographic Clusters --- */}
-			<section class="w-full border-y border-gray-100 py-16 lg:py-24 min-h-screen flex flex-col justify-center bg-white">
-				<div class="max-w-[1600px] mx-auto px-6 lg:px-12 w-full">
-					<div class="mb-20 border-b border-gray-200 pb-8">
-						<h2 class="text-3xl md:text-4xl font-bold tracking-tighter text-black">
-							产业布局分布
-						</h2>
-					</div>
-					<div class="grid grid-cols-1 lg:grid-cols-3 gap-20">
-						{/* Section Header */}
-						<div>
-							<h3 class="text-3xl font-medium tracking-tighter text-black mb-8">
-								地理集群
+					<div class="mt-24">
+						<div class="mb-12">
+							<span class="text-sm font-bold uppercase tracking-[0.3em] text-[#d3fd50] mb-4 block">
+								Clusters
+							</span>
+							<h3 class="text-3xl font-bold tracking-tighter text-black">
+								地理集群分布
 							</h3>
-							<p class="text-gray-500 text-lg font-light leading-relaxed">
-								越南两轮车产业呈现高度的“北重南轻”集群特征，中国头部品牌和核心配套厂主要分布在兴安、北江与北宁省。
-							</p>
 						</div>
 
-						{/* Clusters List */}
-						<div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+						<div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
 							<For each={reportData.marketOverview.clusters}>
 								{(cluster) => (
-									<div class="swiss-card p-8 bg-white border border-gray-100 flex flex-col h-full hover:-translate-y-1 transition-transform duration-300">
-										<div class="mb-8">
-											<h3 class="text-2xl font-medium text-black mb-3">
-												{cluster.name}
-											</h3>
-											<p class="text-xs font-bold uppercase tracking-widest text-gray-500 leading-relaxed">
-												{cluster.desc}
-											</p>
+									<div class="group swiss-card p-10 bg-white border border-gray-100 flex flex-col h-full rounded-2xl hover:border-black/10 hover:shadow-2xl hover:shadow-black/5 transition-all duration-500 relative overflow-hidden">
+										<div class="absolute top-0 right-0 w-32 h-32 bg-[#d3fd50] opacity-0 group-hover:opacity-5 transition-opacity duration-700 blur-3xl -mr-10 -mt-10"></div>
+
+										<div class="mb-12">
+											<div class="flex items-start justify-between mb-6">
+												<h3 class="text-3xl font-bold text-black tracking-tight leading-tight">
+													{cluster.name.split(" —— ")[0]}
+													<span class="block text-lg font-medium text-gray-400 mt-2">
+														{cluster.name.split(" —— ")[1]}
+													</span>
+												</h3>
+											</div>
+											<div class="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg w-fit">
+												<div class="w-1.5 h-1.5 rounded-full bg-[#d3fd50]"></div>
+												<p class="text-sm font-bold text-gray-600 uppercase tracking-widest">
+													{cluster.desc}
+												</p>
+											</div>
 										</div>
 
-										<div class="mt-auto space-y-8 pt-8 border-t border-gray-100">
-											<div>
-												<span class="text-xs text-gray-400 font-bold uppercase block mb-3 tracking-widest">
+										<div class="grid grid-cols-1 md:grid-cols-12 gap-10 pt-10 border-t border-gray-100">
+											<div class="md:col-span-7">
+												<span class="text-xs text-gray-400 font-bold uppercase block mb-6 tracking-[0.2em]">
 													入驻整车企业
 												</span>
 												<div class="flex flex-wrap gap-2">
 													<For each={cluster.brands}>
 														{(brand) => (
-															<span class="text-sm font-medium bg-gray-50 border border-gray-100 px-3 py-1.5 rounded text-gray-900">
+															<span class="text-sm font-medium bg-white border border-gray-200 px-4 py-2 rounded-full text-gray-900 group-hover:border-gray-300 transition-colors">
 																{brand}
 															</span>
 														)}
@@ -220,16 +215,19 @@ export default function Report() {
 											</div>
 
 											{cluster.suppliers && (
-												<div>
-													<span class="text-xs text-gray-400 font-bold uppercase block mb-3 tracking-widest">
-														配套资源/核心厂
+												<div class="md:col-span-5 md:border-l md:border-gray-100 md:pl-10">
+													<span class="text-xs text-gray-400 font-bold uppercase block mb-6 tracking-[0.2em]">
+														核心配套商
 													</span>
-													<div class="grid grid-cols-2 gap-y-2">
+													<div class="space-y-3">
 														<For each={cluster.suppliers}>
 															{(supplier) => (
-																<span class="text-sm text-gray-500 block font-light">
-																	• {supplier}
-																</span>
+																<div class="flex items-center gap-2 group/item">
+																	<div class="w-1 h-1 rounded-full bg-gray-300 group-hover/item:bg-[#d3fd50] transition-colors"></div>
+																	<span class="text-sm text-gray-600 font-medium">
+																		{supplier}
+																	</span>
+																</div>
 															)}
 														</For>
 													</div>
@@ -243,8 +241,6 @@ export default function Report() {
 					</div>
 				</div>
 			</section>
-
-			{/* --- Section 04: Regulations --- */}
 			<section
 				id="section-2"
 				class="w-full py-16 lg:py-24 min-h-screen flex flex-col justify-center bg-gray-50"
@@ -316,8 +312,6 @@ export default function Report() {
 								</For>
 							</div>
 						</div>
-
-						{/* Traffic Rules */}
 						<div class="swiss-card p-10 bg-[#0a0a0a] text-white">
 							<h3 class="text-2xl font-medium tracking-tight mb-8 text-white!">
 								道路交通管理规则
@@ -340,8 +334,7 @@ export default function Report() {
 					</div>
 				</div>
 			</section>
-
-			{/* --- Section 05: Competition --- */}
+			;
 			<section
 				id="section-3"
 				class="w-full py-24 min-h-screen flex flex-col justify-center bg-[#fcfcfc]"
@@ -390,8 +383,7 @@ export default function Report() {
 					</div>
 				</div>
 			</section>
-
-			{/* --- Section 06: Segments --- */}
+			;
 			<section
 				id="section-4"
 				class="w-full bg-[#f9f9fb] border-t border-gray-200 py-24 min-h-screen flex flex-col justify-center"
@@ -410,8 +402,6 @@ export default function Report() {
 					</div>
 				</div>
 			</section>
-
-			{/* --- Footer --- */}
 			<footer class="bg-white border-t border-gray-100 py-24 text-center">
 				<span class="text-8xl font-bold tracking-tighter text-black opacity-10">
 					VIETNAM
