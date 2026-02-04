@@ -56,13 +56,13 @@ export default function Report() {
 								<a
 									href={`#${item.id}`}
 									aria-label={`跳转至 ${item.title}`}
-									class="group flex items-start gap-8 py-8 border-b border-gray-200 hover:border-black transition-colors duration-500"
+									class="group flex items-center gap-8 py-8 border-b border-gray-200 hover:border-black transition-colors duration-500"
 								>
 									<span class="text-4xl md:text-5xl font-mono text-gray-200 group-hover:text-[#d3fd50] transition-colors duration-500">
 										0{idx() + 1}
 									</span>
-									<div class="flex flex-col">
-										<span class="text-xs font-bold uppercase tracking-widest text-[#d3fd50] mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+									<div class="flex flex-col relative">
+										<span class="text-xs font-bold uppercase tracking-widest text-[#d3fd50] absolute -top-5 left-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
 											{item.prefix}
 										</span>
 										<h3 class="text-3xl md:text-4xl font-medium text-black group-hover:translate-x-2 transition-transform duration-500">
