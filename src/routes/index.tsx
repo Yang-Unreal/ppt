@@ -166,15 +166,6 @@ export default function Report() {
 					</div>
 
 					<div class="mt-24">
-						<div class="mb-12">
-							<span class="text-sm font-bold uppercase tracking-[0.3em] text-[#d3fd50] mb-4 block">
-								Clusters
-							</span>
-							<h3 class="text-3xl font-bold tracking-tighter text-black">
-								地理集群分布
-							</h3>
-						</div>
-
 						<div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
 							<For each={reportData.marketOverview.clusters}>
 								{(cluster) => (
