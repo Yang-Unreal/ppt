@@ -184,6 +184,7 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 	const [selectionEnd, setSelectionEnd] = createSignal<Point | null>(null);
 	const [selectionRotation, setSelectionRotation] = createSignal(0);
 	const [resizeHandle, setResizeHandle] = createSignal<string | null>(null);
+	const [activeMenu, setActiveMenu] = createSignal<string | null>(null);
 
 	let activeElement: Element | null = null;
 	let dragStartPos: Point | null = null;
@@ -1089,16 +1090,17 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 				</Show>
 
 				<Show when={isDrawingMode()}>
-					<div class="flex items-center gap-4 bg-black border border-white/10 p-3 rounded-lg shadow-2xl">
+					<div class="flex items-center h-12 bg-black border border-white/10 px-2 rounded-full shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+						{/* Close Button */}
 						<button
 							type="button"
 							onClick={() => setIsDrawingMode(false)}
-							class="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors"
-							title="Close Tools"
+							class="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors"
+							title="Hide Tools"
 						>
 							<svg
-								width="16"
-								height="16"
+								width="14"
+								height="14"
 								viewBox="0 0 24 24"
 								fill="none"
 								stroke="currentColor"
@@ -1106,29 +1108,51 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 								stroke-linecap="round"
 								stroke-linejoin="round"
 							>
-								<title>Close Tools</title>
 								<line x1="18" y1="6" x2="6" y2="18" />
 								<line x1="6" y1="6" x2="18" y2="18" />
 							</svg>
 						</button>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex gap-1">
+
+						<div class="w-px h-4 bg-white/10 mx-1" />
+
+						{/* Tools */}
+						<div class="flex gap-0.5">
 							<For each={tools}>
 								{(tool) => (
 									<button
 										type="button"
 										onClick={() => setCurrentTool(tool)}
-										class={`px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold transition-all ${currentTool() === tool ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}
+										class={`h-8 px-2.5 rounded-full text-[9px] uppercase font-bold transition-all ${
+											currentTool() === tool
+												? "bg-[#d3fd50] text-black"
+												: "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+										}`}
 									>
 										{tool}
 									</button>
 								)}
 							</For>
 						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex gap-2 px-2">
-							<div class="flex flex-col gap-1">
-								<div class="flex gap-1">
+
+						<div class="w-px h-4 bg-white/10 mx-1" />
+
+						{/* Color Button with Popover */}
+						<div class="relative">
+							<button
+								type="button"
+								onClick={() =>
+									setActiveMenu(activeMenu() === "color" ? null : "color")
+								}
+								class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 relative"
+								title="Color Picker"
+							>
+								<div
+									class="w-4 h-4 rounded-full border border-white/20"
+									style={{ "background-color": currentColor() }}
+								/>
+							</button>
+							<Show when={activeMenu() === "color"}>
+								<div class="absolute bottom-14 right-0 bg-zinc-900 border border-white/10 p-3 rounded-xl shadow-2xl min-w-[124px] grid grid-cols-5 gap-2">
 									<For
 										each={[
 											"#ff4444",
@@ -1136,37 +1160,6 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 											"#4444ff",
 											"#00f2ff",
 											"#ffff44",
-										]}
-									>
-										{(color) => (
-											<button
-												type="button"
-												onClick={() => {
-													setCurrentColor(color);
-													if (selectedElementIds().size > 0) {
-														setElements(
-															elements().map((el) =>
-																selectedElementIds().has(el.id)
-																	? { ...el, color }
-																	: el,
-															),
-														);
-														redraw();
-													} else if (
-														currentTool() === "eraser" ||
-														currentTool() === "select"
-													)
-														setCurrentTool("marker");
-												}}
-												class={`w-4 h-4 rounded-full border transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
-												style={{ "background-color": color }}
-											/>
-										)}
-									</For>
-								</div>
-								<div class="flex gap-1">
-									<For
-										each={[
 											"#ff00ff",
 											"#000000",
 											"#ffffff",
@@ -1191,161 +1184,220 @@ export default function PresentationMarker(props: { children?: JSX.Element }) {
 													} else if (
 														currentTool() === "eraser" ||
 														currentTool() === "select"
-													)
+													) {
 														setCurrentTool("marker");
+													}
+													setActiveMenu(null);
 												}}
-												class={`w-4 h-4 rounded-full border transition-transform hover:scale-125 ${currentColor() === color ? "border-white scale-110" : "border-transparent"}`}
+												class={`w-5 h-5 rounded-full border transition-transform hover:scale-110 ${currentColor() === color ? "border-white" : "border-transparent"}`}
 												style={{ "background-color": color }}
 											/>
 										)}
 									</For>
+									<div class="col-span-1 flex items-center justify-center">
+										<input
+											type="color"
+											value={currentColor()}
+											onInput={(e) => {
+												const color = e.currentTarget.value;
+												setCurrentColor(color);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, color }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class="w-5 h-5 rounded overflow-hidden cursor-pointer border-none p-0 bg-transparent"
+										/>
+									</div>
 								</div>
-							</div>
-							<div class="flex items-center">
-								<input
-									type="color"
-									value={currentColor()}
-									onInput={(e) => {
-										const color = e.currentTarget.value;
-										setCurrentColor(color);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, color }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-6 h-6 rounded cursor-pointer border-none p-0"
-									title="Custom Color"
-								/>
-							</div>
+							</Show>
 						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex flex-col gap-2">
-							<div class="flex items-center gap-2">
-								<span class="text-[8px] text-zinc-500 uppercase w-8">Size</span>
-								<input
-									type="range"
-									min="1"
-									max="20"
-									value={currentWidth()}
-									onInput={(e) => {
-										const val = Number(e.currentTarget.value);
-										setCurrentWidth(val);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, width: val }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-								/>
-							</div>
-							<div class="flex items-center gap-2">
-								<span class="text-[8px] text-zinc-500 uppercase w-8">
-									Rough
-								</span>
-								<input
-									type="range"
-									min="0"
-									max="3"
-									step="0.5"
-									value={currentRoughness()}
-									onInput={(e) => {
-										const val = Number(e.currentTarget.value);
-										setCurrentRoughness(val);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, roughness: val }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-								/>
-							</div>
-							<div class="flex items-center gap-2">
-								<span class="text-[8px] text-zinc-500 uppercase w-8">Opac</span>
-								<input
-									type="range"
-									min="10"
-									max="100"
-									step="10"
-									value={currentOpacity()}
-									onInput={(e) => {
-										const val = Number(e.currentTarget.value);
-										setCurrentOpacity(val);
-										if (selectedElementIds().size > 0) {
-											setElements(
-												elements().map((el) =>
-													selectedElementIds().has(el.id)
-														? { ...el, opacity: val }
-														: el,
-												),
-											);
-											redraw();
-										}
-									}}
-									class="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-								/>
-							</div>
+
+						{/* Settings/Sliders Button with Popover */}
+						<div class="relative">
+							<button
+								type="button"
+								onClick={() =>
+									setActiveMenu(activeMenu() === "settings" ? null : "settings")
+								}
+								class={`w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors ${activeMenu() === "settings" ? "text-white" : "text-zinc-500"}`}
+								title="Settings"
+							>
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<title>Settings</title>
+									<circle cx="12" cy="12" r="3" />
+									<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+								</svg>
+							</button>
+							<Show when={activeMenu() === "settings"}>
+								<div class="absolute bottom-14 right-0 bg-zinc-900 border border-white/10 p-4 rounded-xl shadow-2xl min-w-[200px] flex flex-col gap-4">
+									{/* Size Slider */}
+									<div class="flex flex-col gap-1.5">
+										<div class="flex justify-between items-center">
+											<span class="text-[9px] text-zinc-500 uppercase font-bold tracking-widest">
+												Size
+											</span>
+											<span class="text-[9px] text-zinc-400 font-mono">
+												{currentWidth()}px
+											</span>
+										</div>
+										<input
+											type="range"
+											min="1"
+											max="20"
+											value={currentWidth()}
+											onInput={(e) => {
+												const val = Number(e.currentTarget.value);
+												setCurrentWidth(val);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, width: val }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#d3fd50]"
+										/>
+									</div>
+									{/* Roughness Slider */}
+									<div class="flex flex-col gap-1.5">
+										<div class="flex justify-between items-center">
+											<span class="text-[9px] text-zinc-500 uppercase font-bold tracking-widest">
+												Rough
+											</span>
+											<span class="text-[9px] text-zinc-400 font-mono">
+												{currentRoughness()}
+											</span>
+										</div>
+										<input
+											type="range"
+											min="0"
+											max="3"
+											step="0.5"
+											value={currentRoughness()}
+											onInput={(e) => {
+												const val = Number(e.currentTarget.value);
+												setCurrentRoughness(val);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, roughness: val }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#d3fd50]"
+										/>
+									</div>
+									{/* Opacity Slider */}
+									<div class="flex flex-col gap-1.5">
+										<div class="flex justify-between items-center">
+											<span class="text-[9px] text-zinc-500 uppercase font-bold tracking-widest">
+												Opac
+											</span>
+											<span class="text-[9px] text-zinc-400 font-mono">
+												{currentOpacity()}%
+											</span>
+										</div>
+										<input
+											type="range"
+											min="10"
+											max="100"
+											step="10"
+											value={currentOpacity()}
+											onInput={(e) => {
+												const val = Number(e.currentTarget.value);
+												setCurrentOpacity(val);
+												if (selectedElementIds().size > 0) {
+													setElements(
+														elements().map((el) =>
+															selectedElementIds().has(el.id)
+																? { ...el, opacity: val }
+																: el,
+														),
+													);
+													redraw();
+												}
+											}}
+											class="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#d3fd50]"
+										/>
+									</div>
+
+									<div class="h-px bg-white/5" />
+
+									{/* Stroke Styles */}
+									<div class="flex gap-1.5">
+										<For each={strokeStyles}>
+											{(style) => (
+												<button
+													type="button"
+													onClick={() => {
+														setCurrentStrokeStyle(style);
+														if (selectedElementIds().size > 0) {
+															setElements(
+																elements().map((el) =>
+																	selectedElementIds().has(el.id)
+																		? { ...el, strokeStyle: style }
+																		: el,
+																),
+															);
+															redraw();
+														}
+													}}
+													class={`flex-1 py-1.5 text-[8px] uppercase font-bold rounded-lg border transition-all ${
+														currentStrokeStyle() === style
+															? "bg-white text-black border-white"
+															: "text-zinc-500 border-white/10 hover:border-white/30 hover:text-white"
+													}`}
+												>
+													{style}
+												</button>
+											)}
+										</For>
+									</div>
+								</div>
+							</Show>
 						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex flex-col justify-center gap-1">
-							<For each={strokeStyles}>
-								{(style) => (
-									<button
-										type="button"
-										onClick={() => {
-											setCurrentStrokeStyle(style);
-											if (selectedElementIds().size > 0) {
-												setElements(
-													elements().map((el) =>
-														selectedElementIds().has(el.id)
-															? { ...el, strokeStyle: style }
-															: el,
-													),
-												);
-												redraw();
-											}
-										}}
-										class={`px-1.5 py-0.5 text-[8px] uppercase rounded border border-white/10 ${
-											currentStrokeStyle() === style
-												? "bg-white text-black"
-												: "text-zinc-500 hover:text-white"
-										}`}
-									>
-										{style}
-									</button>
-								)}
-							</For>
-						</div>
-						<div class="w-px h-6 bg-white/10" />
-						<div class="flex gap-1">
+
+						<div class="w-px h-4 bg-white/10 mx-1" />
+
+						{/* History Tools */}
+						<div class="flex items-center">
 							<button
 								type="button"
 								onClick={undo}
-								class="px-3 py-2 text-xs text-zinc-400 hover:text-white"
+								class="h-8 px-3 text-[10px] font-bold text-zinc-500 hover:text-white transition-colors"
+								title="Undo"
 							>
 								Undo
 							</button>
 							<button
 								type="button"
 								onClick={clearCanvas}
-								class="px-3 py-2 text-xs text-zinc-400 hover:text-red-400"
+								class="h-8 px-3 text-[10px] font-bold text-zinc-500 hover:text-red-400 transition-colors"
+								title="Clear All"
 							>
 								Clear
 							</button>

@@ -1,5 +1,3 @@
-import { For } from "solid-js";
-
 interface Model {
 	name: string;
 	price: string;
