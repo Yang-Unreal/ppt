@@ -135,9 +135,6 @@ export default function Report() {
 									{reportData.marketOverview.totalHolding.split("万")[0]}
 									<span class="text-3xl text-gray-300 ml-1">万</span>
 								</span>
-								<span class="text-sm text-gray-400 mt-2 font-mono">
-									社会保有量
-								</span>
 							</div>
 							<div class="swiss-card p-10 bg-white flex-1 flex flex-col justify-center hover:border-gray-300">
 								<span class="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">
@@ -146,9 +143,6 @@ export default function Report() {
 								<span class="text-6xl font-medium tracking-tighter text-black">
 									{reportData.marketOverview.annualProduction.split("万")[0]}
 									<span class="text-3xl text-gray-300 ml-1">万</span>
-								</span>
-								<span class="text-sm text-gray-400 mt-2 font-mono">
-									年总产量稳定
 								</span>
 							</div>
 						</div>
