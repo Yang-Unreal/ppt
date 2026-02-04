@@ -281,51 +281,8 @@ export default function Report() {
 							</tbody>
 						</table>
 					</div>
-
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-						{/* Safety requirements */}
-						<div class="swiss-card p-10 bg-white">
-							<h3 class="text-2xl font-medium tracking-tight mb-8">
-								核心技术安全要求
-							</h3>
-							<div class="space-y-6">
-								<For each={reportData.regulations.safetyRequirements}>
-									{(req) => (
-										<div class="flex flex-col border-b border-gray-100 pb-4">
-											<span class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">
-												{req.label}
-											</span>
-											<span class="text-base text-gray-800 font-light leading-relaxed">
-												{req.value}
-											</span>
-										</div>
-									)}
-								</For>
-							</div>
-						</div>
-						<div class="swiss-card p-10 bg-[#0a0a0a] text-white">
-							<h3 class="text-2xl font-medium tracking-tight mb-8 text-white!">
-								道路交通管理规则
-							</h3>
-							<div class="space-y-10">
-								<For each={reportData.regulations.trafficRules}>
-									{(rule, idx) => (
-										<div class="flex gap-6">
-											<span class="text-4xl font-mono text-[#d3fd50] leading-none">
-												0{idx() + 1}
-											</span>
-											<p class="text-lg text-gray-400 font-light leading-relaxed">
-												{rule}
-											</p>
-										</div>
-									)}
-								</For>
-							</div>
-						</div>
-					</div>
 				</div>
 			</section>
-			;
 			<section
 				id="section-3"
 				class="w-full py-24 min-h-screen flex flex-col justify-center bg-[#fcfcfc]"
