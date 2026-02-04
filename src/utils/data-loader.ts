@@ -99,7 +99,8 @@ export const reportData = {
 				name: "第一梯队：绝对统领（不计成本的扩张）",
 				brands: [
 					{
-						name: "VinFast（本土龙头）",
+						name: "VinFast",
+						tag: "本土龙头",
 						logo: "/logos/Vinfast_logo.png",
 						yield2025: "406,453辆 (↑473%)",
 						plan2026: "150万辆",

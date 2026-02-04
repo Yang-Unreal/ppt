@@ -1,3 +1,15 @@
+import { For } from "solid-js";
+
+interface Model {
+	name: string;
+	price: string;
+	rmbPrice?: string;
+	spec: string;
+	speedRange: string;
+	image: string;
+	note?: string;
+}
+
 interface Brand {
 	name: string;
 	logo?: string;
@@ -5,6 +17,7 @@ interface Brand {
 	yield2025: string;
 	plan2026: string;
 	models?: Model[];
+	tag?: string;
 }
 
 interface BrandCardProps {
@@ -16,7 +29,12 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 	// Tier 1: Dominant
 	if (tier === 1) {
 		return (
-			<div class="col-span-1 md:col-span-2 lg:col-span-3 swiss-card p-10 flex flex-col md:flex-row gap-12 items-start group hover:border-gray-400">
+			<div class="col-span-1 md:col-span-2 lg:col-span-3 swiss-card p-10 flex flex-col md:flex-row gap-12 items-start group hover:border-gray-400 relative">
+				{brand.tag && (
+					<span class="absolute top-6 right-6 px-2 py-1 bg-[#d3fd50] text-black rounded text-xs font-bold uppercase tracking-widest leading-none">
+						{brand.tag}
+					</span>
+				)}
 				<div class="shrink-0 w-full md:w-64 h-full flex flex-col justify-between">
 					<div class="w-full h-32 bg-white border border-gray-200 rounded flex items-center justify-start mb-8 p-6">
 						{brand.logo ? (
@@ -89,7 +107,7 @@ export default function BrandCard({ brand, tier }: BrandCardProps) {
 					</div>
 					{/* Accent Usage: Tier Badge */}
 					<span class="px-2 py-1 bg-[#d3fd50] text-black rounded text-xs font-bold uppercase tracking-widest">
-						挑战者
+						{brand.tag || "挑战者"}
 					</span>
 				</div>
 
